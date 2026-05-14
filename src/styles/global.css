@@ -173,7 +173,7 @@ p {
 
 .composer-meta {
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(7rem, 9rem) minmax(10rem, 12rem);
+  grid-template-columns: minmax(12rem, 1.4fr) repeat(4, minmax(7rem, 1fr));
   gap: 0.75rem;
   margin-bottom: 1rem;
 }
@@ -254,6 +254,30 @@ button.step-cell:disabled {
   min-width: 5rem;
   color: #0f766e;
   font-weight: 800;
+}
+
+.metronome-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  color: #475467;
+  font-weight: 800;
+}
+
+.count-in {
+  display: grid;
+  place-items: center;
+  min-height: 5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  background: #edf7f5;
+  color: #0f766e;
+  font-size: 3rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .hand-keys {
@@ -359,11 +383,6 @@ button.step-cell:disabled {
 
 .composer-grid {
   margin-bottom: 1rem;
-}
-
-.composer-count-row,
-.composer-step-row {
-  grid-template-columns: minmax(6rem, 7rem) repeat(16, minmax(2.5rem, 1fr));
 }
 
 .grid-row {

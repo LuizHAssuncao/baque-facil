@@ -1,6 +1,8 @@
 import { allowedSymbolsForTrack, sampleMap, type SampleMap } from "./sampleMap";
 import type { Rhythm } from "./rhythmTypes";
 
+const SUPPORTED_SUBDIVISIONS = new Set([8, 16, 32]);
+
 export function validateRhythm(
   rhythm: Rhythm,
   samples: SampleMap = sampleMap,
@@ -16,8 +18,8 @@ export function validateRhythm(
     errors.push("Tempo must be a positive number.");
   }
 
-  if (rhythm.subdivision !== 16) {
-    errors.push("Only subdivision 16 is supported in this prototype.");
+  if (!SUPPORTED_SUBDIVISIONS.has(rhythm.subdivision)) {
+    errors.push("Subdivision must be 8, 16, or 32.");
   }
 
   if (rhythm.tracks.length === 0) {

@@ -1,8 +1,10 @@
+export type Subdivision = 8 | 16 | 32;
+
 export type Rhythm = {
   title: string;
   slug: string;
   tempo: number;
-  subdivision: 16;
+  subdivision: Subdivision;
   tracks: RhythmTrack[];
 };
 

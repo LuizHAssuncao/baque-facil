@@ -1,13 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import RhythmPlayer from "./RhythmPlayer";
-import { countLabels } from "../lib/countLabels";
+import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import { sampleMap } from "../lib/sampleMap";
-import type { Rhythm } from "../lib/rhythmTypes";
+import type { Rhythm, Subdivision } from "../lib/rhythmTypes";
 
 type ComposerSymbol = "." | "L" | "R";
 type Difficulty = "beginner" | "intermediate" | "advanced";
+type BrowserWindowWithAudio = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext;
+  };
 
-const STEP_COUNT = 16;
+const DEFAULT_RECORDING_BEATS = 4;
+const MIN_RECORDING_BEATS = 1;
+const MAX_RECORDING_BEATS = 64;
+const DEFAULT_SUBDIVISION: Subdivision = 16;
+const SUBDIVISIONS: Subdivision[] = [8, 16, 32];
 const DEFAULT_TITLE = "Untitled Alfaia Rhythm";
 const DEFAULT_DESCRIPTION = "Short teacher-facing description.";
 const PREVIEW_SAMPLES = {
@@ -15,27 +23,41 @@ const PREVIEW_SAMPLES = {
   "Alfaia.R": sampleMap["Alfaia.R"],
 };
 
-function emptySteps() {
-  return Array.from({ length: STEP_COUNT }, () => "." as ComposerSymbol);
+function emptySteps(stepCount: number) {
+  return Array.from({ length: stepCount }, () => "." as ComposerSymbol);
 }
 
-function moveIndex(index: number, offset: number) {
-  return (index + offset + STEP_COUNT) % STEP_COUNT;
+function resizeSteps(steps: ComposerSymbol[], stepCount: number) {
+  const nextSteps = emptySteps(stepCount);
+
+  steps.slice(0, stepCount).forEach((step, index) => {
+    nextSteps[index] = step;
+  });
+
+  return nextSteps;
 }
 
-function recordingStepDuration(tempo: number) {
-  return 60_000 / tempo / 4;
+function moveIndex(index: number, offset: number, stepCount: number) {
+  return (index + offset + stepCount) % stepCount;
+}
+
+function recordingStepDuration(tempo: number, subdivision: Subdivision) {
+  return 60_000 / tempo / getStepsPerBeat(subdivision);
+}
+
+function recordingBeatDuration(tempo: number) {
+  return 60_000 / tempo;
 }
 
 function escapeYamlString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function formatStepGroups(steps: ComposerSymbol[]) {
+function formatStepGroups(steps: ComposerSymbol[], groupSize: number) {
   const groups: string[] = [];
 
-  for (let index = 0; index < steps.length; index += 4) {
-    groups.push(steps.slice(index, index + 4).join(" "));
+  for (let index = 0; index < steps.length; index += groupSize) {
+    groups.push(steps.slice(index, index + groupSize).join(" "));
   }
 
   return groups.join(" | ");
@@ -62,28 +84,60 @@ function clampTempo(value: number) {
   return Math.min(150, Math.max(50, Math.round(value)));
 }
 
+function clampRecordingBeats(value: number) {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_RECORDING_BEATS;
+  }
+
+  return Math.min(MAX_RECORDING_BEATS, Math.max(MIN_RECORDING_BEATS, Math.round(value)));
+}
+
+function isSubdivision(value: number): value is Subdivision {
+  return SUBDIVISIONS.includes(value as Subdivision);
+}
+
 export default function RhythmComposer() {
   const [title, setTitle] = useState(DEFAULT_TITLE);
   const [tempo, setTempo] = useState(90);
   const [difficulty, setDifficulty] = useState<Difficulty>("beginner");
-  const [steps, setSteps] = useState<ComposerSymbol[]>(() => emptySteps());
+  const [recordingBeats, setRecordingBeats] = useState(DEFAULT_RECORDING_BEATS);
+  const [subdivision, setSubdivision] = useState<Subdivision>(DEFAULT_SUBDIVISION);
+  const [steps, setSteps] = useState<ComposerSymbol[]>(() =>
+    emptySteps(DEFAULT_RECORDING_BEATS * getStepsPerBeat(DEFAULT_SUBDIVISION)),
+  );
   const [selectedStep, setSelectedStep] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [countIn, setCountIn] = useState<number | null>(null);
+  const [metronomeEnabled, setMetronomeEnabled] = useState(true);
   const [recordStatus, setRecordStatus] = useState("Ready");
   const [copyStatus, setCopyStatus] = useState("");
   const selectedStepRef = useRef(selectedStep);
+  const metronomeEnabledRef = useRef(metronomeEnabled);
+  const metronomeContextRef = useRef<AudioContext | null>(null);
   const recordingTimerRef = useRef<number | null>(null);
+  const countInTimerRef = useRef<number | null>(null);
   const elapsedRecordingStepsRef = useRef(0);
 
-  const labels = useMemo(() => countLabels(STEP_COUNT), []);
+  const stepCount = steps.length;
+  const beatStepCount = getStepsPerBeat(subdivision);
+  const allocatedStepCount = recordingBeats * beatStepCount;
+  const labels = useMemo(() => countLabels(stepCount, subdivision), [stepCount, subdivision]);
+  const gridStyle = useMemo(
+    () =>
+      ({
+        gridTemplateColumns: `minmax(6rem, 7rem) repeat(${stepCount}, minmax(2.5rem, 1fr))`,
+      }) as CSSProperties,
+    [stepCount],
+  );
   const displayTitle = title.trim() || DEFAULT_TITLE;
+  const isRecordLocked = isRecording || countIn !== null;
 
   const rhythm = useMemo<Rhythm>(
     () => ({
       title: displayTitle,
       slug: "compose-preview",
       tempo,
-      subdivision: 16,
+      subdivision,
       tracks: [
         {
           name: "Alfaia",
@@ -91,7 +145,7 @@ export default function RhythmComposer() {
         },
       ],
     }),
-    [displayTitle, tempo, steps],
+    [displayTitle, subdivision, tempo, steps],
   );
 
   const markdown = useMemo(
@@ -100,7 +154,7 @@ export default function RhythmComposer() {
         "---",
         `title: "${escapeYamlString(displayTitle)}"`,
         `tempo: ${tempo}`,
-        "subdivision: 16",
+        `subdivision: ${subdivision}`,
         `difficulty: "${difficulty}"`,
         "instruments:",
         '  - "Alfaia"',
@@ -110,12 +164,70 @@ export default function RhythmComposer() {
         "",
         "```rhythm",
         "Alfaia:",
-        formatStepGroups(steps),
+        formatStepGroups(steps, beatStepCount),
         "```",
         "",
       ].join("\n"),
-    [difficulty, displayTitle, steps, tempo],
+    [beatStepCount, difficulty, displayTitle, steps, subdivision, tempo],
   );
+
+  async function ensureMetronomeContext() {
+    const AudioContextConstructor =
+      window.AudioContext ?? (window as BrowserWindowWithAudio).webkitAudioContext;
+
+    if (!AudioContextConstructor) {
+      return null;
+    }
+
+    const context = metronomeContextRef.current ?? new AudioContextConstructor();
+    metronomeContextRef.current = context;
+
+    if (context.state === "suspended") {
+      await context.resume();
+    }
+
+    return context;
+  }
+
+  async function prepareMetronome() {
+    if (!metronomeEnabledRef.current) {
+      return;
+    }
+
+    try {
+      await ensureMetronomeContext();
+    } catch {
+      setMetronomeEnabled(false);
+      metronomeEnabledRef.current = false;
+    }
+  }
+
+  function playMetronomeClick(isFirstBeat = false) {
+    if (!metronomeEnabledRef.current) {
+      return;
+    }
+
+    const context = metronomeContextRef.current;
+    if (!context || context.state === "closed") {
+      return;
+    }
+
+    const now = context.currentTime;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const duration = isFirstBeat ? 0.095 : 0.06;
+
+    oscillator.type = "square";
+    oscillator.frequency.setValueAtTime(isFirstBeat ? 1100 : 740, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(isFirstBeat ? 0.2 : 0.12, now + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + duration + 0.01);
+  }
 
   function clearRecordingTimer() {
     if (recordingTimerRef.current !== null) {
@@ -124,43 +236,115 @@ export default function RhythmComposer() {
     }
   }
 
-  function stopRecording(status = "Stopped") {
+  function clearCountInTimer() {
+    if (countInTimerRef.current !== null) {
+      window.clearInterval(countInTimerRef.current);
+      countInTimerRef.current = null;
+    }
+  }
+
+  function stopRecording(status = "Stopped", shouldTrimTake = false) {
+    clearCountInTimer();
     clearRecordingTimer();
+
+    if (shouldTrimTake) {
+      const trimmedStepCount = Math.min(selectedStepRef.current + 1, allocatedStepCount);
+      const nextSelectedStep = Math.max(0, trimmedStepCount - 1);
+
+      setSteps((currentSteps) => currentSteps.slice(0, trimmedStepCount));
+      selectedStepRef.current = nextSelectedStep;
+      setSelectedStep(nextSelectedStep);
+    }
+
+    setCountIn(null);
     setIsRecording(false);
     setRecordStatus(status);
   }
 
-  function startRecording() {
-    clearRecordingTimer();
-    setSteps(emptySteps());
+  function stopActiveRecording() {
+    if (countIn !== null) {
+      stopRecording("Count-in canceled");
+      return;
+    }
+
+    if (isRecording) {
+      stopRecording("Stopped", true);
+    }
+  }
+
+  function beginRecordingTake() {
+    const recordingStepCount = allocatedStepCount;
+    const recordingStepsPerBeat = beatStepCount;
+
+    clearCountInTimer();
+    setSteps(emptySteps(recordingStepCount));
+    setCountIn(null);
     setSelectedStep(0);
     selectedStepRef.current = 0;
     elapsedRecordingStepsRef.current = 0;
     setIsRecording(true);
     setRecordStatus("Recording");
+    playMetronomeClick(true);
 
     recordingTimerRef.current = window.setInterval(() => {
       elapsedRecordingStepsRef.current += 1;
 
-      if (elapsedRecordingStepsRef.current >= STEP_COUNT) {
+      if (elapsedRecordingStepsRef.current >= recordingStepCount) {
         selectedStepRef.current = 0;
         setSelectedStep(0);
         stopRecording("Take complete");
         return;
       }
 
-      setSelectedStep((currentStep) => {
-        const nextStep = moveIndex(currentStep, 1);
-        selectedStepRef.current = nextStep;
-        return nextStep;
-      });
-    }, recordingStepDuration(tempo));
+      const nextStep = elapsedRecordingStepsRef.current;
+      selectedStepRef.current = nextStep;
+      setSelectedStep(nextStep);
+
+      if (nextStep % recordingStepsPerBeat === 0) {
+        playMetronomeClick(false);
+      }
+    }, recordingStepDuration(tempo, subdivision));
+  }
+
+  async function startRecording() {
+    if (isRecordLocked) {
+      return;
+    }
+
+    clearRecordingTimer();
+    clearCountInTimer();
+    elapsedRecordingStepsRef.current = 0;
+    setIsRecording(false);
+    setCountIn(1);
+    setRecordStatus("Count-in");
+
+    void prepareMetronome().then(() => playMetronomeClick(false));
+
+    let nextCount = 2;
+    countInTimerRef.current = window.setInterval(() => {
+      if (nextCount <= 3) {
+        setCountIn(nextCount);
+        playMetronomeClick(false);
+        nextCount += 1;
+        return;
+      }
+
+      beginRecordingTake();
+    }, recordingBeatDuration(tempo));
   }
 
   function writeHit(symbol: Exclude<ComposerSymbol, ".">) {
+    if (countIn !== null) {
+      return;
+    }
+
     const targetStep = selectedStepRef.current;
 
     setSteps((currentSteps) => {
+      if (targetStep >= currentSteps.length) {
+        return currentSteps;
+      }
+
       const nextSteps = [...currentSteps];
       nextSteps[targetStep] = symbol;
       return nextSteps;
@@ -168,15 +352,19 @@ export default function RhythmComposer() {
   }
 
   function moveSelectedStep(offset: number) {
+    if (stepCount === 0) {
+      return;
+    }
+
     setSelectedStep((currentStep) => {
-      const nextStep = moveIndex(currentStep, offset);
+      const nextStep = moveIndex(currentStep, offset, stepCount);
       selectedStepRef.current = nextStep;
       return nextStep;
     });
   }
 
   function clearSelectedStep() {
-    if (isRecording) {
+    if (isRecordLocked) {
       return;
     }
 
@@ -191,19 +379,47 @@ export default function RhythmComposer() {
     setTempo(clampTempo(value));
   }
 
-  function clearGrid() {
-    if (isRecording) {
+  function resizeGrid(nextStepCount: number) {
+    setSteps((currentSteps) => resizeSteps(currentSteps, nextStepCount));
+    setSelectedStep((currentStep) => {
+      const nextStep = Math.min(currentStep, nextStepCount - 1);
+      selectedStepRef.current = nextStep;
+      return nextStep;
+    });
+  }
+
+  function updateRecordingBeats(value: number) {
+    if (isRecordLocked) {
       return;
     }
 
-    setSteps(emptySteps());
+    const nextRecordingBeats = clampRecordingBeats(value);
+    setRecordingBeats(nextRecordingBeats);
+    resizeGrid(nextRecordingBeats * beatStepCount);
+  }
+
+  function updateSubdivision(value: number) {
+    if (isRecordLocked || !isSubdivision(value)) {
+      return;
+    }
+
+    setSubdivision(value);
+    resizeGrid(recordingBeats * getStepsPerBeat(value));
+  }
+
+  function clearGrid() {
+    if (isRecordLocked) {
+      return;
+    }
+
+    setSteps(emptySteps(allocatedStepCount));
     setSelectedStep(0);
     selectedStepRef.current = 0;
     setRecordStatus("Ready");
   }
 
   function selectStep(index: number) {
-    if (isRecording) {
+    if (isRecordLocked) {
       return;
     }
 
@@ -232,6 +448,15 @@ export default function RhythmComposer() {
     }
   }
 
+  function toggleMetronome(enabled: boolean) {
+    setMetronomeEnabled(enabled);
+    metronomeEnabledRef.current = enabled;
+
+    if (enabled) {
+      void ensureMetronomeContext();
+    }
+  }
+
   useEffect(() => {
     if (!copyStatus) {
       return;
@@ -246,7 +471,19 @@ export default function RhythmComposer() {
   }, [selectedStep]);
 
   useEffect(() => {
-    return () => clearRecordingTimer();
+    metronomeEnabledRef.current = metronomeEnabled;
+  }, [metronomeEnabled]);
+
+  useEffect(() => {
+    return () => {
+      clearCountInTimer();
+      clearRecordingTimer();
+
+      const context = metronomeContextRef.current;
+      if (context && context.state !== "closed") {
+        void context.close();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -273,9 +510,21 @@ export default function RhythmComposer() {
         return;
       }
 
+      if (event.code === "Space" || event.key === " ") {
+        event.preventDefault();
+
+        if (isRecordLocked) {
+          stopActiveRecording();
+          return;
+        }
+
+        void startRecording();
+        return;
+      }
+
       if (event.key === "ArrowLeft") {
         event.preventDefault();
-        if (isRecording) {
+        if (isRecordLocked) {
           return;
         }
         moveSelectedStep(-1);
@@ -284,7 +533,7 @@ export default function RhythmComposer() {
 
       if (event.key === "ArrowRight") {
         event.preventDefault();
-        if (isRecording) {
+        if (isRecordLocked) {
           return;
         }
         moveSelectedStep(1);
@@ -293,25 +542,25 @@ export default function RhythmComposer() {
 
       if (event.key === "ArrowUp") {
         event.preventDefault();
-        if (isRecording) {
+        if (isRecordLocked) {
           return;
         }
-        moveSelectedStep(-4);
+        moveSelectedStep(-beatStepCount);
         return;
       }
 
       if (event.key === "ArrowDown") {
         event.preventDefault();
-        if (isRecording) {
+        if (isRecordLocked) {
           return;
         }
-        moveSelectedStep(4);
+        moveSelectedStep(beatStepCount);
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isRecording, selectedStep]);
+  }, [beatStepCount, countIn, isRecordLocked, selectedStep]);
 
   return (
     <section className="composer-panel" aria-label="Alfaia rhythm composer">
@@ -331,10 +580,37 @@ export default function RhythmComposer() {
             type="number"
             min="50"
             max="150"
-            disabled={isRecording}
+            disabled={isRecordLocked}
             value={tempo}
             onChange={(event) => updateTempo(Number(event.target.value))}
           />
+        </label>
+
+        <label>
+          <span>Beats</span>
+          <input
+            type="number"
+            min={MIN_RECORDING_BEATS}
+            max={MAX_RECORDING_BEATS}
+            disabled={isRecordLocked}
+            value={recordingBeats}
+            onChange={(event) => updateRecordingBeats(Number(event.target.value))}
+          />
+        </label>
+
+        <label>
+          <span>Subdivision</span>
+          <select
+            disabled={isRecordLocked}
+            value={subdivision}
+            onChange={(event) => updateSubdivision(Number(event.target.value))}
+          >
+            {SUBDIVISIONS.map((value) => (
+              <option value={value} key={value}>
+                {value}th notes
+              </option>
+            ))}
+          </select>
         </label>
 
         <label>
@@ -351,22 +627,30 @@ export default function RhythmComposer() {
       </div>
 
       <div className="composer-actions" aria-label="Composer controls">
+        <label className="metronome-toggle">
+          <input
+            type="checkbox"
+            checked={metronomeEnabled}
+            onChange={(event) => toggleMetronome(event.target.checked)}
+          />
+          Metronome
+        </label>
         <button
           type="button"
           className={isRecording ? "record-button recording" : "record-button"}
           onClick={startRecording}
-          disabled={isRecording}
+          disabled={isRecordLocked}
         >
-          {isRecording ? "Recording" : "Record take"}
+          {isRecording ? "Recording" : countIn === null ? "Record take" : "Counting in"}
         </button>
         <button
           type="button"
-          onClick={() => stopRecording()}
-          disabled={!isRecording}
+          onClick={stopActiveRecording}
+          disabled={!isRecordLocked}
         >
           Stop recording
         </button>
-        <button type="button" onClick={clearGrid} disabled={isRecording}>
+        <button type="button" onClick={clearGrid} disabled={isRecordLocked}>
           Clear grid
         </button>
         <button type="button" onClick={copyMarkdown}>
@@ -374,6 +658,12 @@ export default function RhythmComposer() {
         </button>
         <span aria-live="polite">{copyStatus || recordStatus}</span>
       </div>
+
+      {countIn !== null ? (
+        <div className="count-in" aria-live="assertive">
+          {countIn}
+        </div>
+      ) : null}
 
       <div className="hand-keys" aria-label="Keyboard input controls">
         <button
@@ -398,12 +688,12 @@ export default function RhythmComposer() {
 
       <div className="grid-scroll" aria-label="Editable rhythm grid">
         <div className="rhythm-grid composer-grid">
-          <div className="grid-row count-row composer-count-row">
+          <div className="grid-row count-row composer-count-row" style={gridStyle}>
             <div className="track-name">Count</div>
             {labels.map((label, index) => (
               <div
                 className={`step-cell count-cell ${selectedStep === index ? "active" : ""} ${
-                  index % 4 === 0 ? "beat-start" : ""
+                  index % beatStepCount === 0 ? "beat-start" : ""
                 }`}
                 key={`${label}-${index}`}
               >
@@ -412,7 +702,7 @@ export default function RhythmComposer() {
             ))}
           </div>
 
-          <div className="grid-row composer-step-row">
+          <div className="grid-row composer-step-row" style={gridStyle}>
             <div className="track-name">Alfaia</div>
             {steps.map((symbol, index) => (
               <button
@@ -420,11 +710,11 @@ export default function RhythmComposer() {
                 className={`step-cell composer-cell ${
                   symbol === "." ? "rest-cell" : "hit-cell"
                 } ${selectedStep === index ? "active" : ""} ${
-                  index % 4 === 0 ? "beat-start" : ""
+                  index % beatStepCount === 0 ? "beat-start" : ""
                 }`}
                 aria-label={`Step ${index + 1}: ${symbol}`}
                 aria-pressed={selectedStep === index}
-                disabled={isRecording}
+                disabled={isRecordLocked}
                 onClick={() => selectStep(index)}
                 key={`${symbol}-${index}`}
               >

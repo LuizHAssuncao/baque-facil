@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { countLabels } from "../lib/countLabels";
+import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import type { Rhythm } from "../lib/rhythmTypes";
 
 type ToneModule = typeof import("tone");
@@ -31,7 +31,12 @@ export default function RhythmPlayer({
   const mutedTracksRef = useRef(new Set<string>());
 
   const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
-  const labels = useMemo(() => countLabels(stepCount), [stepCount]);
+  const beatStepCount = getStepsPerBeat(rhythm.subdivision);
+  const stepDuration = `${rhythm.subdivision}n` as "8n" | "16n" | "32n";
+  const labels = useMemo(
+    () => countLabels(stepCount, rhythm.subdivision),
+    [rhythm.subdivision, stepCount],
+  );
   const gridStyle = {
     gridTemplateColumns: `minmax(6rem, 7rem) repeat(${stepCount}, minmax(2.5rem, 1fr))`,
   } as CSSProperties;
@@ -145,7 +150,7 @@ export default function RhythmPlayer({
         nextStep += 1;
 
         if (!loopRef.current && nextStep >= stepCount) {
-          const stopAt = time + Tone.Time("16n").toSeconds();
+          const stopAt = time + Tone.Time(stepDuration).toSeconds();
 
           Tone.Transport.stop(stopAt);
           Tone.Draw.schedule(() => {
@@ -153,7 +158,7 @@ export default function RhythmPlayer({
             setActiveStep(null);
           }, stopAt);
         }
-      }, "16n");
+      }, stepDuration);
 
       setIsPlaying(true);
       Tone.Transport.start("+0.05");
@@ -262,7 +267,7 @@ export default function RhythmPlayer({
                 <div
                   className={`step-cell ${symbol === "." ? "rest-cell" : "hit-cell"} ${
                     activeStep === index ? "active" : ""
-                  } ${index % 4 === 0 ? "beat-start" : ""}`}
+                  } ${index % beatStepCount === 0 ? "beat-start" : ""}`}
                   key={`${track.name}-${index}`}
                 >
                   {symbol}

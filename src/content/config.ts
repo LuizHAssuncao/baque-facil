@@ -5,7 +5,7 @@ const rhythms = defineCollection({
   schema: z.object({
     title: z.string(),
     tempo: z.number().positive(),
-    subdivision: z.literal(16),
+    subdivision: z.union([z.literal(8), z.literal(16), z.literal(32)]),
     difficulty: z.string(),
     instruments: z.array(z.string()),
   }),
