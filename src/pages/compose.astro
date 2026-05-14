@@ -1,0 +1,26 @@
+---
+import RhythmComposer from "../components/RhythmComposer";
+import "../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Compose | Baque Facil</title>
+  </head>
+  <body>
+    <main class="page-shell">
+      <a class="back-link" href="/">All rhythms</a>
+
+      <header class="page-header compact">
+        <p class="eyebrow">Composer</p>
+        <h1>Alfaia Composer</h1>
+        <p>Build a 16-step Alfaia rhythm and export compatible Markdown.</p>
+      </header>
+
+      <RhythmComposer client:load />
+    </main>
+  </body>
+</html>

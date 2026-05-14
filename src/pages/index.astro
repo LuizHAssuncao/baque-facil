@@ -1,0 +1,44 @@
+---
+import { getCollection } from "astro:content";
+import "../styles/global.css";
+
+const rhythms = (await getCollection("rhythms")).sort((a, b) =>
+  a.data.title.localeCompare(b.data.title),
+);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Baque Facil</title>
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="page-header">
+        <p class="eyebrow">Prototype</p>
+        <h1>Baque Facil</h1>
+        <p>A minimal Markdown-to-playback rhythm handout.</p>
+      </header>
+
+      <a class="rhythm-link compose-link" href="/compose/">
+        <strong>Compose an Alfaia rhythm</strong>
+        <span>Keyboard-first editor</span>
+      </a>
+
+      <section class="rhythm-list" aria-label="Rhythms">
+        {
+          rhythms.map((rhythm) => (
+            <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
+              <strong>{rhythm.data.title}</strong>
+              <span>
+                {rhythm.data.tempo} BPM · {rhythm.data.difficulty}
+              </span>
+            </a>
+          ))
+        }
+      </section>
+    </main>
+  </body>
+</html>

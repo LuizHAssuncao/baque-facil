@@ -1,0 +1,119 @@
+---
+import { getCollection } from "astro:content";
+import RhythmPlayer from "../../components/RhythmPlayer";
+import { extractRhythmBlock } from "../../lib/extractRhythmBlock";
+import { parseRhythm } from "../../lib/parseRhythm";
+import { sampleEntriesForRhythm } from "../../lib/sampleMap";
+import { validateRhythm } from "../../lib/validateRhythm";
+import type { Rhythm } from "../../lib/rhythmTypes";
+import "../../styles/global.css";
+
+export async function getStaticPaths() {
+  const rhythms = await getCollection("rhythms");
+
+  return rhythms.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await entry.render();
+const allRhythms = (await getCollection("rhythms")).sort((a, b) =>
+  a.data.title.localeCompare(b.data.title),
+);
+const currentIndex = allRhythms.findIndex((rhythmEntry) => rhythmEntry.slug === entry.slug);
+const previousRhythm = currentIndex > 0 ? allRhythms[currentIndex - 1] : null;
+const nextRhythm =
+  currentIndex >= 0 && currentIndex < allRhythms.length - 1
+    ? allRhythms[currentIndex + 1]
+    : null;
+const rhythmBlock = extractRhythmBlock(entry.body);
+let rhythm: Rhythm | null = null;
+let errors: string[] = [];
+
+if (!rhythmBlock) {
+  errors = ["Rhythm block not found. Add a fenced ```rhythm block to this Markdown file."];
+} else {
+  try {
+    rhythm = {
+      title: entry.data.title,
+      slug: entry.slug,
+      tempo: entry.data.tempo,
+      subdivision: entry.data.subdivision,
+      tracks: parseRhythm(rhythmBlock),
+    };
+    errors = validateRhythm(rhythm);
+  } catch (cause) {
+    errors = [cause instanceof Error ? cause.message : "Unable to parse rhythm block."];
+  }
+}
+
+const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{entry.data.title} | Baque Facil</title>
+  </head>
+  <body>
+    <main class="page-shell">
+      <a class="back-link" href="/">All rhythms</a>
+
+      <header class="page-header compact">
+        <p class="eyebrow">{entry.data.difficulty}</p>
+        <h1>{entry.data.title}</h1>
+        <p>
+          {entry.data.tempo} BPM · {entry.data.subdivision}th-note grid · {
+            entry.data.instruments.join(", ")
+          }
+        </p>
+      </header>
+
+      {
+        errors.length > 0 ? (
+          <section class="error-panel" aria-label="Rhythm validation errors">
+            <h2>Rhythm errors</h2>
+            <ul>
+              {errors.map((error) => (
+                <li>{error}</li>
+              ))}
+            </ul>
+          </section>
+        ) : rhythm ? (
+          <RhythmPlayer client:load rhythm={rhythm} samples={sampleEntries} />
+        ) : null
+      }
+
+      <article class="content">
+        <Content />
+      </article>
+
+      <nav class="rhythm-nav" aria-label="Rhythm pages">
+        {
+          previousRhythm ? (
+            <a href={`/rhythms/${previousRhythm.slug}/`}>
+              <span>Previous</span>
+              <strong>{previousRhythm.data.title}</strong>
+            </a>
+          ) : (
+            <span></span>
+          )
+        }
+        {
+          nextRhythm ? (
+            <a href={`/rhythms/${nextRhythm.slug}/`}>
+              <span>Next</span>
+              <strong>{nextRhythm.data.title}</strong>
+            </a>
+          ) : (
+            <span></span>
+          )
+        }
+      </nav>
+    </main>
+  </body>
+</html>
