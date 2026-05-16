@@ -12,7 +12,7 @@ Short teacher-facing description for a two-track practice pattern.
 
 ```rhythm
 Alfaia:
-R . . R | L R . R | L R . R | L . R . | L . . . | . . . . | . . . . | . . . .
+R . . R | L R . R | L R . R | L . R L | R . . . | . . . . | . . . . | . . . .
 ```
 
 

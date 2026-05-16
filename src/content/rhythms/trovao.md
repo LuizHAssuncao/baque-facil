@@ -1,6 +1,6 @@
 ---
-title: "desconhecido"
-slug: "desconhecido"
+title: "Trovao"
+slug: "trovao"
 tempo: 90
 subdivision: 16
 difficulty: "beginner"
