@@ -89,6 +89,14 @@ p {
   gap: 0.75rem;
 }
 
+.home-section + .home-section {
+  margin-top: 1.5rem;
+}
+
+.home-section h2 {
+  margin-bottom: 0.75rem;
+}
+
 .preference-disclosure {
   width: fit-content;
   margin-top: 1.25rem;

@@ -5,6 +5,10 @@ import "../styles/global.css";
 const rhythms = (await getCollection("rhythms")).sort((a, b) =>
   a.data.title.localeCompare(b.data.title),
 );
+const isCombo = (rhythm: (typeof rhythms)[number]) =>
+  rhythm.slug.startsWith("combo") || rhythm.data.title.toLowerCase().startsWith("combo");
+const comboRhythms = rhythms.filter(isCombo);
+const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
 ---
 
 <!doctype html>
@@ -22,16 +26,36 @@ const rhythms = (await getCollection("rhythms")).sort((a, b) =>
         <p></p>
       </header>
 
-      <section class="rhythm-list" aria-label="Rhythms">
-        {
-          rhythms.map((rhythm) => (
-            <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
-              <strong>{rhythm.data.title}</strong>
-              <span>{rhythm.data.difficulty}</span>
-            </a>
-          ))
-        }
+      <section class="home-section" aria-labelledby="rhythms-heading">
+        <h2 id="rhythms-heading">Rhythms</h2>
+        <div class="rhythm-list">
+          {
+            practiceRhythms.map((rhythm) => (
+              <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
+                <strong>{rhythm.data.title}</strong>
+                <span>{rhythm.data.difficulty}</span>
+              </a>
+            ))
+          }
+        </div>
+      </section>
 
+      <section class="home-section" aria-labelledby="combos-heading">
+        <h2 id="combos-heading">Combos</h2>
+        <div class="rhythm-list">
+          {
+            comboRhythms.map((rhythm) => (
+              <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
+                <strong>{rhythm.data.title}</strong>
+                <span>{rhythm.data.difficulty}</span>
+              </a>
+            ))
+          }
+        </div>
+      </section>
+
+      <section class="home-section" aria-labelledby="composer-heading">
+        <h2 id="composer-heading">Composer</h2>
         <a class="rhythm-link compose-link" href="/compose/">
           <strong>Compose an Alfaia rhythm</strong>
           <span>Keyboard-first editor</span>
