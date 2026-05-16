@@ -1,11 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import RhythmPlayer from "./RhythmPlayer";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import { sampleMap } from "../lib/sampleMap";
@@ -138,7 +131,6 @@ export default function RhythmComposer() {
   const metronomeContextRef = useRef<AudioContext | null>(null);
   const hitAudioRef = useRef<Record<HitSymbol, HTMLAudioElement[]> | null>(null);
   const hitAudioIndexRef = useRef<Record<HitSymbol, number>>({ L: 0, R: 0 });
-  const lastPointerHitAtRef = useRef<Record<HitSymbol, number>>({ L: 0, R: 0 });
   const recordingTimerRef = useRef<number | null>(null);
   const countInTimerRef = useRef<number | null>(null);
   const elapsedRecordingStepsRef = useRef(0);
@@ -544,27 +536,6 @@ export default function RhythmComposer() {
     });
   }
 
-  function handleHandPointerDown(
-    symbol: HitSymbol,
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) {
-    if (event.button !== 0) {
-      return;
-    }
-
-    lastPointerHitAtRef.current[symbol] = performance.now();
-    setHandPressed(symbol, true);
-    writeHit(symbol);
-  }
-
-  function handleHandClick(symbol: HitSymbol) {
-    if (performance.now() - lastPointerHitAtRef.current[symbol] < 700) {
-      return;
-    }
-
-    writeHit(symbol);
-  }
-
   useEffect(() => {
     if (!copyStatus) {
       return;
@@ -799,8 +770,8 @@ export default function RhythmComposer() {
           type="button"
           className="hand-key left-hand"
           data-pressed={pressedHands.L ? "true" : "false"}
-          onClick={() => handleHandClick("L")}
-          onPointerDown={(event) => handleHandPointerDown("L", event)}
+          onClick={() => writeHit("L")}
+          onPointerDown={() => setHandPressed("L", true)}
           onPointerUp={() => setHandPressed("L", false)}
           onPointerCancel={() => setHandPressed("L", false)}
           onPointerLeave={() => setHandPressed("L", false)}
@@ -813,8 +784,8 @@ export default function RhythmComposer() {
           type="button"
           className="hand-key right-hand"
           data-pressed={pressedHands.R ? "true" : "false"}
-          onClick={() => handleHandClick("R")}
-          onPointerDown={(event) => handleHandPointerDown("R", event)}
+          onClick={() => writeHit("R")}
+          onPointerDown={() => setHandPressed("R", true)}
           onPointerUp={() => setHandPressed("R", false)}
           onPointerCancel={() => setHandPressed("R", false)}
           onPointerLeave={() => setHandPressed("R", false)}
