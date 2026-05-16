@@ -304,6 +304,7 @@ button.step-cell:disabled {
   min-height: 4.25rem;
   padding: 0.5rem 0.8rem;
   place-items: center;
+  touch-action: manipulation;
 }
 
 .hand-key span {
