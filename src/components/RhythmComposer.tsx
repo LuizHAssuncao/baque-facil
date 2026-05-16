@@ -6,7 +6,6 @@ import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
-  type TouchEvent as ReactTouchEvent,
 } from "react";
 import { CircleDot, Keyboard, SquareStop, X } from "lucide-react";
 import RhythmPlayer, { type RhythmPlayerHandle } from "./RhythmPlayer";
@@ -183,6 +182,14 @@ export default function RhythmComposer() {
   const shortcutHelpTriggerRef = useRef<HTMLButtonElement | null>(null);
   const shortcutHelpCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const previewPlayerRef = useRef<RhythmPlayerHandle | null>(null);
+  const leftHitButtonRef = useRef<HTMLButtonElement | null>(null);
+  const rightHitButtonRef = useRef<HTMLButtonElement | null>(null);
+  const handleHitTouchStartRef = useRef<
+    (symbol: HitSymbol, event: TouchEvent) => void
+  >(() => undefined);
+  const releaseHitTouchRef = useRef<(symbol: HitSymbol, event: TouchEvent) => void>(
+    () => undefined,
+  );
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
   const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const composerAudioContextRef = useRef<AudioContext | null>(null);
@@ -190,6 +197,7 @@ export default function RhythmComposer() {
   const hitBufferLoadPromiseRef = useRef<Promise<void> | null>(null);
   const hitAudioElementsRef = useRef<Partial<Record<HitSymbol, HTMLAudioElement>>>({});
   const activeHitPointerRef = useRef<Record<HitSymbol, number | null>>({ L: null, R: null });
+  const activeHitPressRef = useRef<Record<HitSymbol, boolean>>({ L: false, R: false });
   const lastHitInputRef = useRef<
     Record<HitSymbol, { source: HitInputSource; inputTime: number } | null>
   >({ L: null, R: null });
@@ -422,20 +430,35 @@ export default function RhythmComposer() {
     }
   }
 
-  function playHitSound(symbol: HitSymbol) {
+  function playHitSound(
+    symbol: HitSymbol,
+    options: {
+      resume?: boolean;
+      onlyWhilePressed?: boolean;
+      allowMediaElementFallback?: boolean;
+    } = {},
+  ) {
     const context = getComposerAudioContext();
 
     if (context && startHitBuffer(context, symbol)) {
       return true;
     }
 
-    if (playHitAudioElement(symbol)) {
+    if (options.allowMediaElementFallback && playHitAudioElement(symbol)) {
       return true;
     }
 
-    if (context?.state === "suspended") {
-      void context.resume().catch(() => undefined);
+    if (!context || !options.resume || context.state !== "suspended") {
+      return false;
     }
+
+    void context.resume().then(() => {
+      if (options.onlyWhilePressed && !activeHitPressRef.current[symbol]) {
+        return;
+      }
+
+      startHitBuffer(context, symbol);
+    }).catch(() => undefined);
 
     return false;
   }
@@ -658,6 +681,8 @@ export default function RhythmComposer() {
   }
 
   function setHandPressed(symbol: HitSymbol, isPressed: boolean) {
+    activeHitPressRef.current[symbol] = isPressed;
+
     setPressedHands((currentHands) => {
       if (currentHands[symbol] === isPressed) {
         return currentHands;
@@ -671,6 +696,9 @@ export default function RhythmComposer() {
   }
 
   function releasePressedHands() {
+    activeHitPressRef.current.L = false;
+    activeHitPressRef.current.R = false;
+
     setPressedHands((currentHands) => {
       if (!currentHands.L && !currentHands.R) {
         return currentHands;
@@ -733,6 +761,7 @@ export default function RhythmComposer() {
     symbol: HitSymbol,
     inputTime: number,
     source: HitInputSource,
+    options: { onlyWhilePressed?: boolean; allowMediaElementFallback?: boolean } = {},
   ) {
     if (countIn !== null) {
       return false;
@@ -743,7 +772,12 @@ export default function RhythmComposer() {
     }
 
     lastHitInputRef.current[symbol] = { source, inputTime };
-    playHitSound(symbol);
+    playHitSound(symbol, {
+      resume: true,
+      onlyWhilePressed: options.onlyWhilePressed ?? source === "touchstart",
+      allowMediaElementFallback:
+        options.allowMediaElementFallback ?? (source === "keyboard" || source === "click"),
+    });
     writeHit(symbol, inputTime);
 
     return true;
@@ -786,10 +820,13 @@ export default function RhythmComposer() {
     activeHitPointerRef.current[symbol] = event.pointerId;
     suppressNextHitClick(symbol);
     setHandPressed(symbol, true);
-    triggerHit(symbol, eventTimestampToPerformanceTime(event.timeStamp), "pointerdown");
+    triggerHit(symbol, eventTimestampToPerformanceTime(event.timeStamp), "pointerdown", {
+      onlyWhilePressed: event.pointerType !== "mouse",
+      allowMediaElementFallback: event.pointerType === "mouse",
+    });
   }
 
-  function handleHitTouchStart(symbol: HitSymbol, event: ReactTouchEvent<HTMLButtonElement>) {
+  function handleHitTouchStart(symbol: HitSymbol, event: TouchEvent) {
     if (event.changedTouches.length === 0) {
       return;
     }
@@ -797,12 +834,20 @@ export default function RhythmComposer() {
     if (event.cancelable) {
       event.preventDefault();
     }
+    event.stopPropagation();
     suppressNextHitClick(symbol);
     setHandPressed(symbol, true);
-    triggerHit(symbol, eventTimestampToPerformanceTime(event.timeStamp), "touchstart");
+    triggerHit(symbol, eventTimestampToPerformanceTime(event.timeStamp), "touchstart", {
+      onlyWhilePressed: true,
+      allowMediaElementFallback: false,
+    });
   }
 
-  function releaseHitTouch(symbol: HitSymbol) {
+  function releaseHitTouch(symbol: HitSymbol, event: TouchEvent) {
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    event.stopPropagation();
     setHandPressed(symbol, false);
     suppressNextHitClick(symbol, 700);
   }
@@ -814,6 +859,45 @@ export default function RhythmComposer() {
 
     triggerHit(symbol, eventTimestampToPerformanceTime(event.timeStamp), "click");
   }
+
+  handleHitTouchStartRef.current = handleHitTouchStart;
+  releaseHitTouchRef.current = releaseHitTouch;
+
+  useEffect(() => {
+    const touchListenerOptions = { capture: true, passive: false };
+    const touchListeners: Array<[HTMLButtonElement | null, HitSymbol]> = [
+      [leftHitButtonRef.current, "L"],
+      [rightHitButtonRef.current, "R"],
+    ];
+    const cleanupCallbacks: Array<() => void> = [];
+
+    touchListeners.forEach(([button, symbol]) => {
+      if (!button) {
+        return;
+      }
+
+      const handleTouchStart = (event: TouchEvent) => {
+        handleHitTouchStartRef.current(symbol, event);
+      };
+      const handleTouchRelease = (event: TouchEvent) => {
+        releaseHitTouchRef.current(symbol, event);
+      };
+
+      button.addEventListener("touchstart", handleTouchStart, touchListenerOptions);
+      button.addEventListener("touchend", handleTouchRelease, touchListenerOptions);
+      button.addEventListener("touchcancel", handleTouchRelease, touchListenerOptions);
+
+      cleanupCallbacks.push(() => {
+        button.removeEventListener("touchstart", handleTouchStart, touchListenerOptions);
+        button.removeEventListener("touchend", handleTouchRelease, touchListenerOptions);
+        button.removeEventListener("touchcancel", handleTouchRelease, touchListenerOptions);
+      });
+    });
+
+    return () => {
+      cleanupCallbacks.forEach((cleanup) => cleanup());
+    };
+  }, []);
 
   useEffect(() => {
     selectedStepRef.current = selectedStep;
@@ -1103,10 +1187,8 @@ export default function RhythmComposer() {
           type="button"
           className="hand-key left-hand"
           data-pressed={pressedHands.L ? "true" : "false"}
+          ref={leftHitButtonRef}
           onClick={(event) => handleHitClick("L", event)}
-          onTouchStartCapture={(event) => handleHitTouchStart("L", event)}
-          onTouchEnd={() => releaseHitTouch("L")}
-          onTouchCancel={() => releaseHitTouch("L")}
           onPointerDown={(event) => handleHitPointerDown("L", event)}
           onPointerUp={(event) => releaseHitPointer("L", event)}
           onPointerCancel={(event) => releaseHitPointer("L", event)}
@@ -1120,10 +1202,8 @@ export default function RhythmComposer() {
           type="button"
           className="hand-key right-hand"
           data-pressed={pressedHands.R ? "true" : "false"}
+          ref={rightHitButtonRef}
           onClick={(event) => handleHitClick("R", event)}
-          onTouchStartCapture={(event) => handleHitTouchStart("R", event)}
-          onTouchEnd={() => releaseHitTouch("R")}
-          onTouchCancel={() => releaseHitTouch("R")}
           onPointerDown={(event) => handleHitPointerDown("R", event)}
           onPointerUp={(event) => releaseHitPointer("R", event)}
           onPointerCancel={(event) => releaseHitPointer("R", event)}
