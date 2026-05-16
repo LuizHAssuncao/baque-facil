@@ -34,7 +34,7 @@ Known gaps:
 
 ### Your Items
 
-- Auto-scroll the rhythm grid with the active playhead.
+- Block use of composer in mobile. Say an alert. keep the tone casual and friendlly. This feature is only available on desktop.
 - Split long transcriptions into rows of max 16 subdivisions.
 - Improve Compose editing:
   - Fix key repeat so holding a key triggers only once until keyup.

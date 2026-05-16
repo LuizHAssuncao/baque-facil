@@ -17,6 +17,7 @@ const DEFAULT_AUDIBLE_TRACK = "Alfaia";
 const AUTOPLAY_START_TIMEOUT_MS = 400;
 const IOS_SILENT_MODE_HELP_KEY = "baque-facil-ios-silent-mode-help-seen";
 const IOS_AUDIO_HELP_PATH = "/help/ios-audio/";
+const PLAYHEAD_SCROLL_MARGIN_PX = 24;
 
 function defaultMutedTracks(trackNames: string[]) {
   return trackNames.filter((name) => name !== DEFAULT_AUDIBLE_TRACK);
@@ -61,6 +62,24 @@ function markIosSilentModeHelpSeen() {
   }
 }
 
+function scrollPlayheadIntoView(container: HTMLDivElement, cell: HTMLDivElement) {
+  const containerRect = container.getBoundingClientRect();
+  const cellRect = cell.getBoundingClientRect();
+  const stickyColumnWidth =
+    cell.parentElement?.querySelector<HTMLElement>(".track-name")?.offsetWidth ?? 0;
+  const visibleLeft = containerRect.left + stickyColumnWidth;
+  const visibleRight = containerRect.right;
+
+  if (cellRect.left < visibleLeft + PLAYHEAD_SCROLL_MARGIN_PX) {
+    container.scrollLeft += cellRect.left - visibleLeft - PLAYHEAD_SCROLL_MARGIN_PX;
+    return;
+  }
+
+  if (cellRect.right > visibleRight - PLAYHEAD_SCROLL_MARGIN_PX) {
+    container.scrollLeft += cellRect.right - visibleRight + PLAYHEAD_SCROLL_MARGIN_PX;
+  }
+}
+
 export default function RhythmPlayer({
   rhythm,
   samples,
@@ -92,6 +111,8 @@ export default function RhythmPlayer({
   const hasAutoPlayedRef = useRef(false);
   const playAttemptRef = useRef(0);
   const iosSilentModeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const gridScrollRef = useRef<HTMLDivElement | null>(null);
+  const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
   const beatStepCount = getStepsPerBeat(rhythm.subdivision);
@@ -144,6 +165,25 @@ export default function RhythmPlayer({
       iosSilentModeButtonRef.current?.focus();
     }
   }, [showIosSilentModeHelp]);
+
+  useEffect(() => {
+    countCellRefs.current = countCellRefs.current.slice(0, stepCount);
+  }, [stepCount]);
+
+  useEffect(() => {
+    if (activeStep === null) {
+      return;
+    }
+
+    const container = gridScrollRef.current;
+    const activeCell = countCellRefs.current[activeStep];
+
+    if (!container || !activeCell) {
+      return;
+    }
+
+    scrollPlayheadIntoView(container, activeCell);
+  }, [activeStep]);
 
   useEffect(() => {
     if (!autoPlay || hasAutoPlayedRef.current) {
@@ -422,7 +462,7 @@ export default function RhythmPlayer({
         {error ? error : null}
       </div>
 
-      <div className="grid-scroll" aria-label="Parsed rhythm grid">
+      <div className="grid-scroll" aria-label="Parsed rhythm grid" ref={gridScrollRef}>
         <div className="rhythm-grid">
           <div className="grid-row count-row" style={gridStyle}>
             <div className="track-name">Count</div>
@@ -430,6 +470,9 @@ export default function RhythmPlayer({
               <div
                 className={`step-cell count-cell ${activeStep === index ? "active" : ""}`}
                 key={`${label}-${index}`}
+                ref={(element) => {
+                  countCellRefs.current[index] = element;
+                }}
               >
                 {label}
               </div>
