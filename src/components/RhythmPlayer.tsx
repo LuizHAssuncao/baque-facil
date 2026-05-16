@@ -18,6 +18,8 @@ const AUTOPLAY_START_TIMEOUT_MS = 400;
 const IOS_SILENT_MODE_HELP_KEY = "baque-facil-ios-silent-mode-help-seen";
 const IOS_AUDIO_HELP_PATH = "/help/ios-audio/";
 const PLAYHEAD_SCROLL_MARGIN_PX = 24;
+const PLAYHEAD_RIGHT_LIMIT_RATIO = 0.55;
+const PLAYHEAD_TARGET_RATIO = 0.35;
 
 function defaultMutedTracks(trackNames: string[]) {
   return trackNames.filter((name) => name !== DEFAULT_AUDIBLE_TRACK);
@@ -62,21 +64,47 @@ function markIosSilentModeHelpSeen() {
   }
 }
 
-function scrollPlayheadIntoView(container: HTMLDivElement, cell: HTMLDivElement) {
+function scrollPlayheadIntoView(
+  container: HTMLDivElement,
+  cell: HTMLDivElement,
+  hasFutureSteps: boolean,
+) {
   const containerRect = container.getBoundingClientRect();
   const cellRect = cell.getBoundingClientRect();
   const stickyColumnWidth =
     cell.parentElement?.querySelector<HTMLElement>(".track-name")?.offsetWidth ?? 0;
   const visibleLeft = containerRect.left + stickyColumnWidth;
   const visibleRight = containerRect.right;
+  const visibleWidth = visibleRight - visibleLeft;
+  const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
 
   if (cellRect.left < visibleLeft + PLAYHEAD_SCROLL_MARGIN_PX) {
-    container.scrollLeft += cellRect.left - visibleLeft - PLAYHEAD_SCROLL_MARGIN_PX;
+    container.scrollLeft = Math.max(
+      0,
+      container.scrollLeft + cellRect.left - visibleLeft - PLAYHEAD_SCROLL_MARGIN_PX,
+    );
     return;
   }
 
+  if (hasFutureSteps && visibleWidth > 0 && container.scrollLeft < maxScrollLeft) {
+    const rightLimit = visibleLeft + visibleWidth * PLAYHEAD_RIGHT_LIMIT_RATIO;
+
+    if (cellRect.right > rightLimit) {
+      const targetLeft = visibleLeft + visibleWidth * PLAYHEAD_TARGET_RATIO;
+
+      container.scrollLeft = Math.min(
+        maxScrollLeft,
+        Math.max(0, container.scrollLeft + cellRect.left - targetLeft),
+      );
+      return;
+    }
+  }
+
   if (cellRect.right > visibleRight - PLAYHEAD_SCROLL_MARGIN_PX) {
-    container.scrollLeft += cellRect.right - visibleRight + PLAYHEAD_SCROLL_MARGIN_PX;
+    container.scrollLeft = Math.min(
+      maxScrollLeft,
+      container.scrollLeft + cellRect.right - visibleRight + PLAYHEAD_SCROLL_MARGIN_PX,
+    );
   }
 }
 
@@ -182,8 +210,8 @@ export default function RhythmPlayer({
       return;
     }
 
-    scrollPlayheadIntoView(container, activeCell);
-  }, [activeStep]);
+    scrollPlayheadIntoView(container, activeCell, activeStep < stepCount - 1);
+  }, [activeStep, stepCount]);
 
   useEffect(() => {
     if (!autoPlay || hasAutoPlayedRef.current) {
