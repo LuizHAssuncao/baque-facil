@@ -660,7 +660,6 @@ function RhythmPlayer(
       </div>
 
       <div className="player-status" aria-live="polite">
-        {status === "loading" ? "Loading samples..." : null}
         {error ? error : null}
       </div>
 
