@@ -9,7 +9,7 @@ instruments:
 ---
 
 ```rhythm
-Gonguê:
+Gongue:
  . X . . | X . X . | . X . . | X . X .
 
 Alfaia:

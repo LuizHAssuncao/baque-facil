@@ -17,7 +17,7 @@ Instructions:
 This combo repeats Parada 3x and after a transition we play Arrasto three times until we come back to Parada.
 
 ```rhythm
-Gonguê:
+Gongue:
 . . . . | . . . . | . . . . | . . . . | . . . . | . . . . | . . . . | . . . . |
 . . . . | . . . . | . . . . | . . . . | . . . . | . . . . | . . . . | . . . . |
 . . . . | . . . . | . . . . | . . . . | . . . . | . . . . | . . . . | . . . . | . . . . |
