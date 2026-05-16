@@ -1266,7 +1266,7 @@ export default function RhythmComposer() {
       />
 
       <label className="markdown-output">
-        <span>Markdown</span>
+        <span>Transcription</span>
         <textarea readOnly value={markdown} rows={15} />
       </label>
 
