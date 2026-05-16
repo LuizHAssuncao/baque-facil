@@ -12,9 +12,6 @@ additional requested v1 items.
   - Allow note adjustment with arrow-key navigation.
   - When pressing `R`, `L`, or `.`, write that value into the selected slot and
     advance to the next slot.
-  - create icon for record take
-  - rethink form fields. tempo isn't working and beats field isn't necessary. subdivision also unnecessary
-  - add possibility to loop during recording
 - Refactor player/composer code enough to support these changes safely.
 - Add unit tests and browser tests.
 - Add headless tests
@@ -40,6 +37,7 @@ additional requested v1 items.
 ## V1 Nice To Have
 
 ### Your Items
+- quiz
 - keep screen awake during practice
 - Create the first `.baque.json` collection schema.
 - Export rhythms or collections as `.baque.json`.

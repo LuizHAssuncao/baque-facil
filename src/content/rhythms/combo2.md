@@ -1,7 +1,7 @@
 ---
 title: "Combo 2 - Parada + Arrasto"
 slug: "combo2"
-tempo: 90
+tempo: 105
 subdivision: 16
 difficulty: "beginner"
 instruments:

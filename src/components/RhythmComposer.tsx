@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -14,9 +15,12 @@ import {
   blurPointerActivatedButton,
   shouldIgnoreKeyboardShortcut,
 } from "../lib/keyboardShortcuts";
-import { sampleMap } from "../lib/sampleMap";
+import { extractRhythmBlock } from "../lib/extractRhythmBlock";
+import { parseRhythm } from "../lib/parseRhythm";
+import { sampleEntriesForRhythm, sampleMap } from "../lib/sampleMap";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
-import type { Rhythm, Subdivision } from "../lib/rhythmTypes";
+import { validateRhythm } from "../lib/validateRhythm";
+import type { Rhythm, RhythmTrack, Subdivision } from "../lib/rhythmTypes";
 
 type ComposerSymbol = "." | "L" | "R";
 type HitSymbol = Exclude<ComposerSymbol, ".">;
@@ -29,8 +33,9 @@ type BrowserWindowWithAudio = Window &
 const DEFAULT_SUBDIVISION: Subdivision = 16;
 const DEFAULT_STEP_COUNT = getStepsPerBeat(DEFAULT_SUBDIVISION) * 4;
 const DEFAULT_TITLE = "Untitled Alfaia Rhythm";
-const DEFAULT_DESCRIPTION = "Short teacher-facing description.";
+const DEFAULT_DESCRIPTION = "A description.";
 const DEFAULT_DIFFICULTY = "beginner";
+const COMPOSER_TRACK_NAME = "Alfaia";
 const PLAYHEAD_SCROLL_MARGIN_PX = 24;
 const PLAYHEAD_RIGHT_LIMIT_RATIO = 0.55;
 const PLAYHEAD_TARGET_RATIO = 0.35;
@@ -60,6 +65,16 @@ function resizeSteps(steps: ComposerSymbol[], stepCount: number) {
   return nextSteps;
 }
 
+function resizeTrackSteps(steps: string[], stepCount: number) {
+  const nextSteps = Array.from({ length: stepCount }, () => ".");
+
+  steps.slice(0, stepCount).forEach((step, index) => {
+    nextSteps[index] = step;
+  });
+
+  return nextSteps;
+}
+
 function moveIndex(index: number, offset: number, stepCount: number) {
   return (index + offset + stepCount) % stepCount;
 }
@@ -76,7 +91,7 @@ function escapeYamlString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function formatStepGroups(steps: ComposerSymbol[], groupSize: number) {
+function formatStepGroups(steps: readonly string[], groupSize: number) {
   const groups: string[] = [];
 
   for (let index = 0; index < steps.length; index += groupSize) {
@@ -84,6 +99,151 @@ function formatStepGroups(steps: ComposerSymbol[], groupSize: number) {
   }
 
   return groups.join(" | ");
+}
+
+function formatRhythmBlock(tracks: RhythmTrack[], groupSize: number) {
+  return tracks
+    .map((track) => `${track.name}:\n${formatStepGroups(track.steps, groupSize)}`)
+    .join("\n\n");
+}
+
+function formatMarkdown(tracks: RhythmTrack[], tempo: number, subdivision: Subdivision) {
+  return [
+    "---",
+    `title: "${escapeYamlString(DEFAULT_TITLE)}"`,
+    `tempo: ${tempo}`,
+    `subdivision: ${subdivision}`,
+    `difficulty: "${DEFAULT_DIFFICULTY}"`,
+    "instruments:",
+    '  - "Alfaia"',
+    "---",
+    "",
+    DEFAULT_DESCRIPTION,
+    "",
+    "```rhythm",
+    formatRhythmBlock(tracks, getStepsPerBeat(subdivision)),
+    "```",
+    "",
+  ].join("\n");
+}
+
+function formatTranscriptionWithTracks(
+  transcription: string,
+  tracks: RhythmTrack[],
+  tempo: number,
+  subdivision: Subdivision,
+) {
+  const rhythmBlock = formatRhythmBlock(tracks, getStepsPerBeat(subdivision));
+  const rhythmFencePattern = /(```rhythm[^\n]*\n)([\s\S]*?)(```)/i;
+
+  if (rhythmFencePattern.test(transcription)) {
+    return transcription.replace(
+      rhythmFencePattern,
+      (_match, openingFence: string, _content: string, closingFence: string) =>
+        `${openingFence}${rhythmBlock}\n${closingFence}`,
+    );
+  }
+
+  if (transcription.trim()) {
+    return `${rhythmBlock}\n`;
+  }
+
+  return formatMarkdown(tracks, tempo, subdivision);
+}
+
+function formatTranscriptionWithTempo(transcription: string, tempo: number) {
+  const tempoPattern = /^tempo:\s*.+$/m;
+
+  if (!tempoPattern.test(transcription)) {
+    return transcription;
+  }
+
+  return transcription.replace(tempoPattern, `tempo: ${tempo}`);
+}
+
+function defaultTracks() {
+  return [
+    {
+      name: COMPOSER_TRACK_NAME,
+      steps: emptySteps(DEFAULT_STEP_COUNT),
+    },
+  ];
+}
+
+function rhythmInputFromTranscription(transcription: string) {
+  const closedBlock = extractRhythmBlock(transcription);
+
+  if (closedBlock !== null) {
+    return closedBlock;
+  }
+
+  const openFenceMatch = transcription.match(/```rhythm[^\n]*\n([\s\S]*)$/i);
+
+  if (openFenceMatch) {
+    return openFenceMatch[1]?.trim() ?? "";
+  }
+
+  return transcription.trim();
+}
+
+function parseTranscriptionTracks(
+  transcription: string,
+  tempo: number,
+  subdivision: Subdivision,
+) {
+  try {
+    const tracks = parseRhythm(rhythmInputFromTranscription(transcription));
+    const errors = validateRhythm({
+      title: DEFAULT_TITLE,
+      slug: "compose-preview",
+      tempo,
+      subdivision,
+      tracks,
+    });
+
+    return { tracks, errors };
+  } catch (cause) {
+    return {
+      tracks: [],
+      errors: [cause instanceof Error ? cause.message : "Unable to parse rhythm block."],
+    };
+  }
+}
+
+function isComposerSymbol(symbol: string): symbol is ComposerSymbol {
+  return symbol === "." || symbol === "L" || symbol === "R";
+}
+
+function composerStepsFromTracks(tracks: RhythmTrack[]) {
+  const composerTrack = tracks.find((track) => track.name === COMPOSER_TRACK_NAME);
+
+  if (!composerTrack || !composerTrack.steps.every(isComposerSymbol)) {
+    return null;
+  }
+
+  return [...composerTrack.steps] as ComposerSymbol[];
+}
+
+function tracksWithComposerSteps(tracks: RhythmTrack[], steps: ComposerSymbol[]) {
+  const composerTrackIndex = tracks.findIndex((track) => track.name === COMPOSER_TRACK_NAME);
+
+  if (composerTrackIndex === -1) {
+    return [{ name: COMPOSER_TRACK_NAME, steps }];
+  }
+
+  return tracks.map((track, index) => {
+    if (index === composerTrackIndex) {
+      return {
+        ...track,
+        steps,
+      };
+    }
+
+    return {
+      ...track,
+      steps: resizeTrackSteps(track.steps, steps.length),
+    };
+  });
 }
 
 function hitSymbolForKeyboardKey(key: string): HitSymbol | null {
@@ -166,6 +326,11 @@ function eventTimestampToPerformanceTime(timeStamp: number) {
 export default function RhythmComposer() {
   const [tempo, setTempo] = useState(90);
   const [steps, setSteps] = useState<ComposerSymbol[]>(() => emptySteps(DEFAULT_STEP_COUNT));
+  const [parsedTracks, setParsedTracks] = useState<RhythmTrack[]>(defaultTracks);
+  const [transcription, setTranscription] = useState(() =>
+    formatMarkdown(defaultTracks(), 90, DEFAULT_SUBDIVISION),
+  );
+  const [transcriptionErrors, setTranscriptionErrors] = useState<string[]>([]);
   const [selectedStep, setSelectedStep] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [countIn, setCountIn] = useState<number | null>(null);
@@ -176,6 +341,9 @@ export default function RhythmComposer() {
     L: false,
     R: false,
   });
+  const stepsRef = useRef(steps);
+  const parsedTracksRef = useRef(parsedTracks);
+  const transcriptionRef = useRef(transcription);
   const selectedStepRef = useRef(selectedStep);
   const tempoRef = useRef(tempo);
   const metronomeEnabledRef = useRef(metronomeEnabled);
@@ -224,6 +392,7 @@ export default function RhythmComposer() {
   );
   const displayTitle = DEFAULT_TITLE;
   const isRecordLocked = isRecording || countIn !== null;
+  const hasTranscriptionErrors = transcriptionErrors.length > 0;
 
   const rhythm = useMemo<Rhythm>(
     () => ({
@@ -231,38 +400,85 @@ export default function RhythmComposer() {
       slug: "compose-preview",
       tempo,
       subdivision,
-      tracks: [
-        {
-          name: "Alfaia",
-          steps,
-        },
-      ],
+      tracks: parsedTracks,
     }),
-    [displayTitle, subdivision, tempo, steps],
+    [displayTitle, parsedTracks, subdivision, tempo],
+  );
+  const previewSamples = useMemo(
+    () => ({
+      ...sampleEntriesForRhythm(rhythm),
+      ...PREVIEW_SAMPLES,
+    }),
+    [rhythm],
   );
 
-  const markdown = useMemo(
-    () =>
-      [
-        "---",
-        `title: "${escapeYamlString(displayTitle)}"`,
-        `tempo: ${tempo}`,
-        `subdivision: ${subdivision}`,
-        `difficulty: "${DEFAULT_DIFFICULTY}"`,
-        "instruments:",
-        '  - "Alfaia"',
-        "---",
-        "",
-        DEFAULT_DESCRIPTION,
-        "",
-        "```rhythm",
-        "Alfaia:",
-        formatStepGroups(steps, beatStepCount),
-        "```",
-        "",
-      ].join("\n"),
-    [beatStepCount, displayTitle, steps, subdivision, tempo],
-  );
+  function clampSelectedStepToSteps(nextSteps: ComposerSymbol[]) {
+    const nextSelectedStep = Math.min(
+      selectedStepRef.current,
+      Math.max(0, nextSteps.length - 1),
+    );
+
+    if (nextSelectedStep !== selectedStepRef.current) {
+      selectedStepRef.current = nextSelectedStep;
+      setSelectedStep(nextSelectedStep);
+    }
+  }
+
+  function applyParsedTracks(nextTracks: RhythmTrack[]) {
+    parsedTracksRef.current = nextTracks;
+    setParsedTracks(nextTracks);
+  }
+
+  function applyComposerSteps(nextSteps: ComposerSymbol[], syncTranscription = true) {
+    const normalizedSteps = nextSteps.length > 0 ? nextSteps : emptySteps(1);
+
+    stepsRef.current = normalizedSteps;
+    setSteps(normalizedSteps);
+    clampSelectedStepToSteps(normalizedSteps);
+
+    if (!syncTranscription) {
+      return;
+    }
+
+    const nextTracks = tracksWithComposerSteps(parsedTracksRef.current, normalizedSteps);
+    const nextTranscription = formatTranscriptionWithTracks(
+      transcriptionRef.current,
+      nextTracks,
+      tempoRef.current,
+      subdivision,
+    );
+
+    applyParsedTracks(nextTracks);
+    transcriptionRef.current = nextTranscription;
+    setTranscription(nextTranscription);
+    setTranscriptionErrors([]);
+  }
+
+  function handleTranscriptionChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    const nextTranscription = event.target.value;
+    const { tracks, errors } = parseTranscriptionTracks(
+      nextTranscription,
+      tempoRef.current,
+      subdivision,
+    );
+
+    transcriptionRef.current = nextTranscription;
+    setTranscription(nextTranscription);
+
+    if (errors.length > 0) {
+      setTranscriptionErrors(errors);
+      return;
+    }
+
+    applyParsedTracks(tracks);
+    setTranscriptionErrors([]);
+
+    const nextSteps = composerStepsFromTracks(tracks);
+
+    if (nextSteps) {
+      applyComposerSteps(nextSteps, false);
+    }
+  }
 
   function getComposerAudioContext() {
     const AudioContextConstructor =
@@ -490,7 +706,7 @@ export default function RhythmComposer() {
       const trimmedStepCount = Math.max(1, trimThroughStep + 1);
       const nextSelectedStep = Math.max(0, trimmedStepCount - 1);
 
-      setSteps((currentSteps) => resizeSteps(currentSteps, trimmedStepCount));
+      applyComposerSteps(resizeSteps(stepsRef.current, trimmedStepCount));
       selectedStepRef.current = nextSelectedStep;
       setSelectedStep(nextSelectedStep);
     }
@@ -530,13 +746,10 @@ export default function RhythmComposer() {
       const nextStep = elapsedRecordingStepsRef.current;
       selectedStepRef.current = nextStep;
       setSelectedStep(nextStep);
-      setSteps((currentSteps) => {
-        if (nextStep < currentSteps.length) {
-          return currentSteps;
-        }
 
-        return resizeSteps(currentSteps, nextStep + 1);
-      });
+      if (nextStep >= stepsRef.current.length) {
+        applyComposerSteps(resizeSteps(stepsRef.current, nextStep + 1));
+      }
 
       if (nextStep % recordingStepsPerBeat === 0) {
         playMetronomeClick(false);
@@ -551,7 +764,7 @@ export default function RhythmComposer() {
 
     clearRecordingTimer();
     clearCountInTimer();
-    setSteps(emptySteps(1));
+    applyComposerSteps(emptySteps(1));
     setSelectedStep(0);
     selectedStepRef.current = 0;
     elapsedRecordingStepsRef.current = 0;
@@ -609,15 +822,13 @@ export default function RhythmComposer() {
       return;
     }
 
-    setSteps((currentSteps) => {
-      const nextSteps =
-        targetStep < currentSteps.length
-          ? [...currentSteps]
-          : resizeSteps(currentSteps, targetStep + 1);
+    const nextSteps =
+      targetStep < stepsRef.current.length
+        ? [...stepsRef.current]
+        : resizeSteps(stepsRef.current, targetStep + 1);
 
-      nextSteps[targetStep] = symbol;
-      return nextSteps;
-    });
+    nextSteps[targetStep] = symbol;
+    applyComposerSteps(nextSteps);
   }
 
   function moveSelectedStep(offset: number) {
@@ -637,11 +848,9 @@ export default function RhythmComposer() {
       return;
     }
 
-    setSteps((currentSteps) => {
-      const nextSteps = [...currentSteps];
-      nextSteps[selectedStep] = ".";
-      return nextSteps;
-    });
+    const nextSteps = [...stepsRef.current];
+    nextSteps[selectedStepRef.current] = ".";
+    applyComposerSteps(nextSteps);
   }
 
   function clearGrid() {
@@ -649,7 +858,7 @@ export default function RhythmComposer() {
       return;
     }
 
-    setSteps(emptySteps(stepCount || DEFAULT_STEP_COUNT));
+    applyComposerSteps(emptySteps(stepCount || DEFAULT_STEP_COUNT));
     setSelectedStep(0);
     selectedStepRef.current = 0;
     setRecordStatus("Ready");
@@ -660,6 +869,16 @@ export default function RhythmComposer() {
 
     tempoRef.current = clampedTempo;
     setTempo(clampedTempo);
+
+    const nextTranscription = formatTranscriptionWithTempo(
+      transcriptionRef.current,
+      clampedTempo,
+    );
+
+    if (nextTranscription !== transcriptionRef.current) {
+      transcriptionRef.current = nextTranscription;
+      setTranscription(nextTranscription);
+    }
   }
 
   function selectStep(index: number) {
@@ -902,6 +1121,18 @@ export default function RhythmComposer() {
   useEffect(() => {
     selectedStepRef.current = selectedStep;
   }, [selectedStep]);
+
+  useEffect(() => {
+    stepsRef.current = steps;
+  }, [steps]);
+
+  useEffect(() => {
+    parsedTracksRef.current = parsedTracks;
+  }, [parsedTracks]);
+
+  useEffect(() => {
+    transcriptionRef.current = transcription;
+  }, [transcription]);
 
   useEffect(() => {
     countCellRefs.current = countCellRefs.current.slice(0, stepCount);
@@ -1260,15 +1491,37 @@ export default function RhythmComposer() {
       <RhythmPlayer
         ref={previewPlayerRef}
         rhythm={rhythm}
-        samples={PREVIEW_SAMPLES}
+        samples={previewSamples}
         enableKeyboardShortcuts={false}
         onTempoChange={updateTempo}
       />
 
       <label className="markdown-output">
         <span>Transcription</span>
-        <textarea readOnly value={markdown} rows={15} />
+        <textarea
+          value={transcription}
+          rows={15}
+          aria-invalid={hasTranscriptionErrors}
+          aria-describedby={
+            hasTranscriptionErrors ? "composer-transcription-errors" : undefined
+          }
+          onChange={handleTranscriptionChange}
+        />
       </label>
+
+      {hasTranscriptionErrors ? (
+        <div
+          className="transcription-errors"
+          id="composer-transcription-errors"
+          role="alert"
+        >
+          <ul>
+            {transcriptionErrors.map((error) => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <button
         type="button"

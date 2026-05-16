@@ -1,7 +1,7 @@
 ---
 title: "4 - Parada"
 slug: "parada"
-tempo: 90
+tempo: 105
 subdivision: 16
 difficulty: "beginner"
 instruments:
