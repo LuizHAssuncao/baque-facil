@@ -44,7 +44,7 @@ const HIT_SAMPLE_URLS: Record<HitSymbol, string> = {
   R: sampleMap["Alfaia.R"],
 };
 const TEMPO_KEYBOARD_STEP = 1;
-const IMMEDIATE_RESUME_PLAYBACK_WINDOW_MS = 150;
+const MEDIA_HAS_CURRENT_DATA = 2;
 const TOUCH_POINTER_DEDUPLICATION_WINDOW_MS = 120;
 
 function emptySteps(stepCount: number) {
@@ -188,8 +188,8 @@ export default function RhythmComposer() {
   const composerAudioContextRef = useRef<AudioContext | null>(null);
   const hitBuffersRef = useRef<Partial<Record<HitSymbol, AudioBuffer>>>({});
   const hitBufferLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const hitAudioElementsRef = useRef<Partial<Record<HitSymbol, HTMLAudioElement>>>({});
   const activeHitPointerRef = useRef<Record<HitSymbol, number | null>>({ L: null, R: null });
-  const activeHitPressTokenRef = useRef<Record<HitSymbol, number>>({ L: 0, R: 0 });
   const lastHitInputRef = useRef<
     Record<HitSymbol, { source: HitInputSource; inputTime: number } | null>
   >({ L: null, R: null });
@@ -293,7 +293,32 @@ export default function RhythmComposer() {
     return context;
   }
 
+  function getHitAudioElement(symbol: HitSymbol) {
+    const currentAudio = hitAudioElementsRef.current[symbol];
+    if (currentAudio) {
+      return currentAudio;
+    }
+
+    try {
+      const audio = new Audio(HIT_SAMPLE_URLS[symbol]);
+      audio.preload = "auto";
+      audio.load();
+      hitAudioElementsRef.current[symbol] = audio;
+
+      return audio;
+    } catch {
+      return null;
+    }
+  }
+
+  function prepareHitAudioElements() {
+    getHitAudioElement("L");
+    getHitAudioElement("R");
+  }
+
   async function prepareHitSamples(options: { resume?: boolean } = {}) {
+    prepareHitAudioElements();
+
     const context = options.resume
       ? await ensureComposerAudioContext()
       : getComposerAudioContext();
@@ -379,46 +404,40 @@ export default function RhythmComposer() {
     return true;
   }
 
-  function playHitSound(
-    symbol: HitSymbol,
-    options: {
-      resume?: boolean;
-      maxResumeDelayMilliseconds?: number;
-      shouldStillPlay?: () => boolean;
-    } = {},
-  ) {
+  function playHitAudioElement(symbol: HitSymbol) {
+    const audio = getHitAudioElement(symbol);
+
+    if (!audio || audio.readyState < MEDIA_HAS_CURRENT_DATA) {
+      return false;
+    }
+
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      void audio.play()?.catch(() => undefined);
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function playHitSound(symbol: HitSymbol) {
     const context = getComposerAudioContext();
 
-    if (!context) {
-      return;
+    if (context && startHitBuffer(context, symbol)) {
+      return true;
     }
 
-    if (startHitBuffer(context, symbol)) {
-      return;
+    if (playHitAudioElement(symbol)) {
+      return true;
     }
 
-    if (!options.resume || context.state !== "suspended") {
-      return;
+    if (context?.state === "suspended") {
+      void context.resume().catch(() => undefined);
     }
 
-    const resumeStartTime = performance.now();
-
-    void context.resume().then(() => {
-      if (
-        options.maxResumeDelayMilliseconds !== undefined &&
-        performance.now() - resumeStartTime > options.maxResumeDelayMilliseconds
-      ) {
-        return;
-      }
-
-      if (options.shouldStillPlay && !options.shouldStillPlay()) {
-        return;
-      }
-
-      if (startHitBuffer(context, symbol)) {
-        return;
-      }
-    }).catch(() => undefined);
+    return false;
   }
 
   function clearRecordingTimer() {
@@ -639,10 +658,6 @@ export default function RhythmComposer() {
   }
 
   function setHandPressed(symbol: HitSymbol, isPressed: boolean) {
-    if (!isPressed) {
-      activeHitPressTokenRef.current[symbol] += 1;
-    }
-
     setPressedHands((currentHands) => {
       if (currentHands[symbol] === isPressed) {
         return currentHands;
@@ -656,9 +671,6 @@ export default function RhythmComposer() {
   }
 
   function releasePressedHands() {
-    activeHitPressTokenRef.current.L += 1;
-    activeHitPressTokenRef.current.R += 1;
-
     setPressedHands((currentHands) => {
       if (!currentHands.L && !currentHands.R) {
         return currentHands;
@@ -686,11 +698,8 @@ export default function RhythmComposer() {
     }, timeoutMilliseconds);
   }
 
-  function shouldSuppressHitClick(
-    symbol: HitSymbol,
-    event: ReactMouseEvent<HTMLButtonElement>,
-  ) {
-    if (!suppressNextHitClickRef.current[symbol] || event.detail === 0) {
+  function shouldSuppressHitClick(symbol: HitSymbol) {
+    if (!suppressNextHitClickRef.current[symbol]) {
       return false;
     }
 
@@ -724,7 +733,6 @@ export default function RhythmComposer() {
     symbol: HitSymbol,
     inputTime: number,
     source: HitInputSource,
-    options: { guardPlaybackUntilRelease?: boolean } = {},
   ) {
     if (countIn !== null) {
       return false;
@@ -735,22 +743,7 @@ export default function RhythmComposer() {
     }
 
     lastHitInputRef.current[symbol] = { source, inputTime };
-
-    const shouldGuardPlayback =
-      options.guardPlaybackUntilRelease ?? source === "touchstart";
-    const pressToken = shouldGuardPlayback
-      ? (activeHitPressTokenRef.current[symbol] += 1)
-      : activeHitPressTokenRef.current[symbol];
-
-    playHitSound(symbol, {
-      resume: true,
-      maxResumeDelayMilliseconds: shouldGuardPlayback
-        ? IMMEDIATE_RESUME_PLAYBACK_WINDOW_MS
-        : undefined,
-      shouldStillPlay: shouldGuardPlayback
-        ? () => activeHitPressTokenRef.current[symbol] === pressToken
-        : undefined,
-    });
+    playHitSound(symbol);
     writeHit(symbol, inputTime);
 
     return true;
@@ -780,7 +773,7 @@ export default function RhythmComposer() {
       return;
     }
 
-    if (event.pointerType === "touch") {
+    if (event.pointerType === "touch" && event.cancelable) {
       event.preventDefault();
     }
 
@@ -793,9 +786,7 @@ export default function RhythmComposer() {
     activeHitPointerRef.current[symbol] = event.pointerId;
     suppressNextHitClick(symbol);
     setHandPressed(symbol, true);
-    triggerHit(symbol, eventTimestampToPerformanceTime(event.timeStamp), "pointerdown", {
-      guardPlaybackUntilRelease: event.pointerType !== "mouse",
-    });
+    triggerHit(symbol, eventTimestampToPerformanceTime(event.timeStamp), "pointerdown");
   }
 
   function handleHitTouchStart(symbol: HitSymbol, event: ReactTouchEvent<HTMLButtonElement>) {
@@ -803,7 +794,9 @@ export default function RhythmComposer() {
       return;
     }
 
-    event.preventDefault();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
     suppressNextHitClick(symbol);
     setHandPressed(symbol, true);
     triggerHit(symbol, eventTimestampToPerformanceTime(event.timeStamp), "touchstart");
@@ -815,7 +808,7 @@ export default function RhythmComposer() {
   }
 
   function handleHitClick(symbol: HitSymbol, event: ReactMouseEvent<HTMLButtonElement>) {
-    if (shouldSuppressHitClick(symbol, event)) {
+    if (shouldSuppressHitClick(symbol)) {
       return;
     }
 
@@ -1111,7 +1104,7 @@ export default function RhythmComposer() {
           className="hand-key left-hand"
           data-pressed={pressedHands.L ? "true" : "false"}
           onClick={(event) => handleHitClick("L", event)}
-          onTouchStart={(event) => handleHitTouchStart("L", event)}
+          onTouchStartCapture={(event) => handleHitTouchStart("L", event)}
           onTouchEnd={() => releaseHitTouch("L")}
           onTouchCancel={() => releaseHitTouch("L")}
           onPointerDown={(event) => handleHitPointerDown("L", event)}
@@ -1128,7 +1121,7 @@ export default function RhythmComposer() {
           className="hand-key right-hand"
           data-pressed={pressedHands.R ? "true" : "false"}
           onClick={(event) => handleHitClick("R", event)}
-          onTouchStart={(event) => handleHitTouchStart("R", event)}
+          onTouchStartCapture={(event) => handleHitTouchStart("R", event)}
           onTouchEnd={() => releaseHitTouch("R")}
           onTouchCancel={() => releaseHitTouch("R")}
           onPointerDown={(event) => handleHitPointerDown("R", event)}
