@@ -34,15 +34,11 @@ Known gaps:
 
 ### Your Items
 
-- Fix Trovao playback/content so the rhythm sounds correct and has the expected
-  step count.
 - Clean committed rhythms so notation, frontmatter instruments, titles, notes,
   and examples are consistent.
-- Move mute/unmute controls to the right side of each instrument row with
-  mute/unmute icons.
 - Add iOS-only audio help:
   - One-time Silent Mode modal.
-  - Troubleshooting link to a step-by-step help page.
+  - Troubleshooting link on the bottom to a step-by-step help page if they can't hear a sound.
 - Auto-scroll the rhythm grid with the active playhead.
 - Split long transcriptions into rows of max 16 subdivisions.
 - Improve Compose editing:

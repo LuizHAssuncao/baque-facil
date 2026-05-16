@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Play, Repeat, RepeatOff, RotateCcw, Square } from "lucide-react";
+import { Play, Repeat, RepeatOff, RotateCcw, Square, Volume2, VolumeX } from "lucide-react";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm } from "../lib/rhythmTypes";
@@ -73,7 +73,7 @@ export default function RhythmPlayer({
     [rhythm.subdivision, stepCount],
   );
   const gridStyle = {
-    gridTemplateColumns: `minmax(6rem, 7rem) repeat(${stepCount}, minmax(2.5rem, 1fr))`,
+    gridTemplateColumns: `minmax(8rem, 9rem) repeat(${stepCount}, minmax(2.5rem, 1fr))`,
   } as CSSProperties;
 
   useEffect(() => {
@@ -338,24 +338,6 @@ export default function RhythmPlayer({
         </label>
       </div>
 
-      <div className="mute-controls" aria-label="Instrument mute controls">
-        {rhythm.tracks.map((track) => {
-          const isMuted = mutedTracks.includes(track.name);
-
-          return (
-            <button
-              type="button"
-              className={isMuted ? "muted" : ""}
-              aria-pressed={isMuted}
-              onClick={() => toggleTrackMute(track.name)}
-              key={track.name}
-            >
-              {isMuted ? `Unmute ${track.name}` : `Mute ${track.name}`}
-            </button>
-          );
-        })}
-      </div>
-
       <div className="player-status" aria-live="polite">
         {status === "loading" ? "Loading samples..." : null}
         {error ? error : null}
@@ -375,25 +357,47 @@ export default function RhythmPlayer({
             ))}
           </div>
 
-          {rhythm.tracks.map((track) => (
-            <div
-              className={`grid-row ${mutedTracks.includes(track.name) ? "muted-row" : ""}`}
-              style={gridStyle}
-              key={track.name}
-            >
-              <div className="track-name">{track.name}</div>
-              {track.steps.map((symbol, index) => (
-                <div
-                  className={`step-cell ${symbol === "." ? "rest-cell" : "hit-cell"} ${
-                    activeStep === index ? "active" : ""
-                  } ${index % beatStepCount === 0 ? "beat-start" : ""}`}
-                  key={`${track.name}-${index}`}
-                >
-                  {symbol}
+          {rhythm.tracks.map((track) => {
+            const isMuted = mutedTracks.includes(track.name);
+
+            return (
+              <div
+                className={`grid-row ${isMuted ? "muted-row" : ""}`}
+                style={gridStyle}
+                key={track.name}
+              >
+                <div className="track-name">
+                  <span className="track-name-action">
+                    <span className="track-label">{track.name}</span>
+                    <button
+                      type="button"
+                      className="track-mute-button"
+                      aria-pressed={isMuted}
+                      aria-label={isMuted ? `Unmute ${track.name}` : `Mute ${track.name}`}
+                      title={isMuted ? `Unmute ${track.name}` : `Mute ${track.name}`}
+                      onClick={() => toggleTrackMute(track.name)}
+                    >
+                      {isMuted ? (
+                        <Volume2 aria-hidden="true" size={16} />
+                      ) : (
+                        <VolumeX aria-hidden="true" size={16} />
+                      )}
+                    </button>
+                  </span>
                 </div>
-              ))}
-            </div>
-          ))}
+                {track.steps.map((symbol, index) => (
+                  <div
+                    className={`step-cell ${symbol === "." ? "rest-cell" : "hit-cell"} ${
+                      activeStep === index ? "active" : ""
+                    } ${index % beatStepCount === 0 ? "beat-start" : ""}`}
+                    key={`${track.name}-${index}`}
+                  >
+                    {symbol}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
