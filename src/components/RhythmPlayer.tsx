@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import * as Tone from "tone";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import type { Rhythm } from "../lib/rhythmTypes";
-
-type ToneModule = typeof import("tone");
 
 type RhythmPlayerProps = {
   rhythm: Rhythm;
@@ -34,12 +33,12 @@ export default function RhythmPlayer({
   const [error, setError] = useState<string | null>(null);
   const [mutedTracks, setMutedTracks] = useState<string[]>(() => defaultMutedTrackNames);
 
-  const toneRef = useRef<ToneModule | null>(null);
   const playersRef = useRef<Record<string, any>>({});
   const scheduledEventRef = useRef<number | null>(null);
   const tempoRef = useRef(tempo);
   const loopRef = useRef(loop);
   const mutedTracksRef = useRef(new Set(defaultMutedTrackNames));
+  const audioStartedRef = useRef(false);
 
   const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
   const beatStepCount = getStepsPerBeat(rhythm.subdivision);
@@ -59,8 +58,7 @@ export default function RhythmPlayer({
   useEffect(() => {
     tempoRef.current = tempo;
 
-    const Tone = toneRef.current;
-    if (Tone) {
+    if (audioStartedRef.current) {
       Tone.Transport.bpm.rampTo(tempo, 0.05);
     }
   }, [tempo]);
@@ -80,12 +78,8 @@ export default function RhythmPlayer({
 
   useEffect(() => {
     return () => {
-      const Tone = toneRef.current;
-
-      if (Tone) {
-        Tone.Transport.stop();
-        Tone.Transport.cancel();
-      }
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
 
       Object.values(playersRef.current).forEach((player) => player.dispose?.());
     };
@@ -95,10 +89,8 @@ export default function RhythmPlayer({
     setStatus("loading");
     setError(null);
 
-    const Tone = toneRef.current ?? (await import("tone"));
-    toneRef.current = Tone;
-
     await Tone.start();
+    audioStartedRef.current = true;
 
     if (Object.keys(playersRef.current).length === 0) {
       playersRef.current = Object.fromEntries(
@@ -115,7 +107,7 @@ export default function RhythmPlayer({
     return Tone;
   }
 
-  function clearTransport(Tone: ToneModule) {
+  function clearTransport() {
     if (scheduledEventRef.current !== null) {
       Tone.Transport.clear(scheduledEventRef.current);
       scheduledEventRef.current = null;
@@ -142,10 +134,10 @@ export default function RhythmPlayer({
 
   async function play() {
     try {
-      const Tone = await ensureAudio();
+      await ensureAudio();
       let nextStep = 0;
 
-      clearTransport(Tone);
+      clearTransport();
       Tone.Transport.bpm.value = tempoRef.current;
       Tone.Transport.position = 0;
 
@@ -186,11 +178,9 @@ export default function RhythmPlayer({
   }
 
   function stop() {
-    const Tone = toneRef.current;
-
-    if (Tone) {
+    if (audioStartedRef.current) {
       Tone.Transport.stop();
-      clearTransport(Tone);
+      clearTransport();
     }
 
     setIsPlaying(false);
