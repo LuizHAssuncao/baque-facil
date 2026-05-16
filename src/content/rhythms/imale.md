@@ -1,5 +1,5 @@
 ---
-title: "2 - Imale"
+title: "2 - Imalê"
 slug: "imale"
 tempo: 90
 subdivision: 16

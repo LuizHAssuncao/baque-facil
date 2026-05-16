@@ -27,9 +27,7 @@ const rhythms = (await getCollection("rhythms")).sort((a, b) =>
           rhythms.map((rhythm) => (
             <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
               <strong>{rhythm.data.title}</strong>
-              <span>
-                {rhythm.data.tempo} BPM · {rhythm.data.difficulty}
-              </span>
+              <span>{rhythm.data.difficulty}</span>
             </a>
           ))
         }

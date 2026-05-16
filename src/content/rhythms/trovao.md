@@ -1,5 +1,5 @@
 ---
-title: "5 - Trovao"
+title: "5 - Trovão"
 slug: "trovao"
 tempo: 90
 subdivision: 16
