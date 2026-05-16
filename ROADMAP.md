@@ -34,9 +34,6 @@ Known gaps:
 
 ### Your Items
 
-- Clean committed rhythms so notation, frontmatter instruments, titles, notes,
-  and examples are consistent.
-- On mobile, try to keep three playback buttons in the same row, just like in desktop. if there's space
 - Auto-scroll the rhythm grid with the active playhead.
 - Split long transcriptions into rows of max 16 subdivisions.
 - Improve Compose editing:
@@ -46,7 +43,8 @@ Known gaps:
   - When pressing `R`, `L`, or `.`, write that value into the selected slot and
     advance to the next slot.
   - create icon for record take
-  - rethink form fields. tempo isn't working a beat isn't necessary. subdivision also unnecessary
+  - rethink form fields. tempo isn't working and beats field isn't necessary. subdivision also unnecessary
+  - add possibility to loop during recording
 - Refactor player/composer code enough to support these changes safely.
 - Add unit tests and browser tests.
 

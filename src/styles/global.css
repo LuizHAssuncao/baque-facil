@@ -709,10 +709,17 @@ button.step-cell:focus-visible,
 
   .controls {
     align-items: stretch;
+    gap: 0.5rem;
   }
 
   .controls button {
-    flex: 1 1 7rem;
+    flex: 1 1 calc((100% - 1rem) / 3);
+    justify-content: center;
+    min-width: 0;
+    padding: 0 0.4rem;
+    gap: 0.3rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
   }
 
   .tempo-control {
