@@ -5,6 +5,7 @@ import { sampleMap } from "../lib/sampleMap";
 import type { Rhythm, Subdivision } from "../lib/rhythmTypes";
 
 type ComposerSymbol = "." | "L" | "R";
+type HitSymbol = Exclude<ComposerSymbol, ".">;
 type Difficulty = "beginner" | "intermediate" | "advanced";
 type BrowserWindowWithAudio = Window &
   typeof globalThis & {
@@ -22,6 +23,11 @@ const PREVIEW_SAMPLES = {
   "Alfaia.L": sampleMap["Alfaia.L"],
   "Alfaia.R": sampleMap["Alfaia.R"],
 };
+const HIT_SAMPLE_URLS: Record<HitSymbol, string> = {
+  L: sampleMap["Alfaia.L"],
+  R: sampleMap["Alfaia.R"],
+};
+const HIT_SAMPLE_POOL_SIZE = 4;
 
 function emptySteps(stepCount: number) {
   return Array.from({ length: stepCount }, () => "." as ComposerSymbol);
@@ -108,12 +114,14 @@ export default function RhythmComposer() {
   const [selectedStep, setSelectedStep] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [countIn, setCountIn] = useState<number | null>(null);
-  const [metronomeEnabled, setMetronomeEnabled] = useState(true);
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false);
   const [recordStatus, setRecordStatus] = useState("Ready");
   const [copyStatus, setCopyStatus] = useState("");
   const selectedStepRef = useRef(selectedStep);
   const metronomeEnabledRef = useRef(metronomeEnabled);
   const metronomeContextRef = useRef<AudioContext | null>(null);
+  const hitAudioRef = useRef<Record<HitSymbol, HTMLAudioElement[]> | null>(null);
+  const hitAudioIndexRef = useRef<Record<HitSymbol, number>>({ L: 0, R: 0 });
   const recordingTimerRef = useRef<number | null>(null);
   const countInTimerRef = useRef<number | null>(null);
   const elapsedRecordingStepsRef = useRef(0);
@@ -229,6 +237,39 @@ export default function RhythmComposer() {
     oscillator.stop(now + duration + 0.01);
   }
 
+  function getHitAudioPool(symbol: HitSymbol) {
+    if (!hitAudioRef.current) {
+      hitAudioRef.current = { L: [], R: [] };
+    }
+
+    if (hitAudioRef.current[symbol].length === 0) {
+      hitAudioRef.current[symbol] = Array.from({ length: HIT_SAMPLE_POOL_SIZE }, () => {
+        const audio = new Audio(HIT_SAMPLE_URLS[symbol]);
+        audio.preload = "auto";
+        audio.load();
+        return audio;
+      });
+    }
+
+    return hitAudioRef.current[symbol];
+  }
+
+  function playHitSound(symbol: HitSymbol) {
+    const pool = getHitAudioPool(symbol);
+    const audioIndex = hitAudioIndexRef.current[symbol] % pool.length;
+    const audio = pool[audioIndex];
+
+    hitAudioIndexRef.current[symbol] = audioIndex + 1;
+
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // The sample can still play even if the browser has not exposed seekable metadata yet.
+    }
+
+    void audio.play().catch(() => undefined);
+  }
+
   function clearRecordingTimer() {
     if (recordingTimerRef.current !== null) {
       window.clearInterval(recordingTimerRef.current);
@@ -333,12 +374,18 @@ export default function RhythmComposer() {
     }, recordingBeatDuration(tempo));
   }
 
-  function writeHit(symbol: Exclude<ComposerSymbol, ".">) {
+  function writeHit(symbol: HitSymbol) {
     if (countIn !== null) {
       return;
     }
 
     const targetStep = selectedStepRef.current;
+
+    if (targetStep < 0 || targetStep >= stepCount) {
+      return;
+    }
+
+    playHitSound(symbol);
 
     setSteps((currentSteps) => {
       if (targetStep >= currentSteps.length) {
@@ -482,6 +529,16 @@ export default function RhythmComposer() {
       const context = metronomeContextRef.current;
       if (context && context.state !== "closed") {
         void context.close();
+      }
+
+      if (hitAudioRef.current) {
+        Object.values(hitAudioRef.current)
+          .flat()
+          .forEach((audio) => {
+            audio.pause();
+            audio.removeAttribute("src");
+            audio.load();
+          });
       }
     };
   }, []);
@@ -627,14 +684,14 @@ export default function RhythmComposer() {
       </div>
 
       <div className="composer-actions" aria-label="Composer controls">
-        <label className="metronome-toggle">
-          <input
-            type="checkbox"
-            checked={metronomeEnabled}
-            onChange={(event) => toggleMetronome(event.target.checked)}
-          />
-          Metronome
-        </label>
+        <button
+          type="button"
+          className="metronome-toggle"
+          aria-pressed={metronomeEnabled}
+          onClick={() => toggleMetronome(!metronomeEnabled)}
+        >
+          Metronome {metronomeEnabled ? "on" : "off"}
+        </button>
         <button
           type="button"
           className={isRecording ? "record-button recording" : "record-button"}

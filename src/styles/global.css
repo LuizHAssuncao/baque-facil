@@ -257,12 +257,15 @@ button.step-cell:disabled {
 }
 
 .metronome-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-height: 2.5rem;
+  border-color: #c5cfdc;
+  background: #ffffff;
   color: #475467;
-  font-weight: 800;
+}
+
+.metronome-toggle[aria-pressed="true"] {
+  border-color: #0f766e;
+  background: #edf7f5;
+  color: #0f766e;
 }
 
 .count-in {
