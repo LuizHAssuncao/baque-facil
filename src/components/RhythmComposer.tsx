@@ -324,21 +324,8 @@ export default function RhythmComposer() {
     await hitBufferLoadPromiseRef.current;
   }
 
-  async function prepareMetronome() {
-    if (!metronomeEnabledRef.current) {
-      return;
-    }
-
-    try {
-      await ensureComposerAudioContext();
-    } catch {
-      setMetronomeEnabled(false);
-      metronomeEnabledRef.current = false;
-    }
-  }
-
-  function playMetronomeClick(isFirstBeat = false) {
-    if (!metronomeEnabledRef.current) {
+  function playMetronomeClick(isFirstBeat = false, options: { force?: boolean } = {}) {
+    if (!options.force && !metronomeEnabledRef.current) {
       return;
     }
 
@@ -362,6 +349,10 @@ export default function RhythmComposer() {
     gain.connect(context.destination);
     oscillator.start(now);
     oscillator.stop(now + duration + 0.01);
+  }
+
+  function playCountInClick() {
+    playMetronomeClick(false, { force: true });
   }
 
   function startHitBuffer(context: AudioContext, symbol: HitSymbol) {
@@ -502,13 +493,13 @@ export default function RhythmComposer() {
     setRecordStatus("Count-in");
 
     void prepareHitSamples({ resume: true }).catch(() => undefined);
-    void prepareMetronome().then(() => playMetronomeClick(false));
+    void ensureComposerAudioContext().then(() => playCountInClick()).catch(() => undefined);
 
     let nextCount = 2;
     countInTimerRef.current = window.setInterval(() => {
       if (nextCount <= 3) {
         setCountIn(nextCount);
-        playMetronomeClick(false);
+        playCountInClick();
         nextCount += 1;
         return;
       }
