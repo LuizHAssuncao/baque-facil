@@ -89,10 +89,6 @@ p {
   gap: 0.75rem;
 }
 
-.compose-link {
-  margin-bottom: 1rem;
-}
-
 .rhythm-link {
   display: flex;
   justify-content: space-between;

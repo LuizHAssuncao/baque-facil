@@ -22,11 +22,6 @@ const rhythms = (await getCollection("rhythms")).sort((a, b) =>
         <p>A minimal Markdown-to-playback rhythm handout.</p>
       </header>
 
-      <a class="rhythm-link compose-link" href="/compose/">
-        <strong>Compose an Alfaia rhythm</strong>
-        <span>Keyboard-first editor</span>
-      </a>
-
       <section class="rhythm-list" aria-label="Rhythms">
         {
           rhythms.map((rhythm) => (
@@ -38,6 +33,11 @@ const rhythms = (await getCollection("rhythms")).sort((a, b) =>
             </a>
           ))
         }
+
+        <a class="rhythm-link compose-link" href="/compose/">
+          <strong>Compose an Alfaia rhythm</strong>
+          <span>Keyboard-first editor</span>
+        </a>
       </section>
     </main>
   </body>
