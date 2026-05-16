@@ -10,25 +10,36 @@ type RhythmPlayerProps = {
   onTempoChange?: (tempo: number) => void;
 };
 
+const DEFAULT_AUDIBLE_TRACK = "Alfaia";
+
+function defaultMutedTracks(trackNames: string[]) {
+  return trackNames.filter((name) => name !== DEFAULT_AUDIBLE_TRACK);
+}
+
 export default function RhythmPlayer({
   rhythm,
   samples,
   onTempoChange,
 }: RhythmPlayerProps) {
+  const trackNamesKey = JSON.stringify(rhythm.tracks.map((track) => track.name));
+  const defaultMutedTrackNames = useMemo(
+    () => defaultMutedTracks(JSON.parse(trackNamesKey) as string[]),
+    [trackNamesKey],
+  );
   const [tempo, setTempo] = useState(rhythm.tempo);
   const [loop, setLoop] = useState(true);
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState<string | null>(null);
-  const [mutedTracks, setMutedTracks] = useState<string[]>([]);
+  const [mutedTracks, setMutedTracks] = useState<string[]>(() => defaultMutedTrackNames);
 
   const toneRef = useRef<ToneModule | null>(null);
   const playersRef = useRef<Record<string, any>>({});
   const scheduledEventRef = useRef<number | null>(null);
   const tempoRef = useRef(tempo);
   const loopRef = useRef(loop);
-  const mutedTracksRef = useRef(new Set<string>());
+  const mutedTracksRef = useRef(new Set(defaultMutedTrackNames));
 
   const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
   const beatStepCount = getStepsPerBeat(rhythm.subdivision);
@@ -61,6 +72,11 @@ export default function RhythmPlayer({
   useEffect(() => {
     mutedTracksRef.current = new Set(mutedTracks);
   }, [mutedTracks]);
+
+  useEffect(() => {
+    setMutedTracks(defaultMutedTrackNames);
+    mutedTracksRef.current = new Set(defaultMutedTrackNames);
+  }, [defaultMutedTrackNames]);
 
   useEffect(() => {
     return () => {

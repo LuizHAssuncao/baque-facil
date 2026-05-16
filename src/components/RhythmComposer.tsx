@@ -82,6 +82,18 @@ function shouldIgnoreKeyboardTarget(target: EventTarget | null) {
   );
 }
 
+function hitSymbolForKeyboardKey(key: string): HitSymbol | null {
+  if (key === "f" || key === "F") {
+    return "L";
+  }
+
+  if (key === "j" || key === "J") {
+    return "R";
+  }
+
+  return null;
+}
+
 function clampTempo(value: number) {
   if (!Number.isFinite(value)) {
     return 90;
@@ -117,6 +129,10 @@ export default function RhythmComposer() {
   const [metronomeEnabled, setMetronomeEnabled] = useState(false);
   const [recordStatus, setRecordStatus] = useState("Ready");
   const [copyStatus, setCopyStatus] = useState("");
+  const [pressedHands, setPressedHands] = useState<Record<HitSymbol, boolean>>({
+    L: false,
+    R: false,
+  });
   const selectedStepRef = useRef(selectedStep);
   const metronomeEnabledRef = useRef(metronomeEnabled);
   const metronomeContextRef = useRef<AudioContext | null>(null);
@@ -504,6 +520,29 @@ export default function RhythmComposer() {
     }
   }
 
+  function setHandPressed(symbol: HitSymbol, isPressed: boolean) {
+    setPressedHands((currentHands) => {
+      if (currentHands[symbol] === isPressed) {
+        return currentHands;
+      }
+
+      return {
+        ...currentHands,
+        [symbol]: isPressed,
+      };
+    });
+  }
+
+  function releasePressedHands() {
+    setPressedHands((currentHands) => {
+      if (!currentHands.L && !currentHands.R) {
+        return currentHands;
+      }
+
+      return { L: false, R: false };
+    });
+  }
+
   useEffect(() => {
     if (!copyStatus) {
       return;
@@ -549,15 +588,11 @@ export default function RhythmComposer() {
         return;
       }
 
-      if (event.key === "f" || event.key === "F") {
+      const hitSymbol = hitSymbolForKeyboardKey(event.key);
+      if (hitSymbol) {
         event.preventDefault();
-        writeHit("L");
-        return;
-      }
-
-      if (event.key === "j" || event.key === "J") {
-        event.preventDefault();
-        writeHit("R");
+        setHandPressed(hitSymbol, true);
+        writeHit(hitSymbol);
         return;
       }
 
@@ -615,8 +650,23 @@ export default function RhythmComposer() {
       }
     }
 
+    function handleKeyUp(event: KeyboardEvent) {
+      const hitSymbol = hitSymbolForKeyboardKey(event.key);
+
+      if (hitSymbol) {
+        setHandPressed(hitSymbol, false);
+      }
+    }
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", releasePressedHands);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", releasePressedHands);
+    };
   }, [beatStepCount, countIn, isRecordLocked, selectedStep]);
 
   return (
@@ -726,7 +776,12 @@ export default function RhythmComposer() {
         <button
           type="button"
           className="hand-key left-hand"
+          data-pressed={pressedHands.L ? "true" : "false"}
           onClick={() => writeHit("L")}
+          onPointerDown={() => setHandPressed("L", true)}
+          onPointerUp={() => setHandPressed("L", false)}
+          onPointerCancel={() => setHandPressed("L", false)}
+          onPointerLeave={() => setHandPressed("L", false)}
           title="Left hand"
         >
           <span>F</span>
@@ -735,7 +790,12 @@ export default function RhythmComposer() {
         <button
           type="button"
           className="hand-key right-hand"
+          data-pressed={pressedHands.R ? "true" : "false"}
           onClick={() => writeHit("R")}
+          onPointerDown={() => setHandPressed("R", true)}
+          onPointerUp={() => setHandPressed("R", false)}
+          onPointerCancel={() => setHandPressed("R", false)}
+          onPointerLeave={() => setHandPressed("R", false)}
           title="Right hand"
         >
           <span>J</span>
