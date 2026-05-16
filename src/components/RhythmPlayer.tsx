@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Play, Repeat, RepeatOff, RotateCcw, Square, Volume2, VolumeX } from "lucide-react";
+import {
+  Keyboard,
+  Play,
+  Repeat,
+  RepeatOff,
+  RotateCcw,
+  Square,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm } from "../lib/rhythmTypes";
@@ -10,6 +20,7 @@ type RhythmPlayerProps = {
   rhythm: Rhythm;
   samples: Record<string, string>;
   autoPlay?: boolean;
+  enableKeyboardShortcuts?: boolean;
   onTempoChange?: (tempo: number) => void;
 };
 
@@ -20,6 +31,7 @@ const IOS_AUDIO_HELP_PATH = "/help/ios-audio/";
 const PLAYHEAD_SCROLL_MARGIN_PX = 24;
 const PLAYHEAD_RIGHT_LIMIT_RATIO = 0.55;
 const PLAYHEAD_TARGET_RATIO = 0.35;
+const TEMPO_KEYBOARD_STEP = 1;
 
 function defaultMutedTracks(trackNames: string[]) {
   return trackNames.filter((name) => name !== DEFAULT_AUDIBLE_TRACK);
@@ -62,6 +74,17 @@ function markIosSilentModeHelpSeen() {
   } catch {
     // Browsers can disable storage in private modes. The modal still dismisses for this session.
   }
+}
+
+function shouldIgnorePlayerShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return Boolean(
+    target.isContentEditable ||
+      target.closest("a, button, input, select, textarea, [contenteditable]"),
+  );
 }
 
 function scrollPlayheadIntoView(
@@ -112,6 +135,7 @@ export default function RhythmPlayer({
   rhythm,
   samples,
   autoPlay = false,
+  enableKeyboardShortcuts = true,
   onTempoChange,
 }: RhythmPlayerProps) {
   const trackNamesKey = JSON.stringify(rhythm.tracks.map((track) => track.name));
@@ -128,6 +152,7 @@ export default function RhythmPlayer({
   const [mutedTracks, setMutedTracks] = useState<string[]>(() => defaultMutedTrackNames);
   const [isIos, setIsIos] = useState(false);
   const [showIosSilentModeHelp, setShowIosSilentModeHelp] = useState(false);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
 
   const toneRef = useRef<ToneModule | null>(null);
   const playersRef = useRef<Record<string, any>>({});
@@ -139,6 +164,8 @@ export default function RhythmPlayer({
   const hasAutoPlayedRef = useRef(false);
   const playAttemptRef = useRef(0);
   const iosSilentModeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const shortcutHelpTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const shortcutHelpCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
   const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -195,6 +222,12 @@ export default function RhythmPlayer({
   }, [showIosSilentModeHelp]);
 
   useEffect(() => {
+    if (showShortcutHelp) {
+      shortcutHelpCloseButtonRef.current?.focus();
+    }
+  }, [showShortcutHelp]);
+
+  useEffect(() => {
     countCellRefs.current = countCellRefs.current.slice(0, stepCount);
   }, [stepCount]);
 
@@ -221,6 +254,82 @@ export default function RhythmPlayer({
     hasAutoPlayedRef.current = true;
     void play({ isAutoPlay: true });
   }, [autoPlay, rhythm.slug]);
+
+  useEffect(() => {
+    if (!enableKeyboardShortcuts) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      if (showShortcutHelp) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeShortcutHelp();
+        }
+
+        return;
+      }
+
+      if (shouldIgnorePlayerShortcutTarget(event.target)) {
+        return;
+      }
+
+      if (event.code === "Space" || event.key === " ") {
+        event.preventDefault();
+
+        if (event.repeat || status === "loading") {
+          return;
+        }
+
+        void togglePlayback();
+        return;
+      }
+
+      if (event.key === "Backspace") {
+        event.preventDefault();
+
+        if (event.repeat || status === "loading") {
+          return;
+        }
+
+        void restart();
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === "l") {
+        event.preventDefault();
+
+        if (!event.repeat) {
+          setLoop((currentLoop) => !currentLoop);
+        }
+
+        return;
+      }
+
+      if (event.key === "+" || event.key === "=") {
+        event.preventDefault();
+        changeTempo(tempoRef.current + TEMPO_KEYBOARD_STEP);
+        return;
+      }
+
+      if (event.key === "-" || event.key === "_") {
+        event.preventDefault();
+        changeTempo(tempoRef.current - TEMPO_KEYBOARD_STEP);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [enableKeyboardShortcuts, isPlaying, showShortcutHelp, status]);
 
   useEffect(() => {
     return () => {
@@ -299,6 +408,7 @@ export default function RhythmPlayer({
   function changeTempo(nextTempo: number) {
     const clampedTempo = clampTempo(nextTempo, tempoRef.current);
 
+    tempoRef.current = clampedTempo;
     setTempo(clampedTempo);
     onTempoChange?.(clampedTempo);
   }
@@ -306,6 +416,11 @@ export default function RhythmPlayer({
   function acknowledgeIosSilentModeHelp() {
     markIosSilentModeHelpSeen();
     setShowIosSilentModeHelp(false);
+  }
+
+  function closeShortcutHelp() {
+    setShowShortcutHelp(false);
+    window.setTimeout(() => shortcutHelpTriggerRef.current?.focus(), 0);
   }
 
   async function play(options: { isAutoPlay?: boolean } = {}) {
@@ -556,6 +671,82 @@ export default function RhythmPlayer({
           Still no sound on iPhone or iPad?{" "}
           <a href={IOS_AUDIO_HELP_PATH}>Try iOS audio troubleshooting</a>.
         </p>
+      ) : null}
+
+      {enableKeyboardShortcuts ? (
+        <>
+          <button
+            type="button"
+            className="shortcut-help-trigger"
+            aria-haspopup="dialog"
+            aria-expanded={showShortcutHelp}
+            aria-controls={`${rhythm.slug}-shortcut-help`}
+            ref={shortcutHelpTriggerRef}
+            onClick={() => setShowShortcutHelp(true)}
+          >
+            <Keyboard aria-hidden="true" size={15} />
+            Shortcuts
+          </button>
+
+          {showShortcutHelp ? (
+            <div className="shortcut-help-backdrop" onClick={closeShortcutHelp}>
+              <div
+                className="shortcut-help-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`${rhythm.slug}-shortcut-help-title`}
+                id={`${rhythm.slug}-shortcut-help`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="shortcut-help-header">
+                  <h2 id={`${rhythm.slug}-shortcut-help-title`}>Keyboard shortcuts</h2>
+                  <button
+                    type="button"
+                    aria-label="Close keyboard shortcuts"
+                    ref={shortcutHelpCloseButtonRef}
+                    onClick={closeShortcutHelp}
+                  >
+                    <X aria-hidden="true" size={18} />
+                  </button>
+                </div>
+
+                <dl className="shortcut-list">
+                  <div>
+                    <dt>
+                      <kbd>Space</kbd>
+                    </dt>
+                    <dd>Play or stop</dd>
+                  </div>
+                  <div>
+                    <dt>
+                      <kbd>Backspace</kbd>
+                    </dt>
+                    <dd>Restart</dd>
+                  </div>
+                  <div>
+                    <dt>
+                      <kbd>L</kbd>
+                    </dt>
+                    <dd>Enable or disable loop</dd>
+                  </div>
+                  <div>
+                    <dt>
+                      <kbd>+</kbd>
+                      <kbd>=</kbd>
+                    </dt>
+                    <dd>Increase tempo</dd>
+                  </div>
+                  <div>
+                    <dt>
+                      <kbd>-</kbd>
+                    </dt>
+                    <dd>Decrease tempo</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </section>
   );

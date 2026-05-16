@@ -11,8 +11,8 @@ instruments:
 
 ```rhythm
 Gongue:
-. X . . | X . X . | . X . . | X . X . | . X . . | X . X . | . X . . | X . X .
+. X . . | X . X . | . X . . | X . X . | . X . . | . . . . | . . . . | . . . .
 
 Alfaia:
-R . . R | L R . R | L R . R | L . R L | R . . . | . . . . | . . . . | . . . .
+. R . . | R L R . | R L R . | R L . R | L R . . | . . . . | . . . . | . . . .
 ```

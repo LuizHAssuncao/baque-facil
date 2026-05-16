@@ -70,11 +70,6 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
       <header class="page-header compact">
         <p class="eyebrow">{entry.data.difficulty}</p>
         <h1>{entry.data.title}</h1>
-        <p>
-          {entry.data.tempo} BPM · {entry.data.subdivision}th-note grid · {
-            entry.data.instruments.join(", ")
-          }
-        </p>
       </header>
 
       {

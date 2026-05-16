@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Keyboard, X } from "lucide-react";
 import RhythmPlayer from "./RhythmPlayer";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import { sampleMap } from "../lib/sampleMap";
@@ -29,6 +30,7 @@ const HIT_SAMPLE_URLS: Record<HitSymbol, string> = {
   R: sampleMap["Alfaia.R"],
 };
 const HIT_SAMPLE_POOL_SIZE = 4;
+const TEMPO_KEYBOARD_STEP = 1;
 
 function emptySteps(stepCount: number) {
   return Array.from({ length: stepCount }, () => "." as ComposerSymbol);
@@ -122,12 +124,16 @@ export default function RhythmComposer() {
   const [metronomeEnabled, setMetronomeEnabled] = useState(false);
   const [recordStatus, setRecordStatus] = useState("Ready");
   const [copyStatus, setCopyStatus] = useState("");
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [pressedHands, setPressedHands] = useState<Record<HitSymbol, boolean>>({
     L: false,
     R: false,
   });
   const selectedStepRef = useRef(selectedStep);
+  const tempoRef = useRef(tempo);
   const metronomeEnabledRef = useRef(metronomeEnabled);
+  const shortcutHelpTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const shortcutHelpCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const metronomeContextRef = useRef<AudioContext | null>(null);
   const hitAudioRef = useRef<Record<HitSymbol, HTMLAudioElement[]> | null>(null);
   const hitAudioIndexRef = useRef<Record<HitSymbol, number>>({ L: 0, R: 0 });
@@ -383,6 +389,15 @@ export default function RhythmComposer() {
     }, recordingBeatDuration(tempo));
   }
 
+  function toggleRecording() {
+    if (isRecordLocked) {
+      stopActiveRecording();
+      return;
+    }
+
+    void startRecording();
+  }
+
   function writeHit(symbol: HitSymbol) {
     if (countIn !== null) {
       return;
@@ -432,7 +447,10 @@ export default function RhythmComposer() {
   }
 
   function updateTempo(value: number) {
-    setTempo(clampTempo(value));
+    const clampedTempo = clampTempo(value, tempoRef.current);
+
+    tempoRef.current = clampedTempo;
+    setTempo(clampedTempo);
   }
 
   function resizeGrid(nextStepCount: number) {
@@ -550,8 +568,18 @@ export default function RhythmComposer() {
   }, [selectedStep]);
 
   useEffect(() => {
+    tempoRef.current = tempo;
+  }, [tempo]);
+
+  useEffect(() => {
     metronomeEnabledRef.current = metronomeEnabled;
   }, [metronomeEnabled]);
+
+  useEffect(() => {
+    if (showShortcutHelp) {
+      shortcutHelpCloseButtonRef.current?.focus();
+    }
+  }, [showShortcutHelp]);
 
   useEffect(() => {
     return () => {
@@ -577,7 +605,20 @@ export default function RhythmComposer() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      if (showShortcutHelp) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeShortcutHelp();
+        }
+
+        return;
+      }
+
       if (shouldIgnoreKeyboardTarget(event.target)) {
+        return;
+      }
+
+      if (event.metaKey || event.ctrlKey || event.altKey) {
         return;
       }
 
@@ -589,21 +630,61 @@ export default function RhythmComposer() {
         return;
       }
 
-      if (event.key === "Backspace") {
+      const key = event.key.toLowerCase();
+
+      if (key === "r") {
         event.preventDefault();
-        clearSelectedStep();
+
+        if (!event.repeat) {
+          toggleRecording();
+        }
+
         return;
       }
 
-      if (event.code === "Space" || event.key === " ") {
+      if (key === "m") {
         event.preventDefault();
 
-        if (isRecordLocked) {
-          stopActiveRecording();
-          return;
+        if (!event.repeat) {
+          toggleMetronome(!metronomeEnabledRef.current);
         }
 
-        void startRecording();
+        return;
+      }
+
+      if (key === "c") {
+        event.preventDefault();
+
+        if (!event.repeat) {
+          clearGrid();
+        }
+
+        return;
+      }
+
+      if (event.key === "+" || event.key === "=") {
+        event.preventDefault();
+
+        if (!isRecordLocked) {
+          updateTempo(tempoRef.current + TEMPO_KEYBOARD_STEP);
+        }
+
+        return;
+      }
+
+      if (event.key === "-" || event.key === "_") {
+        event.preventDefault();
+
+        if (!isRecordLocked) {
+          updateTempo(tempoRef.current - TEMPO_KEYBOARD_STEP);
+        }
+
+        return;
+      }
+
+      if (event.key === "Backspace") {
+        event.preventDefault();
+        clearSelectedStep();
         return;
       }
 
@@ -660,7 +741,21 @@ export default function RhythmComposer() {
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", releasePressedHands);
     };
-  }, [beatStepCount, countIn, isRecordLocked, selectedStep]);
+  }, [
+    allocatedStepCount,
+    beatStepCount,
+    isRecordLocked,
+    selectedStep,
+    showShortcutHelp,
+    stepCount,
+    subdivision,
+    tempo,
+  ]);
+
+  function closeShortcutHelp() {
+    setShowShortcutHelp(false);
+    window.setTimeout(() => shortcutHelpTriggerRef.current?.focus(), 0);
+  }
 
   return (
     <section className="composer-panel" aria-label="Alfaia rhythm composer">
@@ -777,8 +872,8 @@ export default function RhythmComposer() {
           onPointerLeave={() => setHandPressed("L", false)}
           title="Left hand"
         >
-          <span>F</span>
-          <strong>L</strong>
+          <span>Press F key</span>
+          <strong>Left</strong>
         </button>
         <button
           type="button"
@@ -791,8 +886,8 @@ export default function RhythmComposer() {
           onPointerLeave={() => setHandPressed("R", false)}
           title="Right hand"
         >
-          <span>J</span>
-          <strong>R</strong>
+          <span>Press J key</span>
+          <strong>Right</strong>
         </button>
       </div>
 
@@ -838,6 +933,7 @@ export default function RhythmComposer() {
       <RhythmPlayer
         rhythm={rhythm}
         samples={PREVIEW_SAMPLES}
+        enableKeyboardShortcuts={false}
         onTempoChange={updateTempo}
       />
 
@@ -845,6 +941,91 @@ export default function RhythmComposer() {
         <span>Markdown</span>
         <textarea readOnly value={markdown} rows={15} />
       </label>
+
+      <button
+        type="button"
+        className="shortcut-help-trigger"
+        aria-haspopup="dialog"
+        aria-expanded={showShortcutHelp}
+        aria-controls="composer-shortcut-help"
+        ref={shortcutHelpTriggerRef}
+        onClick={() => setShowShortcutHelp(true)}
+      >
+        <Keyboard aria-hidden="true" size={15} />
+        Shortcuts
+      </button>
+
+      {showShortcutHelp ? (
+        <div className="shortcut-help-backdrop" onClick={closeShortcutHelp}>
+          <div
+            className="shortcut-help-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="composer-shortcut-help-title"
+            id="composer-shortcut-help"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="shortcut-help-header">
+              <h2 id="composer-shortcut-help-title">Composer shortcuts</h2>
+              <button
+                type="button"
+                aria-label="Close composer shortcuts"
+                ref={shortcutHelpCloseButtonRef}
+                onClick={closeShortcutHelp}
+              >
+                <X aria-hidden="true" size={18} />
+              </button>
+            </div>
+
+            <dl className="shortcut-list">
+              <div>
+                <dt>
+                  <kbd>R</kbd>
+                </dt>
+                <dd>Start or stop recording</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>M</kbd>
+                </dt>
+                <dd>Toggle metronome</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>C</kbd>
+                </dt>
+                <dd>Clear grid</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>+</kbd>
+                  <kbd>=</kbd>
+                </dt>
+                <dd>Increase tempo</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>-</kbd>
+                </dt>
+                <dd>Decrease tempo</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>F</kbd>
+                  <kbd>J</kbd>
+                </dt>
+                <dd>Add left or right hit</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>Backspace</kbd>
+                </dt>
+                <dd>Clear selected step</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
