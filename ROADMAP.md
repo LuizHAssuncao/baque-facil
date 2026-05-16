@@ -38,13 +38,6 @@ Known gaps:
   step count.
 - Clean committed rhythms so notation, frontmatter instruments, titles, notes,
   and examples are consistent.
-- Rhythm pages should attempt to play automatically when opened. This applies
-  only to `/rhythms/[slug]/` pages.
-- Simplify playback controls to one Play/Stop toggle button, plus Restart.
-- Use standard icons for Play, Stop, and Restart.
-- Keep minimum tempo at `30 BPM`.
-- Make `All rhythms` a more visible back control with an icon.
-- Make Loop an icon plus text control matching Play and Restart.
 - Move mute/unmute controls to the right side of each instrument row with
   mute/unmute icons.
 - Add iOS-only audio help:

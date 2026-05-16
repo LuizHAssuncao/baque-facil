@@ -62,15 +62,26 @@ p {
 }
 
 .back-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
   margin-bottom: 1.25rem;
+  padding: 0 0.9rem;
+  border: 1px solid #0f766e;
+  border-radius: 6px;
+  background: #edf7f5;
   color: #0f766e;
-  font-weight: 700;
+  font-weight: 800;
   text-decoration: none;
 }
 
 .back-link:hover {
-  text-decoration: underline;
+  background: #ccfbf1;
+}
+
+.back-link svg {
+  flex: none;
 }
 
 .rhythm-list {
@@ -176,6 +187,12 @@ p {
   background: #d7dee8;
   color: #667085;
   cursor: not-allowed;
+}
+
+.controls button.loop-toggle[aria-pressed="false"] {
+  border-color: #c5cfdc;
+  background: #ffffff;
+  color: #152033;
 }
 
 .composer-meta {
@@ -450,7 +467,9 @@ button.step-cell {
 
 button.step-cell:focus-visible,
 .composer-actions button:focus-visible,
-.hand-key:focus-visible {
+.controls button:focus-visible,
+.hand-key:focus-visible,
+.back-link:focus-visible {
   outline: 3px solid #14b8a6;
   outline-offset: 2px;
 }

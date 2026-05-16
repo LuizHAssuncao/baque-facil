@@ -1,5 +1,6 @@
 ---
 import { getCollection } from "astro:content";
+import { ArrowLeft } from "lucide-react";
 import RhythmPlayer from "../../components/RhythmPlayer";
 import { extractRhythmBlock } from "../../lib/extractRhythmBlock";
 import { parseRhythm } from "../../lib/parseRhythm";
@@ -61,7 +62,10 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
   </head>
   <body>
     <main class="page-shell">
-      <a class="back-link" href="/">All rhythms</a>
+      <a class="back-link" href="/">
+        <ArrowLeft aria-hidden="true" size={18} />
+        All rhythms
+      </a>
 
       <header class="page-header compact">
         <p class="eyebrow">{entry.data.difficulty}</p>

@@ -1,4 +1,5 @@
 ---
+import { ArrowLeft } from "lucide-react";
 import RhythmComposer from "../components/RhythmComposer";
 import "../styles/global.css";
 ---
@@ -12,7 +13,10 @@ import "../styles/global.css";
   </head>
   <body>
     <main class="page-shell">
-      <a class="back-link" href="/">All rhythms</a>
+      <a class="back-link" href="/">
+        <ArrowLeft aria-hidden="true" size={18} />
+        All rhythms
+      </a>
 
       <header class="page-header compact">
         <p class="eyebrow">Composer</p>

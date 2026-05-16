@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Play, RotateCcw, Square } from "lucide-react";
+import { Play, Repeat, RepeatOff, RotateCcw, Square } from "lucide-react";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm } from "../lib/rhythmTypes";
@@ -310,14 +310,21 @@ export default function RhythmPlayer({
           <RotateCcw aria-hidden="true" size={18} />
           Restart
         </button>
-        <label className="loop-toggle">
-          <input
-            type="checkbox"
-            checked={loop}
-            onChange={(event) => setLoop(event.target.checked)}
-          />
+        <button
+          type="button"
+          className="loop-toggle"
+          aria-pressed={loop}
+          aria-label={loop ? "Disable loop" : "Enable loop"}
+          title={loop ? "Loop on" : "Loop off"}
+          onClick={() => setLoop((currentLoop) => !currentLoop)}
+        >
+          {loop ? (
+            <Repeat aria-hidden="true" size={18} />
+          ) : (
+            <RepeatOff aria-hidden="true" size={18} />
+          )}
           Loop
-        </label>
+        </button>
         <label className="tempo-control">
           <span>Tempo</span>
           <input

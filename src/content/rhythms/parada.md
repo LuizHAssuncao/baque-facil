@@ -1,6 +1,6 @@
 ---
-title: "7 - Virada"
-slug: "virada"
+title: "7 - Parada"
+slug: "parada"
 tempo: 90
 subdivision: 16
 difficulty: "beginner"
