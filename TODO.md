@@ -1,5 +1,16 @@
 TODO:
 
+1. play the rhythm automatically if page is open. only apply this to rythms pages. 
+
+2. simplify play control buttons. no need for play/stop. only one button is necessary. if
+  it's playing, then change to stop and vice-versa 
+
+3. use standard icon for play, stop, restart. 
+
+4. allow tempo minimum to be 30bpm
+
+--
+
 Change All rythms label to a Back with an icon. make it a bit more visible. also standardize the loop button. similar to play and restart: an icon and a word
 
 ----
@@ -117,6 +128,18 @@ Player should scroll together with the sound
 
 Split transcription. Max 16 subdivisions per row. Then break line.
 
+------
+
+if the key hold, don't play several times. only once.
+
 -----
 
 create dark mode
+
+-----
+
+use hand gesture for rhythms
+
+-----
+
+translation to portuguese

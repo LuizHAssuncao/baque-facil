@@ -14,9 +14,26 @@ type RhythmPlayerProps = {
 };
 
 const DEFAULT_AUDIBLE_TRACK = "Alfaia";
+const AUTOPLAY_START_TIMEOUT_MS = 400;
 
 function defaultMutedTracks(trackNames: string[]) {
   return trackNames.filter((name) => name !== DEFAULT_AUDIBLE_TRACK);
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  let timeoutId: ReturnType<typeof window.setTimeout> | undefined;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
+  }
 }
 
 export default function RhythmPlayer({
@@ -40,11 +57,13 @@ export default function RhythmPlayer({
 
   const toneRef = useRef<ToneModule | null>(null);
   const playersRef = useRef<Record<string, any>>({});
+  const playersLoadedRef = useRef<Promise<void> | null>(null);
   const scheduledEventRef = useRef<number | null>(null);
   const tempoRef = useRef(tempo);
   const loopRef = useRef(loop);
   const mutedTracksRef = useRef(new Set(defaultMutedTrackNames));
   const hasAutoPlayedRef = useRef(false);
+  const playAttemptRef = useRef(0);
 
   const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
   const beatStepCount = getStepsPerBeat(rhythm.subdivision);
@@ -105,19 +124,32 @@ export default function RhythmPlayer({
     };
   }, []);
 
-  async function ensureAudio() {
-    setStatus("loading");
+  async function ensureAudio(options: { isAutoPlay?: boolean } = {}) {
+    if (!options.isAutoPlay) {
+      setStatus("loading");
+    }
+
     setError(null);
 
     const Tone = toneRef.current ?? (await import("tone"));
     toneRef.current = Tone;
 
-    await Tone.start();
+    const startPromise = Tone.start();
+    if (options.isAutoPlay) {
+      await withTimeout(
+        startPromise,
+        AUTOPLAY_START_TIMEOUT_MS,
+        "Audio context could not start without user interaction.",
+      );
+    } else {
+      await startPromise;
+    }
+
     if (Tone.getContext().state !== "running") {
       throw new Error("Audio context could not start.");
     }
 
-    if (Object.keys(playersRef.current).length === 0) {
+    if (!playersLoadedRef.current) {
       playersRef.current = Object.fromEntries(
         Object.entries(samples).map(([key, url]) => [
           key,
@@ -125,9 +157,10 @@ export default function RhythmPlayer({
         ]),
       );
 
-      await Tone.loaded();
+      playersLoadedRef.current = Tone.loaded();
     }
 
+    await playersLoadedRef.current;
     setStatus("ready");
     return Tone;
   }
@@ -160,9 +193,15 @@ export default function RhythmPlayer({
   }
 
   async function play(options: { isAutoPlay?: boolean } = {}) {
+    const attemptId = ++playAttemptRef.current;
+
     try {
-      const Tone = await ensureAudio();
+      const Tone = await ensureAudio(options);
       let nextStep = 0;
+
+      if (attemptId !== playAttemptRef.current) {
+        return;
+      }
 
       clearTransport(Tone);
       Tone.Transport.bpm.value = tempoRef.current;
@@ -198,19 +237,27 @@ export default function RhythmPlayer({
       setIsPlaying(true);
       Tone.Transport.start("+0.05");
     } catch (cause) {
+      if (attemptId !== playAttemptRef.current) {
+        return;
+      }
+
       setIsPlaying(false);
+      setActiveStep(null);
+
+      if (options.isAutoPlay) {
+        setStatus("idle");
+        setError(null);
+        return;
+      }
+
       setStatus("error");
-      setError(
-        options.isAutoPlay
-          ? "Autoplay was blocked by the browser. Press Play to start the rhythm."
-          : cause instanceof Error
-            ? cause.message
-            : "Playback failed.",
-      );
+      setError(cause instanceof Error ? cause.message : "Playback failed.");
     }
   }
 
   function stop() {
+    playAttemptRef.current += 1;
+
     const Tone = toneRef.current;
 
     if (Tone) {
