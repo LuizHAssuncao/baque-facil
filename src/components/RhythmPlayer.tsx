@@ -15,6 +15,8 @@ type RhythmPlayerProps = {
 
 const DEFAULT_AUDIBLE_TRACK = "Alfaia";
 const AUTOPLAY_START_TIMEOUT_MS = 400;
+const IOS_SILENT_MODE_HELP_KEY = "baque-facil-ios-silent-mode-help-seen";
+const IOS_AUDIO_HELP_PATH = "/help/ios-audio/";
 
 function defaultMutedTracks(trackNames: string[]) {
   return trackNames.filter((name) => name !== DEFAULT_AUDIBLE_TRACK);
@@ -36,6 +38,29 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
   }
 }
 
+function isIosDevice() {
+  const userAgent = navigator.userAgent;
+  const isTouchMac = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+
+  return /iPad|iPhone|iPod/.test(userAgent) || isTouchMac;
+}
+
+function hasSeenIosSilentModeHelp() {
+  try {
+    return window.localStorage.getItem(IOS_SILENT_MODE_HELP_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function markIosSilentModeHelpSeen() {
+  try {
+    window.localStorage.setItem(IOS_SILENT_MODE_HELP_KEY, "true");
+  } catch {
+    // Browsers can disable storage in private modes. The modal still dismisses for this session.
+  }
+}
+
 export default function RhythmPlayer({
   rhythm,
   samples,
@@ -54,6 +79,8 @@ export default function RhythmPlayer({
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState<string | null>(null);
   const [mutedTracks, setMutedTracks] = useState<string[]>(() => defaultMutedTrackNames);
+  const [isIos, setIsIos] = useState(false);
+  const [showIosSilentModeHelp, setShowIosSilentModeHelp] = useState(false);
 
   const toneRef = useRef<ToneModule | null>(null);
   const playersRef = useRef<Record<string, any>>({});
@@ -64,6 +91,7 @@ export default function RhythmPlayer({
   const mutedTracksRef = useRef(new Set(defaultMutedTrackNames));
   const hasAutoPlayedRef = useRef(false);
   const playAttemptRef = useRef(0);
+  const iosSilentModeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
   const beatStepCount = getStepsPerBeat(rhythm.subdivision);
@@ -101,6 +129,21 @@ export default function RhythmPlayer({
     setMutedTracks(defaultMutedTrackNames);
     mutedTracksRef.current = new Set(defaultMutedTrackNames);
   }, [defaultMutedTrackNames]);
+
+  useEffect(() => {
+    const deviceIsIos = isIosDevice();
+    setIsIos(deviceIsIos);
+
+    if (deviceIsIos && !hasSeenIosSilentModeHelp()) {
+      setShowIosSilentModeHelp(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showIosSilentModeHelp) {
+      iosSilentModeButtonRef.current?.focus();
+    }
+  }, [showIosSilentModeHelp]);
 
   useEffect(() => {
     if (!autoPlay || hasAutoPlayedRef.current) {
@@ -190,6 +233,11 @@ export default function RhythmPlayer({
 
     setTempo(clampedTempo);
     onTempoChange?.(clampedTempo);
+  }
+
+  function acknowledgeIosSilentModeHelp() {
+    markIosSilentModeHelpSeen();
+    setShowIosSilentModeHelp(false);
   }
 
   async function play(options: { isAutoPlay?: boolean } = {}) {
@@ -285,6 +333,37 @@ export default function RhythmPlayer({
 
   return (
     <section className="player-panel" aria-label={`${rhythm.title} player`}>
+      {showIosSilentModeHelp ? (
+        <div className="audio-help-backdrop">
+          <div
+            className="audio-help-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`${rhythm.slug}-ios-silent-mode-title`}
+            aria-describedby={`${rhythm.slug}-ios-silent-mode-description`}
+          >
+            <p className="eyebrow">iOS audio</p>
+            <h2 id={`${rhythm.slug}-ios-silent-mode-title`}>Make sure Silent Mode is off</h2>
+            <p id={`${rhythm.slug}-ios-silent-mode-description`}>
+              On iPhone and iPad, Silent Mode can prevent browser audio from playing. Turn
+              Silent Mode off, raise the volume, then press Play.
+            </p>
+            <div className="audio-help-actions">
+              <a href={IOS_AUDIO_HELP_PATH} onClick={acknowledgeIosSilentModeHelp}>
+                Troubleshooting steps
+              </a>
+              <button
+                type="button"
+                ref={iosSilentModeButtonRef}
+                onClick={acknowledgeIosSilentModeHelp}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="controls">
         <button
           type="button"
@@ -400,6 +479,13 @@ export default function RhythmPlayer({
           })}
         </div>
       </div>
+
+      {isIos ? (
+        <p className="ios-audio-help-link">
+          Still no sound on iPhone or iPad?{" "}
+          <a href={IOS_AUDIO_HELP_PATH}>Try iOS audio troubleshooting</a>.
+        </p>
+      ) : null}
     </section>
   );
 }

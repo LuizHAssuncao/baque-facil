@@ -1,5 +1,5 @@
 ---
-title: "7 - Parada"
+title: "4 - Parada"
 slug: "parada"
 tempo: 90
 subdivision: 16
@@ -8,23 +8,11 @@ instruments:
   - "Alfaia"
 ---
 
-Short teacher-facing description for a two-track practice pattern.
 
 ```rhythm
+Gongue:
+. X . . | X . X . | . X . . | X . X . | . X . . | X . X . | . X . . | X . X .
+
 Alfaia:
 R . . R | L R . R | L R . R | L . R L | R . . . | . . . . | . . . . | . . . .
 ```
-
-
-## Practice
-
-Start slowly, listen to the gongue cycle, then add the alfaia hand pattern.
-
-## Feel
-
-Keep the accented right-hand hits grounded and let the left-hand ghost notes stay light.
-
-Gongue example
-
-
-

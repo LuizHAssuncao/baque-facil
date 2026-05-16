@@ -36,9 +36,7 @@ Known gaps:
 
 - Clean committed rhythms so notation, frontmatter instruments, titles, notes,
   and examples are consistent.
-- Add iOS-only audio help:
-  - One-time Silent Mode modal.
-  - Troubleshooting link on the bottom to a step-by-step help page if they can't hear a sound.
+- On mobile, try to keep three playback buttons in the same row, just like in desktop. if there's space
 - Auto-scroll the rhythm grid with the active playhead.
 - Split long transcriptions into rows of max 16 subdivisions.
 - Improve Compose editing:
@@ -47,6 +45,8 @@ Known gaps:
   - Allow note adjustment with arrow-key navigation.
   - When pressing `R`, `L`, or `.`, write that value into the selected slot and
     advance to the next slot.
+  - create icon for record take
+  - rethink form fields. tempo isn't working a beat isn't necessary. subdivision also unnecessary
 - Refactor player/composer code enough to support these changes safely.
 - Add unit tests and browser tests.
 

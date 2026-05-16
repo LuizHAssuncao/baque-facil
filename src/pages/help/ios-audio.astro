@@ -1,0 +1,67 @@
+---
+import { ArrowLeft } from "lucide-react";
+import "../../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>iOS Audio Troubleshooting | Baque Facil</title>
+  </head>
+  <body>
+    <main class="page-shell">
+      <a class="back-link" href="/">
+        <ArrowLeft aria-hidden="true" size={18} />
+        All rhythms
+      </a>
+
+      <header class="page-header compact">
+        <p class="eyebrow">iOS audio</p>
+        <h1>Can't hear sound?</h1>
+        <p>Follow these checks in order on iPhone or iPad.</p>
+      </header>
+
+      <section class="help-steps" aria-label="iOS audio troubleshooting steps">
+        <ol>
+          <li>
+            <h2>Turn Silent Mode off</h2>
+            <p>
+              Use the Ring/Silent switch, Action Button, or Control Center for your device.
+              Make sure the bell is not muted.
+            </p>
+          </li>
+          <li>
+            <h2>Turn the volume up</h2>
+            <p>
+              Keep this page open, then press the physical volume up button until media volume
+              is audible.
+            </p>
+          </li>
+          <li>
+            <h2>Start audio from the Play button</h2>
+            <p>
+              iOS often requires a direct tap before web audio can start. Tap Play once, wait for
+              samples to load, then tap Restart if needed.
+            </p>
+          </li>
+          <li>
+            <h2>Check Bluetooth and AirPlay</h2>
+            <p>
+              Open Control Center and confirm audio is not routed to headphones, a speaker, or
+              another AirPlay device.
+            </p>
+          </li>
+          <li>
+            <h2>Reload and try again</h2>
+            <p>
+              Refresh the page, keep Silent Mode off, and press Play again. If one rhythm is
+              quiet, return to the rhythm list and try another page.
+            </p>
+          </li>
+        </ol>
+      </section>
+    </main>
+  </body>
+</html>
