@@ -27,6 +27,10 @@ import {
   readHandSymbolReversePreference,
   type HandSymbolReverseEventDetail,
 } from "../lib/handPreference";
+import {
+  blurPointerActivatedButton,
+  shouldIgnoreKeyboardShortcut,
+} from "../lib/keyboardShortcuts";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm } from "../lib/rhythmTypes";
 
@@ -95,17 +99,6 @@ function markIosSilentModeHelpSeen() {
   } catch {
     // Browsers can disable storage in private modes. The modal still dismisses for this session.
   }
-}
-
-function shouldIgnorePlayerShortcutTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  return Boolean(
-    target.isContentEditable ||
-      target.closest("a, button, input, select, textarea, [contenteditable]"),
-  );
 }
 
 function scrollPlayheadIntoView(
@@ -334,7 +327,7 @@ function RhythmPlayer(
         return;
       }
 
-      if (shouldIgnorePlayerShortcutTarget(event.target)) {
+      if (shouldIgnoreKeyboardShortcut(event)) {
         return;
       }
 
@@ -478,9 +471,11 @@ function RhythmPlayer(
     setShowIosSilentModeHelp(false);
   }
 
-  function closeShortcutHelp() {
+  function closeShortcutHelp(restoreFocus = true) {
     setShowShortcutHelp(false);
-    window.setTimeout(() => shortcutHelpTriggerRef.current?.focus(), 0);
+    if (restoreFocus) {
+      window.setTimeout(() => shortcutHelpTriggerRef.current?.focus(), 0);
+    }
   }
 
   async function play(options: { isAutoPlay?: boolean } = {}) {
@@ -575,7 +570,11 @@ function RhythmPlayer(
   }
 
   return (
-    <section className="player-panel" aria-label={`${rhythm.title} player`}>
+    <section
+      className="player-panel"
+      aria-label={`${rhythm.title} player`}
+      onClickCapture={(event) => blurPointerActivatedButton(event.target, event.detail)}
+    >
       {showIosSilentModeHelp ? (
         <div className="audio-help-backdrop">
           <div
@@ -749,7 +748,10 @@ function RhythmPlayer(
           </button>
 
           {showShortcutHelp ? (
-            <div className="shortcut-help-backdrop" onClick={closeShortcutHelp}>
+            <div
+              className="shortcut-help-backdrop"
+              onClick={(event) => closeShortcutHelp(event.detail === 0)}
+            >
               <div
                 className="shortcut-help-modal"
                 role="dialog"
@@ -764,7 +766,7 @@ function RhythmPlayer(
                     type="button"
                     aria-label="Close keyboard shortcuts"
                     ref={shortcutHelpCloseButtonRef}
-                    onClick={closeShortcutHelp}
+                    onClick={(event) => closeShortcutHelp(event.detail === 0)}
                   >
                     <X aria-hidden="true" size={18} />
                   </button>

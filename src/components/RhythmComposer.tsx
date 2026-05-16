@@ -9,6 +9,10 @@ import {
 import { CircleDot, Keyboard, SquareStop, X } from "lucide-react";
 import RhythmPlayer, { type RhythmPlayerHandle } from "./RhythmPlayer";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
+import {
+  blurPointerActivatedButton,
+  shouldIgnoreKeyboardShortcut,
+} from "../lib/keyboardShortcuts";
 import { sampleMap } from "../lib/sampleMap";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm, Subdivision } from "../lib/rhythmTypes";
@@ -76,17 +80,6 @@ function formatStepGroups(steps: ComposerSymbol[], groupSize: number) {
   }
 
   return groups.join(" | ");
-}
-
-function shouldIgnoreKeyboardTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  return (
-    target.isContentEditable ||
-    Boolean(target.closest("a, button, input, select, textarea, [contenteditable]"))
-  );
 }
 
 function hitSymbolForKeyboardKey(key: string): HitSymbol | null {
@@ -784,7 +777,7 @@ export default function RhythmComposer() {
         return;
       }
 
-      if (shouldIgnoreKeyboardTarget(event.target)) {
+      if (shouldIgnoreKeyboardShortcut(event)) {
         return;
       }
 
@@ -940,13 +933,19 @@ export default function RhythmComposer() {
     tempo,
   ]);
 
-  function closeShortcutHelp() {
+  function closeShortcutHelp(restoreFocus = true) {
     setShowShortcutHelp(false);
-    window.setTimeout(() => shortcutHelpTriggerRef.current?.focus(), 0);
+    if (restoreFocus) {
+      window.setTimeout(() => shortcutHelpTriggerRef.current?.focus(), 0);
+    }
   }
 
   return (
-    <section className="composer-panel" aria-label="Alfaia rhythm composer">
+    <section
+      className="composer-panel"
+      aria-label="Alfaia rhythm composer"
+      onClickCapture={(event) => blurPointerActivatedButton(event.target, event.detail)}
+    >
       <div className="composer-meta">
         <label>
           <span>Tempo</span>
@@ -1098,7 +1097,10 @@ export default function RhythmComposer() {
       </button>
 
       {showShortcutHelp ? (
-        <div className="shortcut-help-backdrop" onClick={closeShortcutHelp}>
+        <div
+          className="shortcut-help-backdrop"
+          onClick={(event) => closeShortcutHelp(event.detail === 0)}
+        >
           <div
             className="shortcut-help-modal"
             role="dialog"
@@ -1113,7 +1115,7 @@ export default function RhythmComposer() {
                 type="button"
                 aria-label="Close composer shortcuts"
                 ref={shortcutHelpCloseButtonRef}
-                onClick={closeShortcutHelp}
+                onClick={(event) => closeShortcutHelp(event.detail === 0)}
               >
                 <X aria-hidden="true" size={18} />
               </button>
