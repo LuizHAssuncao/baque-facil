@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Play, RotateCcw, Square } from "lucide-react";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
+import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm } from "../lib/rhythmTypes";
 
 type ToneModule = typeof import("tone");
@@ -7,6 +9,7 @@ type ToneModule = typeof import("tone");
 type RhythmPlayerProps = {
   rhythm: Rhythm;
   samples: Record<string, string>;
+  autoPlay?: boolean;
   onTempoChange?: (tempo: number) => void;
 };
 
@@ -19,6 +22,7 @@ function defaultMutedTracks(trackNames: string[]) {
 export default function RhythmPlayer({
   rhythm,
   samples,
+  autoPlay = false,
   onTempoChange,
 }: RhythmPlayerProps) {
   const trackNamesKey = JSON.stringify(rhythm.tracks.map((track) => track.name));
@@ -26,7 +30,7 @@ export default function RhythmPlayer({
     () => defaultMutedTracks(JSON.parse(trackNamesKey) as string[]),
     [trackNamesKey],
   );
-  const [tempo, setTempo] = useState(rhythm.tempo);
+  const [tempo, setTempo] = useState(() => clampTempo(rhythm.tempo));
   const [loop, setLoop] = useState(true);
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -40,6 +44,7 @@ export default function RhythmPlayer({
   const tempoRef = useRef(tempo);
   const loopRef = useRef(loop);
   const mutedTracksRef = useRef(new Set(defaultMutedTrackNames));
+  const hasAutoPlayedRef = useRef(false);
 
   const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
   const beatStepCount = getStepsPerBeat(rhythm.subdivision);
@@ -53,7 +58,7 @@ export default function RhythmPlayer({
   } as CSSProperties;
 
   useEffect(() => {
-    setTempo(rhythm.tempo);
+    setTempo(clampTempo(rhythm.tempo));
   }, [rhythm.tempo]);
 
   useEffect(() => {
@@ -79,6 +84,15 @@ export default function RhythmPlayer({
   }, [defaultMutedTrackNames]);
 
   useEffect(() => {
+    if (!autoPlay || hasAutoPlayedRef.current) {
+      return;
+    }
+
+    hasAutoPlayedRef.current = true;
+    void play({ isAutoPlay: true });
+  }, [autoPlay, rhythm.slug]);
+
+  useEffect(() => {
     return () => {
       const Tone = toneRef.current;
 
@@ -99,6 +113,9 @@ export default function RhythmPlayer({
     toneRef.current = Tone;
 
     await Tone.start();
+    if (Tone.getContext().state !== "running") {
+      throw new Error("Audio context could not start.");
+    }
 
     if (Object.keys(playersRef.current).length === 0) {
       playersRef.current = Object.fromEntries(
@@ -136,11 +153,13 @@ export default function RhythmPlayer({
   }
 
   function changeTempo(nextTempo: number) {
-    setTempo(nextTempo);
-    onTempoChange?.(nextTempo);
+    const clampedTempo = clampTempo(nextTempo, tempoRef.current);
+
+    setTempo(clampedTempo);
+    onTempoChange?.(clampedTempo);
   }
 
-  async function play() {
+  async function play(options: { isAutoPlay?: boolean } = {}) {
     try {
       const Tone = await ensureAudio();
       let nextStep = 0;
@@ -181,7 +200,13 @@ export default function RhythmPlayer({
     } catch (cause) {
       setIsPlaying(false);
       setStatus("error");
-      setError(cause instanceof Error ? cause.message : "Playback failed.");
+      setError(
+        options.isAutoPlay
+          ? "Autoplay was blocked by the browser. Press Play to start the rhythm."
+          : cause instanceof Error
+            ? cause.message
+            : "Playback failed.",
+      );
     }
   }
 
@@ -202,16 +227,40 @@ export default function RhythmPlayer({
     await play();
   }
 
+  async function togglePlayback() {
+    if (isPlaying) {
+      stop();
+      return;
+    }
+
+    await play();
+  }
+
   return (
     <section className="player-panel" aria-label={`${rhythm.title} player`}>
       <div className="controls">
-        <button type="button" onClick={play} disabled={status === "loading"}>
-          Play
+        <button
+          type="button"
+          onClick={togglePlayback}
+          disabled={status === "loading"}
+          aria-label={isPlaying ? "Stop" : "Play"}
+          title={isPlaying ? "Stop" : "Play"}
+        >
+          {isPlaying ? (
+            <Square aria-hidden="true" size={18} />
+          ) : (
+            <Play aria-hidden="true" size={18} />
+          )}
+          {isPlaying ? "Stop" : "Play"}
         </button>
-        <button type="button" onClick={stop} disabled={!isPlaying}>
-          Stop
-        </button>
-        <button type="button" onClick={restart} disabled={status === "loading"}>
+        <button
+          type="button"
+          onClick={restart}
+          disabled={status === "loading"}
+          aria-label="Restart"
+          title="Restart"
+        >
+          <RotateCcw aria-hidden="true" size={18} />
           Restart
         </button>
         <label className="loop-toggle">
@@ -226,8 +275,8 @@ export default function RhythmPlayer({
           <span>Tempo</span>
           <input
             type="range"
-            min="50"
-            max="150"
+            min={MIN_TEMPO}
+            max={MAX_TEMPO}
             value={tempo}
             onChange={(event) => changeTempo(Number(event.target.value))}
           />

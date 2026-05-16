@@ -154,6 +154,9 @@ p {
 }
 
 .controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   min-height: 2.5rem;
   padding: 0 0.9rem;
   border: 1px solid #152033;
@@ -162,6 +165,10 @@ p {
   color: #ffffff;
   cursor: pointer;
   font-weight: 750;
+}
+
+.controls button svg {
+  flex: none;
 }
 
 .controls button:disabled {

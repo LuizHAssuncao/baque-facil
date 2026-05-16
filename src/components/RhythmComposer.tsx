@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import RhythmPlayer from "./RhythmPlayer";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import { sampleMap } from "../lib/sampleMap";
+import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm, Subdivision } from "../lib/rhythmTypes";
 
 type ComposerSymbol = "." | "L" | "R";
@@ -92,14 +93,6 @@ function hitSymbolForKeyboardKey(key: string): HitSymbol | null {
   }
 
   return null;
-}
-
-function clampTempo(value: number) {
-  if (!Number.isFinite(value)) {
-    return 90;
-  }
-
-  return Math.min(150, Math.max(50, Math.round(value)));
 }
 
 function clampRecordingBeats(value: number) {
@@ -685,8 +678,8 @@ export default function RhythmComposer() {
           <span>Tempo</span>
           <input
             type="number"
-            min="50"
-            max="150"
+            min={MIN_TEMPO}
+            max={MAX_TEMPO}
             disabled={isRecordLocked}
             value={tempo}
             onChange={(event) => updateTempo(Number(event.target.value))}
