@@ -11,6 +11,13 @@ import {
   X,
 } from "lucide-react";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
+import {
+  HAND_SYMBOL_REVERSE_EVENT,
+  HAND_SYMBOL_REVERSE_STORAGE_KEY,
+  displayHandSymbol,
+  readHandSymbolReversePreference,
+  type HandSymbolReverseEventDetail,
+} from "../lib/handPreference";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm } from "../lib/rhythmTypes";
 
@@ -153,6 +160,7 @@ export default function RhythmPlayer({
   const [isIos, setIsIos] = useState(false);
   const [showIosSilentModeHelp, setShowIosSilentModeHelp] = useState(false);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [reverseHandSymbols, setReverseHandSymbols] = useState(false);
 
   const toneRef = useRef<ToneModule | null>(null);
   const playersRef = useRef<Record<string, any>>({});
@@ -213,6 +221,30 @@ export default function RhythmPlayer({
     if (deviceIsIos && !hasSeenIosSilentModeHelp()) {
       setShowIosSilentModeHelp(true);
     }
+  }, []);
+
+  useEffect(() => {
+    setReverseHandSymbols(readHandSymbolReversePreference());
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key === HAND_SYMBOL_REVERSE_STORAGE_KEY) {
+        setReverseHandSymbols(readHandSymbolReversePreference());
+      }
+    }
+
+    function handlePreferenceChange(event: Event) {
+      const preferenceEvent = event as CustomEvent<HandSymbolReverseEventDetail>;
+
+      setReverseHandSymbols(preferenceEvent.detail.reverseHandSymbols);
+    }
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(HAND_SYMBOL_REVERSE_EVENT, handlePreferenceChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(HAND_SYMBOL_REVERSE_EVENT, handlePreferenceChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -657,7 +689,7 @@ export default function RhythmPlayer({
                     } ${index % beatStepCount === 0 ? "beat-start" : ""}`}
                     key={`${track.name}-${index}`}
                   >
-                    {symbol}
+                    {displayHandSymbol(symbol, reverseHandSymbols)}
                   </div>
                 ))}
               </div>

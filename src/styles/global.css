@@ -89,6 +89,52 @@ p {
   gap: 0.75rem;
 }
 
+.preference-disclosure {
+  width: fit-content;
+  margin-top: 1.25rem;
+  color: #667085;
+  font-size: 0.9rem;
+}
+
+.preference-disclosure summary {
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.preference-disclosure summary:hover {
+  color: #0f766e;
+}
+
+.hand-preference-toggle {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-top: 0.6rem;
+  cursor: pointer;
+}
+
+.hand-preference-toggle input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0.15rem 0 0;
+  accent-color: #0f766e;
+}
+
+.hand-preference-toggle span {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.hand-preference-toggle strong {
+  font-size: 0.92rem;
+}
+
+.hand-preference-toggle small {
+  color: #667085;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .rhythm-link {
   display: flex;
   justify-content: space-between;
@@ -668,6 +714,8 @@ button.step-cell:focus-visible,
 .hand-key:focus-visible,
 .track-mute-button:focus-visible,
 .back-link:focus-visible,
+.preference-disclosure summary:focus-visible,
+.hand-preference-toggle:focus-within,
 .audio-help-actions a:focus-visible,
 .audio-help-actions button:focus-visible,
 .ios-audio-help-link a:focus-visible,

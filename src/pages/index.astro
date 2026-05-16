@@ -37,6 +37,33 @@ const rhythms = (await getCollection("rhythms")).sort((a, b) =>
           <span>Keyboard-first editor</span>
         </a>
       </section>
+
+      <details class="preference-disclosure">
+        <summary>Practice settings</summary>
+        <label class="hand-preference-toggle">
+          <input id="left-handed-mode" type="checkbox" />
+          <span>
+            <strong>Left-handed mode</strong>
+            <small>Reverse R (right) and L (left) in rhythm grids.</small>
+          </span>
+        </label>
+      </details>
     </main>
+
+    <script>
+      import {
+        readHandSymbolReversePreference,
+        writeHandSymbolReversePreference,
+      } from "../lib/handPreference";
+
+      const leftHandedMode = document.querySelector<HTMLInputElement>("#left-handed-mode");
+
+      if (leftHandedMode) {
+        leftHandedMode.checked = readHandSymbolReversePreference();
+        leftHandedMode.addEventListener("change", () => {
+          writeHandSymbolReversePreference(leftHandedMode.checked);
+        });
+      }
+    </script>
   </body>
 </html>
