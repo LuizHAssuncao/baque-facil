@@ -9,7 +9,6 @@ additional requested v1 items.
 
 - Improve Compose editing:
   - Fix key repeat so holding a key triggers only once until keyup.
-  - Fix mobile delay when touching hit buttons.
   - Allow note adjustment with arrow-key navigation.
   - When pressing `R`, `L`, or `.`, write that value into the selected slot and
     advance to the next slot.

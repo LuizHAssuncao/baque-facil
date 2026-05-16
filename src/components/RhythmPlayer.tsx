@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ForwardedRef,
+} from "react";
 import {
   Keyboard,
   Play,
@@ -29,6 +38,11 @@ type RhythmPlayerProps = {
   autoPlay?: boolean;
   enableKeyboardShortcuts?: boolean;
   onTempoChange?: (tempo: number) => void;
+};
+
+export type RhythmPlayerHandle = {
+  toggleLoop: () => void;
+  togglePlayback: () => void;
 };
 
 const DEFAULT_AUDIBLE_TRACK = "Alfaia";
@@ -138,13 +152,16 @@ function scrollPlayheadIntoView(
   }
 }
 
-export default function RhythmPlayer({
-  rhythm,
-  samples,
-  autoPlay = false,
-  enableKeyboardShortcuts = true,
-  onTempoChange,
-}: RhythmPlayerProps) {
+function RhythmPlayer(
+  {
+    rhythm,
+    samples,
+    autoPlay = false,
+    enableKeyboardShortcuts = true,
+    onTempoChange,
+  }: RhythmPlayerProps,
+  ref: ForwardedRef<RhythmPlayerHandle>,
+) {
   const trackNamesKey = JSON.stringify(rhythm.tracks.map((track) => track.name));
   const defaultMutedTrackNames = useMemo(
     () => defaultMutedTracks(JSON.parse(trackNamesKey) as string[]),
@@ -262,6 +279,17 @@ export default function RhythmPlayer({
   useEffect(() => {
     countCellRefs.current = countCellRefs.current.slice(0, stepCount);
   }, [stepCount]);
+
+  useImperativeHandle(ref, () => ({
+    toggleLoop: () => setLoop((currentLoop) => !currentLoop),
+    togglePlayback: () => {
+      if (status === "loading") {
+        return;
+      }
+
+      void togglePlayback();
+    },
+  }));
 
   useEffect(() => {
     if (activeStep === null) {
@@ -783,3 +811,5 @@ export default function RhythmPlayer({
     </section>
   );
 }
+
+export default forwardRef(RhythmPlayer);

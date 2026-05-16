@@ -6,8 +6,8 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Keyboard, X } from "lucide-react";
-import RhythmPlayer from "./RhythmPlayer";
+import { CircleDot, Keyboard, SquareStop, X } from "lucide-react";
+import RhythmPlayer, { type RhythmPlayerHandle } from "./RhythmPlayer";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import { sampleMap } from "../lib/sampleMap";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
@@ -15,19 +15,19 @@ import type { Rhythm, Subdivision } from "../lib/rhythmTypes";
 
 type ComposerSymbol = "." | "L" | "R";
 type HitSymbol = Exclude<ComposerSymbol, ".">;
-type Difficulty = "beginner" | "intermediate" | "advanced";
 type BrowserWindowWithAudio = Window &
   typeof globalThis & {
     webkitAudioContext?: typeof AudioContext;
   };
 
-const DEFAULT_RECORDING_BEATS = 4;
-const MIN_RECORDING_BEATS = 1;
-const MAX_RECORDING_BEATS = 64;
 const DEFAULT_SUBDIVISION: Subdivision = 16;
-const SUBDIVISIONS: Subdivision[] = [8, 16, 32];
+const DEFAULT_STEP_COUNT = getStepsPerBeat(DEFAULT_SUBDIVISION) * 4;
 const DEFAULT_TITLE = "Untitled Alfaia Rhythm";
 const DEFAULT_DESCRIPTION = "Short teacher-facing description.";
+const DEFAULT_DIFFICULTY = "beginner";
+const PLAYHEAD_SCROLL_MARGIN_PX = 24;
+const PLAYHEAD_RIGHT_LIMIT_RATIO = 0.55;
+const PLAYHEAD_TARGET_RATIO = 0.35;
 const PREVIEW_SAMPLES = {
   "Alfaia.L": sampleMap["Alfaia.L"],
   "Alfaia.R": sampleMap["Alfaia.R"],
@@ -85,9 +85,7 @@ function shouldIgnoreKeyboardTarget(target: EventTarget | null) {
 
   return (
     target.isContentEditable ||
-    target.tagName === "INPUT" ||
-    target.tagName === "TEXTAREA" ||
-    target.tagName === "SELECT"
+    Boolean(target.closest("a, button, input, select, textarea, [contenteditable]"))
   );
 }
 
@@ -103,16 +101,48 @@ function hitSymbolForKeyboardKey(key: string): HitSymbol | null {
   return null;
 }
 
-function clampRecordingBeats(value: number) {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_RECORDING_BEATS;
+function scrollPlayheadIntoView(
+  container: HTMLDivElement,
+  cell: HTMLDivElement,
+  hasFutureSteps: boolean,
+) {
+  const containerRect = container.getBoundingClientRect();
+  const cellRect = cell.getBoundingClientRect();
+  const stickyColumnWidth =
+    cell.parentElement?.querySelector<HTMLElement>(".track-name")?.offsetWidth ?? 0;
+  const visibleLeft = containerRect.left + stickyColumnWidth;
+  const visibleRight = containerRect.right;
+  const visibleWidth = visibleRight - visibleLeft;
+  const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+
+  if (cellRect.left < visibleLeft + PLAYHEAD_SCROLL_MARGIN_PX) {
+    container.scrollLeft = Math.max(
+      0,
+      container.scrollLeft + cellRect.left - visibleLeft - PLAYHEAD_SCROLL_MARGIN_PX,
+    );
+    return;
   }
 
-  return Math.min(MAX_RECORDING_BEATS, Math.max(MIN_RECORDING_BEATS, Math.round(value)));
-}
+  if (hasFutureSteps && visibleWidth > 0 && container.scrollLeft < maxScrollLeft) {
+    const rightLimit = visibleLeft + visibleWidth * PLAYHEAD_RIGHT_LIMIT_RATIO;
 
-function isSubdivision(value: number): value is Subdivision {
-  return SUBDIVISIONS.includes(value as Subdivision);
+    if (cellRect.right > rightLimit) {
+      const targetLeft = visibleLeft + visibleWidth * PLAYHEAD_TARGET_RATIO;
+
+      container.scrollLeft = Math.min(
+        maxScrollLeft,
+        Math.max(0, container.scrollLeft + cellRect.left - targetLeft),
+      );
+      return;
+    }
+  }
+
+  if (cellRect.right > visibleRight - PLAYHEAD_SCROLL_MARGIN_PX) {
+    container.scrollLeft = Math.min(
+      maxScrollLeft,
+      container.scrollLeft + cellRect.right - visibleRight + PLAYHEAD_SCROLL_MARGIN_PX,
+    );
+  }
 }
 
 function eventTimestampToPerformanceTime(timeStamp: number) {
@@ -137,20 +167,13 @@ function eventTimestampToPerformanceTime(timeStamp: number) {
 }
 
 export default function RhythmComposer() {
-  const [title, setTitle] = useState(DEFAULT_TITLE);
   const [tempo, setTempo] = useState(90);
-  const [difficulty, setDifficulty] = useState<Difficulty>("beginner");
-  const [recordingBeats, setRecordingBeats] = useState(DEFAULT_RECORDING_BEATS);
-  const [subdivision, setSubdivision] = useState<Subdivision>(DEFAULT_SUBDIVISION);
-  const [steps, setSteps] = useState<ComposerSymbol[]>(() =>
-    emptySteps(DEFAULT_RECORDING_BEATS * getStepsPerBeat(DEFAULT_SUBDIVISION)),
-  );
+  const [steps, setSteps] = useState<ComposerSymbol[]>(() => emptySteps(DEFAULT_STEP_COUNT));
   const [selectedStep, setSelectedStep] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [countIn, setCountIn] = useState<number | null>(null);
   const [metronomeEnabled, setMetronomeEnabled] = useState(false);
   const [recordStatus, setRecordStatus] = useState("Ready");
-  const [copyStatus, setCopyStatus] = useState("");
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [pressedHands, setPressedHands] = useState<Record<HitSymbol, boolean>>({
     L: false,
@@ -161,6 +184,9 @@ export default function RhythmComposer() {
   const metronomeEnabledRef = useRef(metronomeEnabled);
   const shortcutHelpTriggerRef = useRef<HTMLButtonElement | null>(null);
   const shortcutHelpCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previewPlayerRef = useRef<RhythmPlayerHandle | null>(null);
+  const gridScrollRef = useRef<HTMLDivElement | null>(null);
+  const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const composerAudioContextRef = useRef<AudioContext | null>(null);
   const hitBuffersRef = useRef<Partial<Record<HitSymbol, AudioBuffer>>>({});
   const hitBufferLoadPromiseRef = useRef<Promise<void> | null>(null);
@@ -176,8 +202,8 @@ export default function RhythmComposer() {
   const recordingStartTimeRef = useRef<number | null>(null);
 
   const stepCount = steps.length;
+  const subdivision = DEFAULT_SUBDIVISION;
   const beatStepCount = getStepsPerBeat(subdivision);
-  const allocatedStepCount = recordingBeats * beatStepCount;
   const labels = useMemo(() => countLabels(stepCount, subdivision), [stepCount, subdivision]);
   const gridStyle = useMemo(
     () =>
@@ -186,7 +212,7 @@ export default function RhythmComposer() {
       }) as CSSProperties,
     [stepCount],
   );
-  const displayTitle = title.trim() || DEFAULT_TITLE;
+  const displayTitle = DEFAULT_TITLE;
   const isRecordLocked = isRecording || countIn !== null;
 
   const rhythm = useMemo<Rhythm>(
@@ -212,7 +238,7 @@ export default function RhythmComposer() {
         `title: "${escapeYamlString(displayTitle)}"`,
         `tempo: ${tempo}`,
         `subdivision: ${subdivision}`,
-        `difficulty: "${difficulty}"`,
+        `difficulty: "${DEFAULT_DIFFICULTY}"`,
         "instruments:",
         '  - "Alfaia"',
         "---",
@@ -225,7 +251,7 @@ export default function RhythmComposer() {
         "```",
         "",
       ].join("\n"),
-    [beatStepCount, difficulty, displayTitle, steps, subdivision, tempo],
+    [beatStepCount, displayTitle, steps, subdivision, tempo],
   );
 
   function getComposerAudioContext() {
@@ -399,16 +425,20 @@ export default function RhythmComposer() {
     }
   }
 
-  function stopRecording(status = "Stopped", shouldTrimTake = false) {
+  function stopRecording(
+    status = "Stopped",
+    shouldTrimTake = false,
+    trimThroughStep = selectedStepRef.current,
+  ) {
     clearCountInTimer();
     clearRecordingTimer();
     recordingStartTimeRef.current = null;
 
     if (shouldTrimTake) {
-      const trimmedStepCount = Math.min(selectedStepRef.current + 1, allocatedStepCount);
+      const trimmedStepCount = Math.max(1, trimThroughStep + 1);
       const nextSelectedStep = Math.max(0, trimmedStepCount - 1);
 
-      setSteps((currentSteps) => currentSteps.slice(0, trimmedStepCount));
+      setSteps((currentSteps) => resizeSteps(currentSteps, trimmedStepCount));
       selectedStepRef.current = nextSelectedStep;
       setSelectedStep(nextSelectedStep);
     }
@@ -425,16 +455,14 @@ export default function RhythmComposer() {
     }
 
     if (isRecording) {
-      stopRecording("Stopped", true);
+      stopRecording("Stopped", true, getHitTargetStep());
     }
   }
 
   function beginRecordingTake() {
-    const recordingStepCount = allocatedStepCount;
     const recordingStepsPerBeat = beatStepCount;
 
     clearCountInTimer();
-    setSteps(emptySteps(recordingStepCount));
     setCountIn(null);
     setSelectedStep(0);
     selectedStepRef.current = 0;
@@ -447,16 +475,16 @@ export default function RhythmComposer() {
     recordingTimerRef.current = window.setInterval(() => {
       elapsedRecordingStepsRef.current += 1;
 
-      if (elapsedRecordingStepsRef.current >= recordingStepCount) {
-        selectedStepRef.current = 0;
-        setSelectedStep(0);
-        stopRecording("Take complete");
-        return;
-      }
-
       const nextStep = elapsedRecordingStepsRef.current;
       selectedStepRef.current = nextStep;
       setSelectedStep(nextStep);
+      setSteps((currentSteps) => {
+        if (nextStep < currentSteps.length) {
+          return currentSteps;
+        }
+
+        return resizeSteps(currentSteps, nextStep + 1);
+      });
 
       if (nextStep % recordingStepsPerBeat === 0) {
         playMetronomeClick(false);
@@ -471,6 +499,9 @@ export default function RhythmComposer() {
 
     clearRecordingTimer();
     clearCountInTimer();
+    setSteps(emptySteps(1));
+    setSelectedStep(0);
+    selectedStepRef.current = 0;
     elapsedRecordingStepsRef.current = 0;
     recordingStartTimeRef.current = null;
     setIsRecording(false);
@@ -512,7 +543,7 @@ export default function RhythmComposer() {
       elapsedMilliseconds / recordingStepDuration(tempoRef.current, subdivision),
     );
 
-    return Math.min(allocatedStepCount - 1, Math.max(0, targetStep));
+    return Math.max(0, targetStep);
   }
 
   function writeHit(symbol: HitSymbol, inputTime = performance.now()) {
@@ -522,18 +553,18 @@ export default function RhythmComposer() {
 
     const targetStep = getHitTargetStep(inputTime);
 
-    if (targetStep < 0 || targetStep >= stepCount) {
+    if (targetStep < 0) {
       return;
     }
 
     playHitSound(symbol);
 
     setSteps((currentSteps) => {
-      if (targetStep >= currentSteps.length) {
-        return currentSteps;
-      }
+      const nextSteps =
+        targetStep < currentSteps.length
+          ? [...currentSteps]
+          : resizeSteps(currentSteps, targetStep + 1);
 
-      const nextSteps = [...currentSteps];
       nextSteps[targetStep] = symbol;
       return nextSteps;
     });
@@ -563,50 +594,22 @@ export default function RhythmComposer() {
     });
   }
 
-  function updateTempo(value: number) {
-    const clampedTempo = clampTempo(value, tempoRef.current);
-
-    tempoRef.current = clampedTempo;
-    setTempo(clampedTempo);
-  }
-
-  function resizeGrid(nextStepCount: number) {
-    setSteps((currentSteps) => resizeSteps(currentSteps, nextStepCount));
-    setSelectedStep((currentStep) => {
-      const nextStep = Math.min(currentStep, nextStepCount - 1);
-      selectedStepRef.current = nextStep;
-      return nextStep;
-    });
-  }
-
-  function updateRecordingBeats(value: number) {
-    if (isRecordLocked) {
-      return;
-    }
-
-    const nextRecordingBeats = clampRecordingBeats(value);
-    setRecordingBeats(nextRecordingBeats);
-    resizeGrid(nextRecordingBeats * beatStepCount);
-  }
-
-  function updateSubdivision(value: number) {
-    if (isRecordLocked || !isSubdivision(value)) {
-      return;
-    }
-
-    setSubdivision(value);
-    resizeGrid(recordingBeats * getStepsPerBeat(value));
-  }
-
   function clearGrid() {
     if (isRecordLocked) {
       return;
     }
 
-    setSteps(emptySteps(allocatedStepCount));
+    setSteps(emptySteps(stepCount || DEFAULT_STEP_COUNT));
     setSelectedStep(0);
     selectedStepRef.current = 0;
     setRecordStatus("Ready");
+  }
+
+  function updateTempo(value: number) {
+    const clampedTempo = clampTempo(value, tempoRef.current);
+
+    tempoRef.current = clampedTempo;
+    setTempo(clampedTempo);
   }
 
   function selectStep(index: number) {
@@ -616,27 +619,6 @@ export default function RhythmComposer() {
 
     setSelectedStep(index);
     selectedStepRef.current = index;
-  }
-
-  async function copyMarkdown() {
-    try {
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(markdown);
-      } else {
-        const textarea = document.createElement("textarea");
-        textarea.value = markdown;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-        document.body.append(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        textarea.remove();
-      }
-
-      setCopyStatus("Copied");
-    } catch {
-      setCopyStatus("Copy failed");
-    }
   }
 
   function toggleMetronome(enabled: boolean) {
@@ -740,17 +722,23 @@ export default function RhythmComposer() {
   }
 
   useEffect(() => {
-    if (!copyStatus) {
+    selectedStepRef.current = selectedStep;
+  }, [selectedStep]);
+
+  useEffect(() => {
+    countCellRefs.current = countCellRefs.current.slice(0, stepCount);
+  }, [stepCount]);
+
+  useEffect(() => {
+    const container = gridScrollRef.current;
+    const selectedCell = countCellRefs.current[selectedStep];
+
+    if (!container || !selectedCell) {
       return;
     }
 
-    const timeout = window.setTimeout(() => setCopyStatus(""), 1800);
-    return () => window.clearTimeout(timeout);
-  }, [copyStatus]);
-
-  useEffect(() => {
-    selectedStepRef.current = selectedStep;
-  }, [selectedStep]);
+    scrollPlayheadIntoView(container, selectedCell, selectedStep < stepCount - 1);
+  }, [selectedStep, stepCount]);
 
   useEffect(() => {
     tempoRef.current = tempo;
@@ -814,6 +802,16 @@ export default function RhythmComposer() {
 
       const key = event.key.toLowerCase();
 
+      if (event.code === "Space" || event.key === " ") {
+        event.preventDefault();
+
+        if (!event.repeat) {
+          previewPlayerRef.current?.togglePlayback();
+        }
+
+        return;
+      }
+
       if (key === "r") {
         event.preventDefault();
 
@@ -829,6 +827,16 @@ export default function RhythmComposer() {
 
         if (!event.repeat) {
           toggleMetronome(!metronomeEnabledRef.current);
+        }
+
+        return;
+      }
+
+      if (key === "l") {
+        event.preventDefault();
+
+        if (!event.repeat) {
+          previewPlayerRef.current?.toggleLoop();
         }
 
         return;
@@ -924,13 +932,11 @@ export default function RhythmComposer() {
       window.removeEventListener("blur", releasePressedHands);
     };
   }, [
-    allocatedStepCount,
     beatStepCount,
     isRecordLocked,
     selectedStep,
     showShortcutHelp,
     stepCount,
-    subdivision,
     tempo,
   ]);
 
@@ -943,63 +949,19 @@ export default function RhythmComposer() {
     <section className="composer-panel" aria-label="Alfaia rhythm composer">
       <div className="composer-meta">
         <label>
-          <span>Title</span>
-          <input
-            type="text"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-          />
-        </label>
-
-        <label>
           <span>Tempo</span>
-          <input
-            type="number"
-            min={MIN_TEMPO}
-            max={MAX_TEMPO}
-            disabled={isRecordLocked}
-            value={tempo}
-            onChange={(event) => updateTempo(Number(event.target.value))}
-          />
-        </label>
-
-        <label>
-          <span>Beats</span>
-          <input
-            type="number"
-            min={MIN_RECORDING_BEATS}
-            max={MAX_RECORDING_BEATS}
-            disabled={isRecordLocked}
-            value={recordingBeats}
-            onChange={(event) => updateRecordingBeats(Number(event.target.value))}
-          />
-        </label>
-
-        <label>
-          <span>Subdivision</span>
-          <select
-            disabled={isRecordLocked}
-            value={subdivision}
-            onChange={(event) => updateSubdivision(Number(event.target.value))}
-          >
-            {SUBDIVISIONS.map((value) => (
-              <option value={value} key={value}>
-                {value}th notes
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span>Difficulty</span>
-          <select
-            value={difficulty}
-            onChange={(event) => setDifficulty(event.target.value as Difficulty)}
-          >
-            <option value="beginner">beginner</option>
-            <option value="intermediate">intermediate</option>
-            <option value="advanced">advanced</option>
-          </select>
+          <div className="composer-slider-row">
+            <input
+              type="range"
+              min={MIN_TEMPO}
+              max={MAX_TEMPO}
+              step="1"
+              disabled={isRecordLocked}
+              value={tempo}
+              onChange={(event) => updateTempo(Number(event.target.value))}
+            />
+            <output>{tempo} BPM</output>
+          </div>
         </label>
       </div>
 
@@ -1007,33 +969,27 @@ export default function RhythmComposer() {
         <button
           type="button"
           className="metronome-toggle"
+          aria-label={metronomeEnabled ? "Turn metronome off" : "Turn metronome on"}
           aria-pressed={metronomeEnabled}
+          title={metronomeEnabled ? "Turn metronome off" : "Turn metronome on"}
           onClick={() => toggleMetronome(!metronomeEnabled)}
         >
-          Metronome {metronomeEnabled ? "on" : "off"}
+          Metronome {metronomeEnabled ? "On" : "Off"}
         </button>
         <button
           type="button"
-          className={isRecording ? "record-button recording" : "record-button"}
-          onClick={startRecording}
-          disabled={isRecordLocked}
+          className={isRecordLocked ? "record-button recording" : "record-button"}
+          aria-label={isRecordLocked ? "Stop recording" : "Record"}
+          onClick={toggleRecording}
         >
-          {isRecording ? "Recording" : countIn === null ? "Record take" : "Counting in"}
+          {isRecordLocked ? (
+            <SquareStop aria-hidden="true" size={18} />
+          ) : (
+            <CircleDot aria-hidden="true" size={18} />
+          )}
+          {isRecordLocked ? "Stop" : "Record"}
         </button>
-        <button
-          type="button"
-          onClick={stopActiveRecording}
-          disabled={!isRecordLocked}
-        >
-          Stop recording
-        </button>
-        <button type="button" onClick={clearGrid} disabled={isRecordLocked}>
-          Clear grid
-        </button>
-        <button type="button" onClick={copyMarkdown}>
-          Copy Markdown
-        </button>
-        <span aria-live="polite">{copyStatus || recordStatus}</span>
+        <span aria-live="polite">{recordStatus}</span>
       </div>
 
       {countIn !== null ? (
@@ -1073,7 +1029,7 @@ export default function RhythmComposer() {
         </button>
       </div>
 
-      <div className="grid-scroll" aria-label="Editable rhythm grid">
+      <div className="grid-scroll" aria-label="Editable rhythm grid" ref={gridScrollRef}>
         <div className="rhythm-grid composer-grid">
           <div className="grid-row count-row composer-count-row" style={gridStyle}>
             <div className="track-name">Count</div>
@@ -1083,6 +1039,9 @@ export default function RhythmComposer() {
                   index % beatStepCount === 0 ? "beat-start" : ""
                 }`}
                 key={`${label}-${index}`}
+                ref={(element) => {
+                  countCellRefs.current[index] = element;
+                }}
               >
                 {label}
               </div>
@@ -1113,6 +1072,7 @@ export default function RhythmComposer() {
       </div>
 
       <RhythmPlayer
+        ref={previewPlayerRef}
         rhythm={rhythm}
         samples={PREVIEW_SAMPLES}
         enableKeyboardShortcuts={false}
@@ -1160,6 +1120,18 @@ export default function RhythmComposer() {
             </div>
 
             <dl className="shortcut-list">
+              <div>
+                <dt>
+                  <kbd>Space</kbd>
+                </dt>
+                <dd>Play or stop</dd>
+              </div>
+              <div>
+                <dt>
+                  <kbd>L</kbd>
+                </dt>
+                <dd>Toggle loop</dd>
+              </div>
               <div>
                 <dt>
                   <kbd>R</kbd>
