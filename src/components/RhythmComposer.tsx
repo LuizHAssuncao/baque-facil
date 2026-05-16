@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { Keyboard, X } from "lucide-react";
 import RhythmPlayer from "./RhythmPlayer";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
@@ -29,7 +36,6 @@ const HIT_SAMPLE_URLS: Record<HitSymbol, string> = {
   L: sampleMap["Alfaia.L"],
   R: sampleMap["Alfaia.R"],
 };
-const HIT_SAMPLE_POOL_SIZE = 4;
 const TEMPO_KEYBOARD_STEP = 1;
 
 function emptySteps(stepCount: number) {
@@ -109,6 +115,27 @@ function isSubdivision(value: number): value is Subdivision {
   return SUBDIVISIONS.includes(value as Subdivision);
 }
 
+function eventTimestampToPerformanceTime(timeStamp: number) {
+  const now = performance.now();
+
+  if (!Number.isFinite(timeStamp)) {
+    return now;
+  }
+
+  if (Math.abs(timeStamp - now) < 60_000) {
+    return timeStamp;
+  }
+
+  const timeOrigin = performance.timeOrigin ?? Date.now() - now;
+  const highResolutionTimeStamp = timeStamp - timeOrigin;
+
+  if (Math.abs(highResolutionTimeStamp - now) < 60_000) {
+    return highResolutionTimeStamp;
+  }
+
+  return now;
+}
+
 export default function RhythmComposer() {
   const [title, setTitle] = useState(DEFAULT_TITLE);
   const [tempo, setTempo] = useState(90);
@@ -134,12 +161,19 @@ export default function RhythmComposer() {
   const metronomeEnabledRef = useRef(metronomeEnabled);
   const shortcutHelpTriggerRef = useRef<HTMLButtonElement | null>(null);
   const shortcutHelpCloseButtonRef = useRef<HTMLButtonElement | null>(null);
-  const metronomeContextRef = useRef<AudioContext | null>(null);
-  const hitAudioRef = useRef<Record<HitSymbol, HTMLAudioElement[]> | null>(null);
-  const hitAudioIndexRef = useRef<Record<HitSymbol, number>>({ L: 0, R: 0 });
+  const composerAudioContextRef = useRef<AudioContext | null>(null);
+  const hitBuffersRef = useRef<Partial<Record<HitSymbol, AudioBuffer>>>({});
+  const hitBufferLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const activeHitPointerRef = useRef<Record<HitSymbol, number | null>>({ L: null, R: null });
+  const suppressNextHitClickRef = useRef<Record<HitSymbol, boolean>>({ L: false, R: false });
+  const suppressHitClickTimeoutRef = useRef<Record<HitSymbol, number | null>>({
+    L: null,
+    R: null,
+  });
   const recordingTimerRef = useRef<number | null>(null);
   const countInTimerRef = useRef<number | null>(null);
   const elapsedRecordingStepsRef = useRef(0);
+  const recordingStartTimeRef = useRef<number | null>(null);
 
   const stepCount = steps.length;
   const beatStepCount = getStepsPerBeat(subdivision);
@@ -194,7 +228,7 @@ export default function RhythmComposer() {
     [beatStepCount, difficulty, displayTitle, steps, subdivision, tempo],
   );
 
-  async function ensureMetronomeContext() {
+  function getComposerAudioContext() {
     const AudioContextConstructor =
       window.AudioContext ?? (window as BrowserWindowWithAudio).webkitAudioContext;
 
@@ -202,8 +236,27 @@ export default function RhythmComposer() {
       return null;
     }
 
-    const context = metronomeContextRef.current ?? new AudioContextConstructor();
-    metronomeContextRef.current = context;
+    const currentContext = composerAudioContextRef.current;
+    if (currentContext && currentContext.state !== "closed") {
+      return currentContext;
+    }
+
+    try {
+      const context = new AudioContextConstructor();
+      composerAudioContextRef.current = context;
+
+      return context;
+    } catch {
+      return null;
+    }
+  }
+
+  async function ensureComposerAudioContext() {
+    const context = getComposerAudioContext();
+
+    if (!context) {
+      return null;
+    }
 
     if (context.state === "suspended") {
       await context.resume();
@@ -212,13 +265,53 @@ export default function RhythmComposer() {
     return context;
   }
 
+  async function prepareHitSamples(options: { resume?: boolean } = {}) {
+    const context = options.resume
+      ? await ensureComposerAudioContext()
+      : getComposerAudioContext();
+
+    if (!context) {
+      return;
+    }
+
+    if (hitBufferLoadPromiseRef.current) {
+      await hitBufferLoadPromiseRef.current;
+      return;
+    }
+
+    const loadPromise = Promise.all(
+      Object.entries(HIT_SAMPLE_URLS).map(async ([symbol, url]) => {
+        const hitSymbol = symbol as HitSymbol;
+
+        if (hitBuffersRef.current[hitSymbol]) {
+          return;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Could not load ${url}.`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        hitBuffersRef.current[hitSymbol] = await context.decodeAudioData(arrayBuffer);
+      }),
+    ).then(() => undefined);
+
+    hitBufferLoadPromiseRef.current = loadPromise.catch((cause) => {
+      hitBufferLoadPromiseRef.current = null;
+      throw cause;
+    });
+
+    await hitBufferLoadPromiseRef.current;
+  }
+
   async function prepareMetronome() {
     if (!metronomeEnabledRef.current) {
       return;
     }
 
     try {
-      await ensureMetronomeContext();
+      await ensureComposerAudioContext();
     } catch {
       setMetronomeEnabled(false);
       metronomeEnabledRef.current = false;
@@ -230,7 +323,7 @@ export default function RhythmComposer() {
       return;
     }
 
-    const context = metronomeContextRef.current;
+    const context = composerAudioContextRef.current;
     if (!context || context.state === "closed") {
       return;
     }
@@ -252,37 +345,44 @@ export default function RhythmComposer() {
     oscillator.stop(now + duration + 0.01);
   }
 
-  function getHitAudioPool(symbol: HitSymbol) {
-    if (!hitAudioRef.current) {
-      hitAudioRef.current = { L: [], R: [] };
+  function startHitBuffer(context: AudioContext, symbol: HitSymbol) {
+    const buffer = hitBuffersRef.current[symbol];
+
+    if (!buffer || context.state !== "running") {
+      return false;
     }
 
-    if (hitAudioRef.current[symbol].length === 0) {
-      hitAudioRef.current[symbol] = Array.from({ length: HIT_SAMPLE_POOL_SIZE }, () => {
-        const audio = new Audio(HIT_SAMPLE_URLS[symbol]);
-        audio.preload = "auto";
-        audio.load();
-        return audio;
-      });
-    }
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    source.start();
 
-    return hitAudioRef.current[symbol];
+    return true;
   }
 
   function playHitSound(symbol: HitSymbol) {
-    const pool = getHitAudioPool(symbol);
-    const audioIndex = hitAudioIndexRef.current[symbol] % pool.length;
-    const audio = pool[audioIndex];
+    const context = getComposerAudioContext();
 
-    hitAudioIndexRef.current[symbol] = audioIndex + 1;
-
-    try {
-      audio.currentTime = 0;
-    } catch {
-      // The sample can still play even if the browser has not exposed seekable metadata yet.
+    if (!context) {
+      return;
     }
 
-    void audio.play().catch(() => undefined);
+    if (startHitBuffer(context, symbol)) {
+      return;
+    }
+
+    void (async () => {
+      if (context.state === "suspended") {
+        await context.resume();
+      }
+
+      if (startHitBuffer(context, symbol)) {
+        return;
+      }
+
+      await prepareHitSamples();
+      startHitBuffer(context, symbol);
+    })().catch(() => undefined);
   }
 
   function clearRecordingTimer() {
@@ -302,6 +402,7 @@ export default function RhythmComposer() {
   function stopRecording(status = "Stopped", shouldTrimTake = false) {
     clearCountInTimer();
     clearRecordingTimer();
+    recordingStartTimeRef.current = null;
 
     if (shouldTrimTake) {
       const trimmedStepCount = Math.min(selectedStepRef.current + 1, allocatedStepCount);
@@ -338,6 +439,7 @@ export default function RhythmComposer() {
     setSelectedStep(0);
     selectedStepRef.current = 0;
     elapsedRecordingStepsRef.current = 0;
+    recordingStartTimeRef.current = performance.now();
     setIsRecording(true);
     setRecordStatus("Recording");
     playMetronomeClick(true);
@@ -370,10 +472,12 @@ export default function RhythmComposer() {
     clearRecordingTimer();
     clearCountInTimer();
     elapsedRecordingStepsRef.current = 0;
+    recordingStartTimeRef.current = null;
     setIsRecording(false);
     setCountIn(1);
     setRecordStatus("Count-in");
 
+    void prepareHitSamples({ resume: true }).catch(() => undefined);
     void prepareMetronome().then(() => playMetronomeClick(false));
 
     let nextCount = 2;
@@ -398,12 +502,25 @@ export default function RhythmComposer() {
     void startRecording();
   }
 
-  function writeHit(symbol: HitSymbol) {
+  function getHitTargetStep(inputTime = performance.now()) {
+    if (!isRecording || recordingStartTimeRef.current === null) {
+      return selectedStepRef.current;
+    }
+
+    const elapsedMilliseconds = Math.max(0, inputTime - recordingStartTimeRef.current);
+    const targetStep = Math.floor(
+      elapsedMilliseconds / recordingStepDuration(tempoRef.current, subdivision),
+    );
+
+    return Math.min(allocatedStepCount - 1, Math.max(0, targetStep));
+  }
+
+  function writeHit(symbol: HitSymbol, inputTime = performance.now()) {
     if (countIn !== null) {
       return;
     }
 
-    const targetStep = selectedStepRef.current;
+    const targetStep = getHitTargetStep(inputTime);
 
     if (targetStep < 0 || targetStep >= stepCount) {
       return;
@@ -527,7 +644,7 @@ export default function RhythmComposer() {
     metronomeEnabledRef.current = enabled;
 
     if (enabled) {
-      void ensureMetronomeContext();
+      void ensureComposerAudioContext().catch(() => undefined);
     }
   }
 
@@ -552,6 +669,74 @@ export default function RhythmComposer() {
 
       return { L: false, R: false };
     });
+  }
+
+  function clearHitClickSuppressionTimeout(symbol: HitSymbol) {
+    const timeout = suppressHitClickTimeoutRef.current[symbol];
+
+    if (timeout !== null) {
+      window.clearTimeout(timeout);
+      suppressHitClickTimeoutRef.current[symbol] = null;
+    }
+  }
+
+  function suppressNextHitClick(symbol: HitSymbol, timeoutMilliseconds = 5_000) {
+    clearHitClickSuppressionTimeout(symbol);
+    suppressNextHitClickRef.current[symbol] = true;
+    suppressHitClickTimeoutRef.current[symbol] = window.setTimeout(() => {
+      suppressNextHitClickRef.current[symbol] = false;
+      suppressHitClickTimeoutRef.current[symbol] = null;
+    }, timeoutMilliseconds);
+  }
+
+  function releaseHitPointer(symbol: HitSymbol, event: ReactPointerEvent<HTMLButtonElement>) {
+    setHandPressed(symbol, false);
+    if (activeHitPointerRef.current[symbol] === event.pointerId) {
+      activeHitPointerRef.current[symbol] = null;
+      suppressNextHitClick(symbol, 700);
+    }
+
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // Pointer capture can already be released by the browser.
+    }
+  }
+
+  function handleHitPointerDown(
+    symbol: HitSymbol,
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    if (!event.isPrimary || event.button !== 0) {
+      return;
+    }
+
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+    }
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Some older touch browsers do not support pointer capture on buttons.
+    }
+
+    activeHitPointerRef.current[symbol] = event.pointerId;
+    suppressNextHitClick(symbol);
+    setHandPressed(symbol, true);
+    writeHit(symbol, eventTimestampToPerformanceTime(event.timeStamp));
+  }
+
+  function handleHitClick(symbol: HitSymbol) {
+    if (suppressNextHitClickRef.current[symbol]) {
+      suppressNextHitClickRef.current[symbol] = false;
+      clearHitClickSuppressionTimeout(symbol);
+      return;
+    }
+
+    writeHit(symbol);
   }
 
   useEffect(() => {
@@ -582,24 +767,21 @@ export default function RhythmComposer() {
   }, [showShortcutHelp]);
 
   useEffect(() => {
+    void prepareHitSamples().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     return () => {
       clearCountInTimer();
       clearRecordingTimer();
 
-      const context = metronomeContextRef.current;
+      const context = composerAudioContextRef.current;
       if (context && context.state !== "closed") {
         void context.close();
       }
 
-      if (hitAudioRef.current) {
-        Object.values(hitAudioRef.current)
-          .flat()
-          .forEach((audio) => {
-            audio.pause();
-            audio.removeAttribute("src");
-            audio.load();
-          });
-      }
+      clearHitClickSuppressionTimeout("L");
+      clearHitClickSuppressionTimeout("R");
     };
   }, []);
 
@@ -865,11 +1047,11 @@ export default function RhythmComposer() {
           type="button"
           className="hand-key left-hand"
           data-pressed={pressedHands.L ? "true" : "false"}
-          onClick={() => writeHit("L")}
-          onPointerDown={() => setHandPressed("L", true)}
-          onPointerUp={() => setHandPressed("L", false)}
-          onPointerCancel={() => setHandPressed("L", false)}
-          onPointerLeave={() => setHandPressed("L", false)}
+          onClick={() => handleHitClick("L")}
+          onPointerDown={(event) => handleHitPointerDown("L", event)}
+          onPointerUp={(event) => releaseHitPointer("L", event)}
+          onPointerCancel={(event) => releaseHitPointer("L", event)}
+          onPointerLeave={(event) => releaseHitPointer("L", event)}
           title="Left hand"
         >
           <span>Press F key</span>
@@ -879,11 +1061,11 @@ export default function RhythmComposer() {
           type="button"
           className="hand-key right-hand"
           data-pressed={pressedHands.R ? "true" : "false"}
-          onClick={() => writeHit("R")}
-          onPointerDown={() => setHandPressed("R", true)}
-          onPointerUp={() => setHandPressed("R", false)}
-          onPointerCancel={() => setHandPressed("R", false)}
-          onPointerLeave={() => setHandPressed("R", false)}
+          onClick={() => handleHitClick("R")}
+          onPointerDown={(event) => handleHitPointerDown("R", event)}
+          onPointerUp={(event) => releaseHitPointer("R", event)}
+          onPointerCancel={(event) => releaseHitPointer("R", event)}
+          onPointerLeave={(event) => releaseHitPointer("R", event)}
           title="Right hand"
         >
           <span>Press J key</span>

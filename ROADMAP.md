@@ -21,7 +21,6 @@ additional requested v1 items.
 - Add headless tests
 
 ### Suggested Additions
-
 - Create possibility to build songs using aliases
 - Add build-time rhythm validation so broken committed rhythm files fail
   `npm run build`.
@@ -42,7 +41,7 @@ additional requested v1 items.
 ## V1 Nice To Have
 
 ### Your Items
-
+- keep screen awake during practice
 - Create the first `.baque.json` collection schema.
 - Export rhythms or collections as `.baque.json`.
 - Import `.baque.json`.
