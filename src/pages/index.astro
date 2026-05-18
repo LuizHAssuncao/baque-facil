@@ -21,15 +21,21 @@ const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
   <body>
     <main class="page-shell">
       <header class="page-header home-hero">
-        <img
-          class="home-hero-image"
-          src="/alfaia-home.png"
-          alt="Illustrated alfaia drum"
-          width="128"
-          height="128"
-          decoding="async"
-        />
-        <h1>Baque Fácil</h1>
+        <div class="home-hero-copy">
+          <p class="eyebrow">Maracatu rhythm studio</p>
+          <h1>Baque Fácil</h1>
+          <p>Learn, practice, and compose alfaia patterns with a tactile beat grid.</p>
+        </div>
+        <div class="home-hero-media" aria-hidden="true">
+          <img
+            class="home-hero-image"
+            src="/alfaia-editorial-hero.png"
+            alt=""
+            width="1536"
+            height="1024"
+            decoding="async"
+          />
+        </div>
       </header>
 
       <section class="home-section" aria-labelledby="rhythms-heading">
