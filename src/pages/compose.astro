@@ -1,5 +1,6 @@
 ---
 import { ArrowLeft } from "lucide-react";
+import Disclaimer from "../components/Disclaimer.astro";
 import RhythmComposer from "../components/RhythmComposer";
 import "../styles/global.css";
 ---
@@ -27,6 +28,7 @@ import "../styles/global.css";
       </header>
 
       <RhythmComposer client:load />
+      <Disclaimer />
     </main>
   </body>
 </html>

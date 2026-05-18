@@ -36,6 +36,7 @@ const DEFAULT_STEP_COUNT = getStepsPerBeat(DEFAULT_SUBDIVISION) * 4;
 const DEFAULT_TITLE = "Untitled Alfaia Rhythm";
 const DEFAULT_DESCRIPTION = "A description.";
 const DEFAULT_DIFFICULTY = "beginner";
+const DEFAULT_TEMPO = 50;
 const COMPOSER_TRACK_NAME = "Alfaia";
 const COMPOSER_TRACK_COLUMN_MIN_REM = 6;
 const COMPOSER_TRACK_COLUMN_MAX_REM = 7;
@@ -327,7 +328,7 @@ function eventTimestampToPerformanceTime(timeStamp: number) {
 }
 
 export default function RhythmComposer() {
-  const [tempo, setTempo] = useState(90);
+  const [tempo, setTempo] = useState(DEFAULT_TEMPO);
   const [steps, setSteps] = useState<ComposerSymbol[]>(() => emptySteps(DEFAULT_STEP_COUNT));
   const [parsedTracks, setParsedTracks] = useState<RhythmTrack[]>(defaultTracks);
   const [transcription, setTranscription] = useState(() =>

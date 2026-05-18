@@ -1,6 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import { ArrowLeft } from "lucide-react";
+import Disclaimer from "../../components/Disclaimer.astro";
 import RhythmPlayer from "../../components/RhythmPlayer";
 import { extractRhythmBlock } from "../../lib/extractRhythmBlock";
 import { parseRhythm } from "../../lib/parseRhythm";
@@ -113,6 +114,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
           )
         }
       </nav>
+      <Disclaimer />
     </main>
   </body>
 </html>
