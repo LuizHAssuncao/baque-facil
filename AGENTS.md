@@ -14,11 +14,17 @@ served from `public/samples/`, grouped by instrument.
 
 - `npm install`: install dependencies from `package-lock.json`.
 - `npm run dev`: start the Astro development server.
+- `npm run dev:local`: start the Astro development server on
+  `http://127.0.0.1:4323` for automated browser checks.
 - `npm run build`: run Astro's production build and type/content checks.
 - `npm run preview`: serve the built site locally after `npm run build`.
+- `npm run check:layout`: run Playwright layout smoke tests across representative
+  pages and viewport sizes. Prefer this over direct headless Chrome commands for
+  visual QA; screenshots are written to Playwright's test output directory.
 
-There is no committed test or lint script yet. Use `npm run build` as the
-minimum verification step before opening a pull request.
+There is no committed lint script yet. Use `npm run build` as the minimum
+verification step before opening a pull request. Run `npm run check:layout` for
+visible layout or playback UI changes.
 
 ## Coding Style & Naming Conventions
 
@@ -41,10 +47,11 @@ use `|`. When adding symbols, make sure corresponding sample keys exist in
 
 ## Testing Guidelines
 
-No automated test framework is configured. For logic changes in `src/lib/`,
-prefer adding a focused test setup before expanding behavior. Until then, verify
-with `npm run build` and manually exercise playback, mute controls, tempo
-changes, and representative rhythm pages in the dev server.
+Playwright is configured for layout smoke coverage in `tests/layout.spec.ts`.
+For logic changes in `src/lib/`, prefer adding a focused test setup before
+expanding behavior. Verify with `npm run build` and, for visible changes,
+`npm run check:layout`. Manually exercise playback, mute controls, tempo
+changes, and representative rhythm pages when audio behavior changes.
 
 ## Commit & Pull Request Guidelines
 

@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
+    "dev:local": "ASTRO_TELEMETRY_DISABLED=1 astro dev --host 127.0.0.1 --port 4323",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "check:layout": "playwright test --config=playwright.config.ts"
   },
   "dependencies": {
     "@astrojs/react": "^3.6.2",
@@ -18,6 +20,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "typescript": "^5.7.3"
   }
 }
