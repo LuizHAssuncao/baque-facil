@@ -31,6 +31,7 @@ import {
   blurPointerActivatedButton,
   shouldIgnoreKeyboardShortcut,
 } from "../lib/keyboardShortcuts";
+import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm } from "../lib/rhythmTypes";
 
@@ -57,6 +58,8 @@ const PLAYHEAD_SCROLL_MARGIN_PX = 24;
 const PLAYHEAD_RIGHT_LIMIT_RATIO = 0.55;
 const PLAYHEAD_TARGET_RATIO = 0.35;
 const TEMPO_KEYBOARD_STEP = 1;
+const TRACK_COLUMN_MIN_REM = 8;
+const TRACK_COLUMN_MAX_REM = 9;
 
 function defaultMutedTracks(trackNames: string[]) {
   return trackNames.filter((name) => name !== DEFAULT_AUDIBLE_TRACK);
@@ -195,7 +198,14 @@ function RhythmPlayer(
     [rhythm.subdivision, stepCount],
   );
   const gridStyle = {
-    gridTemplateColumns: `minmax(8rem, 9rem) repeat(${stepCount}, minmax(2.5rem, 1fr))`,
+    gridTemplateColumns: rhythmGridColumns(
+      TRACK_COLUMN_MIN_REM,
+      TRACK_COLUMN_MAX_REM,
+      stepCount,
+    ),
+  } as CSSProperties;
+  const gridShellStyle = {
+    minWidth: rhythmGridMinWidth(TRACK_COLUMN_MIN_REM, stepCount),
   } as CSSProperties;
 
   useEffect(() => {
@@ -664,7 +674,7 @@ function RhythmPlayer(
       </div>
 
       <div className="grid-scroll" aria-label="Parsed rhythm grid" ref={gridScrollRef}>
-        <div className="rhythm-grid">
+        <div className="rhythm-grid" style={gridShellStyle}>
           <div className="grid-row count-row" style={gridStyle}>
             <div className="track-name">Count</div>
             {labels.map((label, index) => (

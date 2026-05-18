@@ -17,6 +17,7 @@ import {
 } from "../lib/keyboardShortcuts";
 import { extractRhythmBlock } from "../lib/extractRhythmBlock";
 import { parseRhythm } from "../lib/parseRhythm";
+import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { sampleEntriesForRhythm, sampleMap } from "../lib/sampleMap";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import { validateRhythm } from "../lib/validateRhythm";
@@ -36,6 +37,8 @@ const DEFAULT_TITLE = "Untitled Alfaia Rhythm";
 const DEFAULT_DESCRIPTION = "A description.";
 const DEFAULT_DIFFICULTY = "beginner";
 const COMPOSER_TRACK_NAME = "Alfaia";
+const COMPOSER_TRACK_COLUMN_MIN_REM = 6;
+const COMPOSER_TRACK_COLUMN_MAX_REM = 7;
 const PLAYHEAD_SCROLL_MARGIN_PX = 24;
 const PLAYHEAD_RIGHT_LIMIT_RATIO = 0.55;
 const PLAYHEAD_TARGET_RATIO = 0.35;
@@ -386,7 +389,18 @@ export default function RhythmComposer() {
   const gridStyle = useMemo(
     () =>
       ({
-        gridTemplateColumns: `minmax(6rem, 7rem) repeat(${stepCount}, minmax(2.5rem, 1fr))`,
+        gridTemplateColumns: rhythmGridColumns(
+          COMPOSER_TRACK_COLUMN_MIN_REM,
+          COMPOSER_TRACK_COLUMN_MAX_REM,
+          stepCount,
+        ),
+      }) as CSSProperties,
+    [stepCount],
+  );
+  const gridShellStyle = useMemo(
+    () =>
+      ({
+        minWidth: rhythmGridMinWidth(COMPOSER_TRACK_COLUMN_MIN_REM, stepCount),
       }) as CSSProperties,
     [stepCount],
   );
@@ -1447,7 +1461,7 @@ export default function RhythmComposer() {
       </div>
 
       <div className="grid-scroll" aria-label="Editable rhythm grid" ref={gridScrollRef}>
-        <div className="rhythm-grid composer-grid">
+        <div className="rhythm-grid composer-grid" style={gridShellStyle}>
           <div className="grid-row count-row composer-count-row" style={gridStyle}>
             <div className="track-name">Count</div>
             {labels.map((label, index) => (
