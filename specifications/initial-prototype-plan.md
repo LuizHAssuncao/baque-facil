@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Create the smallest possible web application prototype for Baque Facil that validates two core assumptions from `PRD.md`:
+Create the smallest possible web application prototype for Baque Fácil that validates two core assumptions from `PRD.md`:
 
 1. Tone.js is the right playback and scheduling tool for this use case.
 2. A teacher-authored Markdown rhythm file can be parsed into a playable rhythm with timing accurate enough for practice.

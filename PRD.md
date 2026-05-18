@@ -1,8 +1,8 @@
-# Baque Facil App PRD
+# Baque Fácil App PRD
 
 ## 1. Summary
 
-The Baque Facil App is a lightweight web application that helps maracatu teachers and learners document, share, practice, and hear rhythms through a simple text-based notation system.
+The Baque Fácil App is a lightweight web application that helps maracatu teachers and learners document, share, practice, and hear rhythms through a simple text-based notation system.
 
 The core workflow is:
 
