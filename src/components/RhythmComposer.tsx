@@ -8,7 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { CircleDot, Keyboard, SquareStop, X } from "lucide-react";
+import { CircleDot, Keyboard, Lightbulb, SquareStop, X } from "lucide-react";
 import RhythmPlayer, { type RhythmPlayerHandle } from "./RhythmPlayer";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import {
@@ -16,6 +16,7 @@ import {
   shouldIgnoreKeyboardShortcut,
 } from "../lib/keyboardShortcuts";
 import { extractRhythmBlock } from "../lib/extractRhythmBlock";
+import { formatRhythmBlock } from "../lib/formatRhythmBlock";
 import { parseRhythm } from "../lib/parseRhythm";
 import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { sampleEntriesForRhythm, sampleMap } from "../lib/sampleMap";
@@ -54,6 +55,7 @@ const HIT_SAMPLE_URLS: Record<HitSymbol, string> = {
 const TEMPO_KEYBOARD_STEP = 1;
 const MEDIA_HAS_CURRENT_DATA = 2;
 const TOUCH_POINTER_DEDUPLICATION_WINDOW_MS = 120;
+const PLAYER_TIP_ID = "composer-player-tip";
 
 function emptySteps(stepCount: number) {
   return Array.from({ length: stepCount }, () => "." as ComposerSymbol);
@@ -93,22 +95,6 @@ function recordingBeatDuration(tempo: number) {
 
 function escapeYamlString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-function formatStepGroups(steps: readonly string[], groupSize: number) {
-  const groups: string[] = [];
-
-  for (let index = 0; index < steps.length; index += groupSize) {
-    groups.push(steps.slice(index, index + groupSize).join(" "));
-  }
-
-  return groups.join(" | ");
-}
-
-function formatRhythmBlock(tracks: RhythmTrack[], groupSize: number) {
-  return tracks
-    .map((track) => `${track.name}:\n${formatStepGroups(track.steps, groupSize)}`)
-    .join("\n\n");
 }
 
 function formatMarkdown(tracks: RhythmTrack[], tempo: number, subdivision: Subdivision) {
@@ -368,6 +354,7 @@ export default function RhythmComposer() {
   const [metronomeEnabled, setMetronomeEnabled] = useState(false);
   const [recordStatus, setRecordStatus] = useState("Ready");
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [showPlayerTip, setShowPlayerTip] = useState(false);
   const [pressedHands, setPressedHands] = useState<Record<HitSymbol, boolean>>({
     L: false,
     R: false,
@@ -1604,6 +1591,27 @@ export default function RhythmComposer() {
         onPatternReset={resetCurrentPattern}
         onTempoChange={updateTempo}
       />
+
+      <div className="player-tip">
+        <button
+          type="button"
+          className="player-tip-trigger"
+          aria-expanded={showPlayerTip}
+          aria-controls={PLAYER_TIP_ID}
+          onClick={() => setShowPlayerTip((isVisible) => !isVisible)}
+        >
+          <Lightbulb aria-hidden="true" size={15} />
+          <span>Tip</span>
+        </button>
+        <div
+          className="player-tip-popover"
+          id={PLAYER_TIP_ID}
+          role="note"
+          hidden={!showPlayerTip}
+        >
+          Try clicking on a note in the player. This will toggle the note.
+        </div>
+      </div>
 
       <label className="markdown-output">
         <span>Transcription</span>

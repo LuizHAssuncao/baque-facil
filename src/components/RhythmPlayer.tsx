@@ -9,6 +9,7 @@ import {
   type ForwardedRef,
 } from "react";
 import {
+  ClipboardCopy,
   Keyboard,
   Play,
   Repeat,
@@ -31,6 +32,7 @@ import {
   blurPointerActivatedButton,
   shouldIgnoreKeyboardShortcut,
 } from "../lib/keyboardShortcuts";
+import { formatRhythmBlock } from "../lib/formatRhythmBlock";
 import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm, RhythmTrack } from "../lib/rhythmTypes";
@@ -65,6 +67,7 @@ const PLAYHEAD_TARGET_RATIO = 0.35;
 const TEMPO_KEYBOARD_STEP = 1;
 const TRACK_COLUMN_MIN_REM = 8;
 const TRACK_COLUMN_MAX_REM = 9;
+const COPY_FEEDBACK_TIMEOUT_MS = 2_000;
 
 const NOTE_CYCLES: Record<string, string[]> = {
   Alfaia: ["L", "R", "."],
@@ -230,6 +233,7 @@ function RhythmPlayer(
   const [isPlaying, setIsPlaying] = useState(false);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [mutedTracks, setMutedTracks] = useState<string[]>(() => defaultMutedTrackNames);
   const [isIos, setIsIos] = useState(false);
   const [showIosSilentModeHelp, setShowIosSilentModeHelp] = useState(false);
@@ -251,6 +255,7 @@ function RhythmPlayer(
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
   const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const currentTracksRef = useRef<RhythmTrack[]>(cloneTracks(currentTracks));
+  const copyFeedbackTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
   const stepCount = currentTracks[0]?.steps.length ?? 0;
   const stepCountRef = useRef(stepCount);
@@ -480,6 +485,10 @@ function RhythmPlayer(
 
   useEffect(() => {
     return () => {
+      if (copyFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+
       const Tone = toneRef.current;
 
       if (Tone) {
@@ -497,6 +506,7 @@ function RhythmPlayer(
     }
 
     setError(null);
+    setCopyFeedback(null);
 
     const Tone = toneRef.current ?? (await import("tone"));
     toneRef.current = Tone;
@@ -626,6 +636,30 @@ function RhythmPlayer(
     setShowShortcutHelp(false);
     if (restoreFocus) {
       window.setTimeout(() => shortcutHelpTriggerRef.current?.focus(), 0);
+    }
+  }
+
+  function showCopyFeedback(message: string) {
+    if (copyFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(copyFeedbackTimeoutRef.current);
+    }
+
+    setCopyFeedback(message);
+    copyFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setCopyFeedback(null);
+      copyFeedbackTimeoutRef.current = null;
+    }, COPY_FEEDBACK_TIMEOUT_MS);
+  }
+
+  async function copyTranscription() {
+    try {
+      await navigator.clipboard.writeText(
+        formatRhythmBlock(currentTracksRef.current, beatStepCount),
+      );
+      setError(null);
+      showCopyFeedback("Copied transcription.");
+    } catch {
+      showCopyFeedback("Unable to copy transcription.");
     }
   }
 
@@ -829,10 +863,6 @@ function RhythmPlayer(
         </label>
       </div>
 
-      <div className="player-status" aria-live="polite">
-        {error ? error : null}
-      </div>
-
       <div className="grid-scroll" aria-label="Parsed rhythm grid" ref={gridScrollRef}>
         <div className="rhythm-grid" style={gridShellStyle}>
           <div className="grid-row count-row" style={gridStyle}>
@@ -907,6 +937,26 @@ function RhythmPlayer(
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div className="player-secondary-actions">
+        <button
+          type="button"
+          className="copy-transcription-button"
+          onClick={copyTranscription}
+          aria-label="Copy transcription"
+          title="Copy transcription"
+        >
+          <ClipboardCopy aria-hidden="true" size={14} />
+          Copy
+        </button>
+        <div
+          className="player-status"
+          data-tone={error ? "error" : copyFeedback ? "success" : "idle"}
+          aria-live="polite"
+        >
+          {copyFeedback ?? error ?? null}
         </div>
       </div>
 

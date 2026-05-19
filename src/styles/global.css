@@ -516,6 +516,67 @@ p {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.72);
 }
 
+.player-tip {
+  display: grid;
+  justify-items: start;
+  gap: 0.55rem;
+  margin: -0.35rem 0 1rem;
+}
+
+.player-tip-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0 0.65rem;
+  border: 1px solid rgb(13 93 89 / 0.24);
+  border-radius: 999px;
+  background: rgb(255 250 242 / 0.78);
+  color: var(--muted-strong);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.72) inset;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+  transition:
+    background 170ms ease,
+    border-color 170ms ease,
+    box-shadow 170ms ease,
+    color 170ms ease,
+    transform 170ms ease;
+}
+
+.player-tip-trigger:hover,
+.player-tip-trigger[aria-expanded="true"] {
+  border-color: rgb(13 93 89 / 0.52);
+  background:
+    linear-gradient(180deg, var(--paper-strong), rgb(220 239 235 / 0.76));
+  color: var(--teal-deep);
+}
+
+.player-tip-trigger:hover {
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.72) inset,
+    0 0.5rem 0.9rem rgb(47 34 18 / 0.08);
+  transform: translateY(-1px);
+}
+
+.player-tip-trigger svg {
+  flex: none;
+}
+
+.player-tip-popover {
+  max-width: min(100%, 28rem);
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgb(13 93 89 / 0.18);
+  border-radius: var(--radius-sm);
+  background: rgb(255 250 242 / 0.94);
+  color: var(--ink-soft);
+  box-shadow: var(--shadow-sm);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .controls,
 .composer-actions,
 .hand-keys {
@@ -632,6 +693,52 @@ button.step-cell:disabled {
   padding: 0 0.72rem;
 }
 
+.player-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+}
+
+.copy-transcription-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  padding: 0 0.65rem;
+  border: 1px solid rgb(13 93 89 / 0.22);
+  border-radius: var(--radius-sm);
+  background: rgb(255 250 242 / 0.66);
+  color: var(--muted-strong);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+  transition:
+    background 170ms ease,
+    border-color 170ms ease,
+    box-shadow 170ms ease,
+    color 170ms ease,
+    transform 170ms ease;
+}
+
+.copy-transcription-button:hover {
+  border-color: rgb(13 93 89 / 0.45);
+  background: rgb(220 239 235 / 0.52);
+  color: var(--teal-deep);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.72) inset,
+    0 0.45rem 0.8rem rgb(47 34 18 / 0.07);
+  transform: translateY(-1px);
+}
+
+.copy-transcription-button svg {
+  flex: none;
+}
+
 .loop-toggle,
 .tempo-control {
   display: inline-flex;
@@ -671,10 +778,18 @@ button.step-cell:disabled {
 }
 
 .player-status {
-  min-height: 1.5rem;
-  margin: 0.72rem 0 0.35rem;
-  color: var(--danger);
+  min-height: 1.25rem;
+  color: var(--muted-strong);
+  font-size: 0.84rem;
   font-weight: 800;
+}
+
+.player-status[data-tone="error"] {
+  color: var(--danger);
+}
+
+.player-status[data-tone="success"] {
+  color: var(--teal-deep);
 }
 
 .composer-meta {
@@ -979,7 +1094,9 @@ button.step-cell:active:not(:disabled) {
 button.step-cell:focus-visible,
 .composer-actions button:focus-visible,
 .controls button:focus-visible,
+.copy-transcription-button:focus-visible,
 .hand-key:focus-visible,
+.player-tip-trigger:focus-visible,
 .track-mute-button:focus-visible,
 .back-link:focus-visible,
 .preference-disclosure summary:focus-visible,
