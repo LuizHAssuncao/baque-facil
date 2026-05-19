@@ -59,3 +59,53 @@ for (const route of routes) {
     expect(runtimeErrors).toEqual([]);
   });
 }
+
+test("predefined rhythm player notes cycle and reset", async ({ page }) => {
+  await page.goto("/rhythms/marcacao/");
+
+  const gongueStep = page.getByRole("button", { name: "Gongue step 2: X" });
+
+  await gongueStep.click();
+  await expect(page.getByRole("button", { name: "Gongue step 2: ." })).toBeVisible();
+
+  const resetButton = page.getByRole("button", { name: "Reset pattern" });
+
+  await expect(resetButton).toBeVisible();
+  await resetButton.click();
+  await expect(page.getByRole("button", { name: "Gongue step 2: X" })).toBeVisible();
+  await expect(resetButton).toBeHidden();
+
+  await page.getByRole("button", { name: "Alfaia step 7: L" }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 7: R" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Alfaia step 7: R" }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 7: ." })).toBeVisible();
+
+  await page.getByRole("button", { name: "Alfaia step 7: ." }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 7: L" })).toBeVisible();
+});
+
+test("composer edits preview pattern without changing recorded grid", async ({ page }) => {
+  await page.goto("/compose/");
+
+  const transcription = page.getByLabel("Transcription");
+  const recordedStep = page.getByRole("button", { name: "Step 1: .", exact: true });
+
+  await transcription.fill("Alfaia:\nL . . . | . . . . | . . . . | . . . .\n");
+  await expect(page.getByRole("button", { name: "Alfaia step 1: L" })).toBeVisible();
+  await expect(recordedStep).toHaveText(".");
+
+  await page.getByRole("button", { name: "Alfaia step 1: L" }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 1: R" })).toBeVisible();
+  await expect(transcription).toHaveValue(/R \. \. \./);
+  await expect(recordedStep).toHaveText(".");
+
+  await transcription.fill("Alfaia:\nQ\n");
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Alfaia step 1: R" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Reset pattern" }).click();
+  await expect(page.getByRole("alert")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Alfaia step 1: ." })).toBeVisible();
+  await expect(recordedStep).toHaveText(".");
+});

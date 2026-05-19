@@ -33,7 +33,7 @@ import {
 } from "../lib/keyboardShortcuts";
 import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
-import type { Rhythm } from "../lib/rhythmTypes";
+import type { Rhythm, RhythmTrack } from "../lib/rhythmTypes";
 
 type ToneModule = typeof import("tone");
 
@@ -41,7 +41,12 @@ type RhythmPlayerProps = {
   rhythm: Rhythm;
   samples: Record<string, string>;
   autoPlay?: boolean;
+  editableNotes?: boolean;
   enableKeyboardShortcuts?: boolean;
+  patternBaseline?: RhythmTrack[];
+  patternDirty?: boolean;
+  onPatternChange?: (tracks: RhythmTrack[]) => void;
+  onPatternReset?: () => void;
   onTempoChange?: (tempo: number) => void;
 };
 
@@ -61,8 +66,56 @@ const TEMPO_KEYBOARD_STEP = 1;
 const TRACK_COLUMN_MIN_REM = 8;
 const TRACK_COLUMN_MAX_REM = 9;
 
+const NOTE_CYCLES: Record<string, string[]> = {
+  Alfaia: ["L", "R", "."],
+  Gongue: ["X", "."],
+};
+
 function defaultMutedTracks(trackNames: string[]) {
   return trackNames.filter((name) => name !== DEFAULT_AUDIBLE_TRACK);
+}
+
+function cloneTracks(tracks: RhythmTrack[]) {
+  return tracks.map((track) => ({
+    ...track,
+    steps: [...track.steps],
+  }));
+}
+
+function tracksEqual(leftTracks: RhythmTrack[], rightTracks: RhythmTrack[]) {
+  if (leftTracks.length !== rightTracks.length) {
+    return false;
+  }
+
+  return leftTracks.every((leftTrack, trackIndex) => {
+    const rightTrack = rightTracks[trackIndex];
+
+    return (
+      rightTrack !== undefined &&
+      leftTrack.name === rightTrack.name &&
+      leftTrack.steps.length === rightTrack.steps.length &&
+      leftTrack.steps.every((symbol, stepIndex) => symbol === rightTrack.steps[stepIndex])
+    );
+  });
+}
+
+function nextEditableSymbol(trackName: string, symbol: string) {
+  if (trackName === "Gongue" && symbol === "x") {
+    return ".";
+  }
+
+  const cycle = NOTE_CYCLES[trackName];
+  const symbolIndex = cycle?.indexOf(symbol) ?? -1;
+
+  if (!cycle || symbolIndex === -1) {
+    return null;
+  }
+
+  return cycle[(symbolIndex + 1) % cycle.length];
+}
+
+function hasEditableSymbol(trackName: string, symbol: string) {
+  return nextEditableSymbol(trackName, symbol) !== null;
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
@@ -153,12 +206,20 @@ function RhythmPlayer(
     rhythm,
     samples,
     autoPlay = false,
+    editableNotes = false,
     enableKeyboardShortcuts = true,
+    patternBaseline,
+    patternDirty,
+    onPatternChange,
+    onPatternReset,
     onTempoChange,
   }: RhythmPlayerProps,
   ref: ForwardedRef<RhythmPlayerHandle>,
 ) {
-  const trackNamesKey = JSON.stringify(rhythm.tracks.map((track) => track.name));
+  const isPatternControlled = onPatternChange !== undefined;
+  const [localTracks, setLocalTracks] = useState(() => cloneTracks(rhythm.tracks));
+  const currentTracks = isPatternControlled ? rhythm.tracks : localTracks;
+  const trackNamesKey = JSON.stringify(currentTracks.map((track) => track.name));
   const defaultMutedTrackNames = useMemo(
     () => defaultMutedTracks(JSON.parse(trackNamesKey) as string[]),
     [trackNamesKey],
@@ -189,8 +250,10 @@ function RhythmPlayer(
   const shortcutHelpCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
   const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const currentTracksRef = useRef<RhythmTrack[]>(cloneTracks(currentTracks));
 
-  const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
+  const stepCount = currentTracks[0]?.steps.length ?? 0;
+  const stepCountRef = useRef(stepCount);
   const beatStepCount = getStepsPerBeat(rhythm.subdivision);
   const stepDuration = `${rhythm.subdivision}n` as "8n" | "16n" | "32n";
   const labels = useMemo(
@@ -207,6 +270,27 @@ function RhythmPlayer(
   const gridShellStyle = {
     minWidth: rhythmGridMinWidth(TRACK_COLUMN_MIN_REM, stepCount),
   } as CSSProperties;
+  const resetBaselineTracks = patternBaseline ?? rhythm.tracks;
+  const isPatternDirty =
+    patternDirty ?? (editableNotes && !tracksEqual(currentTracks, resetBaselineTracks));
+
+  useEffect(() => {
+    if (isPatternControlled) {
+      return;
+    }
+
+    const nextTracks = cloneTracks(rhythm.tracks);
+    currentTracksRef.current = nextTracks;
+    setLocalTracks(nextTracks);
+  }, [isPatternControlled, rhythm.slug, rhythm.tracks]);
+
+  useEffect(() => {
+    currentTracksRef.current = cloneTracks(currentTracks);
+  }, [currentTracks]);
+
+  useEffect(() => {
+    stepCountRef.current = stepCount;
+  }, [stepCount]);
 
   useEffect(() => {
     setTempo(clampTempo(rhythm.tempo));
@@ -432,18 +516,21 @@ function RhythmPlayer(
       throw new Error("Audio context could not start.");
     }
 
-    if (!playersLoadedRef.current) {
-      playersRef.current = Object.fromEntries(
-        Object.entries(samples).map(([key, url]) => [
-          key,
-          new Tone.Player(url).toDestination(),
-        ]),
-      );
+    const missingSamples = Object.entries(samples).filter(
+      ([key]) => !playersRef.current[key],
+    );
 
+    if (missingSamples.length > 0) {
+      missingSamples.forEach(([key, url]) => {
+        playersRef.current[key] = new Tone.Player(url).toDestination();
+      });
       playersLoadedRef.current = Tone.loaded();
     }
 
-    await playersLoadedRef.current;
+    if (playersLoadedRef.current) {
+      await playersLoadedRef.current;
+    }
+
     setStatus("ready");
     return Tone;
   }
@@ -476,6 +563,60 @@ function RhythmPlayer(
     onTempoChange?.(clampedTempo);
   }
 
+  function applyTrackEdit(nextTracks: RhythmTrack[]) {
+    const clonedTracks = cloneTracks(nextTracks);
+
+    currentTracksRef.current = clonedTracks;
+
+    if (isPatternControlled) {
+      onPatternChange?.(clonedTracks);
+      return;
+    }
+
+    setLocalTracks(clonedTracks);
+  }
+
+  function cycleNote(trackIndex: number, stepIndex: number) {
+    if (!editableNotes) {
+      return;
+    }
+
+    const nextTracks = cloneTracks(currentTracksRef.current);
+    const track = nextTracks[trackIndex];
+    const symbol = track?.steps[stepIndex];
+
+    if (!track || symbol === undefined) {
+      return;
+    }
+
+    const nextSymbol = nextEditableSymbol(track.name, symbol);
+
+    if (nextSymbol === null) {
+      return;
+    }
+
+    track.steps[stepIndex] = nextSymbol;
+    applyTrackEdit(nextTracks);
+  }
+
+  function resetPattern() {
+    const nextTracks = cloneTracks(resetBaselineTracks);
+
+    currentTracksRef.current = nextTracks;
+
+    if (onPatternReset) {
+      onPatternReset();
+      return;
+    }
+
+    if (isPatternControlled) {
+      onPatternChange?.(nextTracks);
+      return;
+    }
+
+    setLocalTracks(nextTracks);
+  }
+
   function acknowledgeIosSilentModeHelp() {
     markIosSilentModeHelpSeen();
     setShowIosSilentModeHelp(false);
@@ -504,9 +645,15 @@ function RhythmPlayer(
       Tone.Transport.position = 0;
 
       scheduledEventRef.current = Tone.Transport.scheduleRepeat((time) => {
-        const currentStep = nextStep % stepCount;
+        const currentStepCount = stepCountRef.current;
 
-        rhythm.tracks.forEach((track) => {
+        if (currentStepCount <= 0) {
+          return;
+        }
+
+        const currentStep = nextStep % currentStepCount;
+
+        currentTracksRef.current.forEach((track) => {
           const symbol = track.steps[currentStep];
 
           if (symbol === "." || mutedTracksRef.current.has(track.name)) {
@@ -519,7 +666,7 @@ function RhythmPlayer(
         Tone.Draw.schedule(() => setActiveStep(currentStep), time);
         nextStep += 1;
 
-        if (!loopRef.current && nextStep >= stepCount) {
+        if (!loopRef.current && nextStep >= currentStepCount) {
           const stopAt = time + Tone.Time(stepDuration).toSeconds();
 
           Tone.Transport.stop(stopAt);
@@ -641,6 +788,18 @@ function RhythmPlayer(
           <RotateCcw aria-hidden="true" size={18} />
           Restart
         </button>
+        {isPatternDirty ? (
+          <button
+            type="button"
+            className="reset-pattern-button"
+            onClick={resetPattern}
+            aria-label="Reset pattern"
+            title="Reset pattern"
+          >
+            <RotateCcw aria-hidden="true" size={16} />
+            Reset
+          </button>
+        ) : null}
         <button
           type="button"
           className="loop-toggle"
@@ -663,6 +822,7 @@ function RhythmPlayer(
             min={MIN_TEMPO}
             max={MAX_TEMPO}
             value={tempo}
+            suppressHydrationWarning
             onChange={(event) => changeTempo(Number(event.target.value))}
           />
           <output>{tempo} BPM</output>
@@ -690,7 +850,7 @@ function RhythmPlayer(
             ))}
           </div>
 
-          {rhythm.tracks.map((track) => {
+          {currentTracks.map((track, trackIndex) => {
             const isMuted = mutedTracks.includes(track.name);
 
             return (
@@ -718,16 +878,32 @@ function RhythmPlayer(
                     </button>
                   </span>
                 </div>
-                {track.steps.map((symbol, index) => (
-                  <div
-                    className={`step-cell ${symbol === "." ? "rest-cell" : "hit-cell"} ${
-                      activeStep === index ? "active" : ""
-                    } ${index % beatStepCount === 0 ? "beat-start" : ""}`}
-                    key={`${track.name}-${index}`}
-                  >
-                    {displayHandSymbol(symbol, reverseHandSymbols)}
-                  </div>
-                ))}
+                {track.steps.map((symbol, index) => {
+                  const cellClassName = `step-cell ${
+                    symbol === "." ? "rest-cell" : "hit-cell"
+                  } ${activeStep === index ? "active" : ""} ${
+                    index % beatStepCount === 0 ? "beat-start" : ""
+                  }`;
+                  const displayedSymbol = displayHandSymbol(symbol, reverseHandSymbols);
+                  const canEditCell = editableNotes && hasEditableSymbol(track.name, symbol);
+
+                  return canEditCell ? (
+                    <button
+                      type="button"
+                      className={cellClassName}
+                      aria-label={`${track.name} step ${index + 1}: ${displayedSymbol}`}
+                      title={`${track.name} step ${index + 1}: ${displayedSymbol}`}
+                      onClick={() => cycleNote(trackIndex, index)}
+                      key={`${track.name}-${index}`}
+                    >
+                      {displayedSymbol}
+                    </button>
+                  ) : (
+                    <div className={cellClassName} key={`${track.name}-${index}`}>
+                      {displayedSymbol}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}

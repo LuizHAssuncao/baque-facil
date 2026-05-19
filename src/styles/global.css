@@ -627,6 +627,11 @@ button.step-cell:disabled {
   color: var(--teal-deep);
 }
 
+.controls .reset-pattern-button {
+  min-height: 2.35rem;
+  padding: 0 0.72rem;
+}
+
 .loop-toggle,
 .tempo-control {
   display: inline-flex;

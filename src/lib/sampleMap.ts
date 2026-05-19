@@ -26,18 +26,12 @@ export function sampleEntriesForRhythm(
   samples: SampleMap = sampleMap,
 ): SampleMap {
   const entries: SampleMap = {};
+  const trackPrefixes = rhythm.tracks.map((track) => `${track.name}.`);
 
-  rhythm.tracks.forEach((track) => {
-    track.steps.forEach((symbol) => {
-      if (symbol === ".") {
-        return;
-      }
-
-      const key = `${track.name}.${symbol}`;
-      if (samples[key]) {
-        entries[key] = samples[key];
-      }
-    });
+  Object.entries(samples).forEach(([key, url]) => {
+    if (trackPrefixes.some((prefix) => key.startsWith(prefix))) {
+      entries[key] = url;
+    }
   });
 
   return entries;

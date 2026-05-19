@@ -84,7 +84,13 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
             </ul>
           </section>
         ) : rhythm ? (
-          <RhythmPlayer client:load rhythm={rhythm} samples={sampleEntries} autoPlay />
+          <RhythmPlayer
+            client:load
+            rhythm={rhythm}
+            samples={sampleEntries}
+            autoPlay
+            editableNotes
+          />
         ) : null
       }
 

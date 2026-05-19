@@ -174,6 +174,30 @@ function defaultTracks() {
   ];
 }
 
+function cloneTracks(tracks: RhythmTrack[]) {
+  return tracks.map((track) => ({
+    ...track,
+    steps: [...track.steps],
+  }));
+}
+
+function tracksEqual(leftTracks: RhythmTrack[], rightTracks: RhythmTrack[]) {
+  if (leftTracks.length !== rightTracks.length) {
+    return false;
+  }
+
+  return leftTracks.every((leftTrack, trackIndex) => {
+    const rightTrack = rightTracks[trackIndex];
+
+    return (
+      rightTrack !== undefined &&
+      leftTrack.name === rightTrack.name &&
+      leftTrack.steps.length === rightTrack.steps.length &&
+      leftTrack.steps.every((symbol, stepIndex) => symbol === rightTrack.steps[stepIndex])
+    );
+  });
+}
+
 function rhythmInputFromTranscription(transcription: string) {
   const closedBlock = extractRhythmBlock(transcription);
 
@@ -329,10 +353,13 @@ function eventTimestampToPerformanceTime(timeStamp: number) {
 
 export default function RhythmComposer() {
   const [tempo, setTempo] = useState(DEFAULT_TEMPO);
-  const [steps, setSteps] = useState<ComposerSymbol[]>(() => emptySteps(DEFAULT_STEP_COUNT));
-  const [parsedTracks, setParsedTracks] = useState<RhythmTrack[]>(defaultTracks);
+  const [recordedTracks, setRecordedTracks] = useState<RhythmTrack[]>(defaultTracks);
+  const [currentTracks, setCurrentTracks] = useState<RhythmTrack[]>(defaultTracks);
+  const [recordingSteps, setRecordingSteps] = useState<ComposerSymbol[]>(() =>
+    emptySteps(1),
+  );
   const [transcription, setTranscription] = useState(() =>
-    formatMarkdown(defaultTracks(), 90, DEFAULT_SUBDIVISION),
+    formatMarkdown(defaultTracks(), DEFAULT_TEMPO, DEFAULT_SUBDIVISION),
   );
   const [transcriptionErrors, setTranscriptionErrors] = useState<string[]>([]);
   const [selectedStep, setSelectedStep] = useState(0);
@@ -345,8 +372,9 @@ export default function RhythmComposer() {
     L: false,
     R: false,
   });
-  const stepsRef = useRef(steps);
-  const parsedTracksRef = useRef(parsedTracks);
+  const recordedTracksRef = useRef(recordedTracks);
+  const currentTracksRef = useRef(currentTracks);
+  const recordingStepsRef = useRef(recordingSteps);
   const transcriptionRef = useRef(transcription);
   const selectedStepRef = useRef(selectedStep);
   const tempoRef = useRef(tempo);
@@ -383,9 +411,16 @@ export default function RhythmComposer() {
   const elapsedRecordingStepsRef = useRef(0);
   const recordingStartTimeRef = useRef<number | null>(null);
 
-  const stepCount = steps.length;
   const subdivision = DEFAULT_SUBDIVISION;
   const beatStepCount = getStepsPerBeat(subdivision);
+  const displayTitle = DEFAULT_TITLE;
+  const isRecordLocked = isRecording || countIn !== null;
+  const recordedSteps = useMemo(
+    () => composerStepsFromTracks(recordedTracks) ?? emptySteps(DEFAULT_STEP_COUNT),
+    [recordedTracks],
+  );
+  const displaySteps = isRecordLocked ? recordingSteps : recordedSteps;
+  const stepCount = displaySteps.length;
   const labels = useMemo(() => countLabels(stepCount, subdivision), [stepCount, subdivision]);
   const gridStyle = useMemo(
     () =>
@@ -405,9 +440,9 @@ export default function RhythmComposer() {
       }) as CSSProperties,
     [stepCount],
   );
-  const displayTitle = DEFAULT_TITLE;
-  const isRecordLocked = isRecording || countIn !== null;
   const hasTranscriptionErrors = transcriptionErrors.length > 0;
+  const isPatternDirty =
+    hasTranscriptionErrors || !tracksEqual(currentTracks, recordedTracks);
 
   const rhythm = useMemo<Rhythm>(
     () => ({
@@ -415,9 +450,9 @@ export default function RhythmComposer() {
       slug: "compose-preview",
       tempo,
       subdivision,
-      tracks: parsedTracks,
+      tracks: currentTracks,
     }),
-    [displayTitle, parsedTracks, subdivision, tempo],
+    [currentTracks, displayTitle, subdivision, tempo],
   );
   const previewSamples = useMemo(
     () => ({
@@ -439,34 +474,71 @@ export default function RhythmComposer() {
     }
   }
 
-  function applyParsedTracks(nextTracks: RhythmTrack[]) {
-    parsedTracksRef.current = nextTracks;
-    setParsedTracks(nextTracks);
-  }
+  function applyCurrentTracks(
+    nextTracks: RhythmTrack[],
+    options: { syncTranscription?: boolean; clearErrors?: boolean } = {},
+  ) {
+    const { syncTranscription = true, clearErrors = true } = options;
+    const clonedTracks = cloneTracks(nextTracks);
 
-  function applyComposerSteps(nextSteps: ComposerSymbol[], syncTranscription = true) {
-    const normalizedSteps = nextSteps.length > 0 ? nextSteps : emptySteps(1);
+    currentTracksRef.current = clonedTracks;
+    setCurrentTracks(clonedTracks);
 
-    stepsRef.current = normalizedSteps;
-    setSteps(normalizedSteps);
-    clampSelectedStepToSteps(normalizedSteps);
+    if (syncTranscription) {
+      const nextTranscription = formatTranscriptionWithTracks(
+        transcriptionRef.current,
+        clonedTracks,
+        tempoRef.current,
+        subdivision,
+      );
 
-    if (!syncTranscription) {
-      return;
+      transcriptionRef.current = nextTranscription;
+      setTranscription(nextTranscription);
     }
 
-    const nextTracks = tracksWithComposerSteps(parsedTracksRef.current, normalizedSteps);
-    const nextTranscription = formatTranscriptionWithTracks(
-      transcriptionRef.current,
-      nextTracks,
-      tempoRef.current,
-      subdivision,
-    );
+    if (clearErrors) {
+      setTranscriptionErrors([]);
+    }
+  }
 
-    applyParsedTracks(nextTracks);
-    transcriptionRef.current = nextTranscription;
-    setTranscription(nextTranscription);
-    setTranscriptionErrors([]);
+  function applyRecordedTracks(nextTracks: RhythmTrack[]) {
+    const clonedTracks = cloneTracks(nextTracks);
+
+    recordedTracksRef.current = clonedTracks;
+    setRecordedTracks(clonedTracks);
+
+    const nextSteps = composerStepsFromTracks(clonedTracks);
+    if (nextSteps) {
+      clampSelectedStepToSteps(nextSteps);
+    }
+  }
+
+  function commitRecordingTracks(nextTracks: RhythmTrack[]) {
+    applyRecordedTracks(nextTracks);
+    applyCurrentTracks(nextTracks);
+  }
+
+  function applyCurrentComposerSteps(nextSteps: ComposerSymbol[]) {
+    const normalizedSteps = nextSteps.length > 0 ? nextSteps : emptySteps(1);
+    const nextTracks = tracksWithComposerSteps(currentTracksRef.current, normalizedSteps);
+
+    applyCurrentTracks(nextTracks);
+  }
+
+  function updateRecordingSteps(nextSteps: ComposerSymbol[]) {
+    const normalizedSteps = nextSteps.length > 0 ? nextSteps : emptySteps(1);
+
+    recordingStepsRef.current = normalizedSteps;
+    setRecordingSteps(normalizedSteps);
+    clampSelectedStepToSteps(normalizedSteps);
+  }
+
+  function resetCurrentPattern() {
+    applyCurrentTracks(recordedTracksRef.current);
+  }
+
+  function handlePreviewPatternChange(nextTracks: RhythmTrack[]) {
+    applyCurrentTracks(nextTracks);
   }
 
   function handleTranscriptionChange(event: ChangeEvent<HTMLTextAreaElement>) {
@@ -485,14 +557,7 @@ export default function RhythmComposer() {
       return;
     }
 
-    applyParsedTracks(tracks);
-    setTranscriptionErrors([]);
-
-    const nextSteps = composerStepsFromTracks(tracks);
-
-    if (nextSteps) {
-      applyComposerSteps(nextSteps, false);
-    }
+    applyCurrentTracks(tracks, { syncTranscription: false });
   }
 
   function getComposerAudioContext() {
@@ -720,8 +785,12 @@ export default function RhythmComposer() {
     if (shouldTrimTake) {
       const trimmedStepCount = Math.max(1, trimThroughStep + 1);
       const nextSelectedStep = Math.max(0, trimmedStepCount - 1);
+      const trimmedSteps = resizeSteps(recordingStepsRef.current, trimmedStepCount);
+      const nextTracks = [{ name: COMPOSER_TRACK_NAME, steps: trimmedSteps }];
 
-      applyComposerSteps(resizeSteps(stepsRef.current, trimmedStepCount));
+      recordingStepsRef.current = trimmedSteps;
+      setRecordingSteps(trimmedSteps);
+      commitRecordingTracks(nextTracks);
       selectedStepRef.current = nextSelectedStep;
       setSelectedStep(nextSelectedStep);
     }
@@ -762,8 +831,8 @@ export default function RhythmComposer() {
       selectedStepRef.current = nextStep;
       setSelectedStep(nextStep);
 
-      if (nextStep >= stepsRef.current.length) {
-        applyComposerSteps(resizeSteps(stepsRef.current, nextStep + 1));
+      if (nextStep >= recordingStepsRef.current.length) {
+        updateRecordingSteps(resizeSteps(recordingStepsRef.current, nextStep + 1));
       }
 
       if (nextStep % recordingStepsPerBeat === 0) {
@@ -779,7 +848,7 @@ export default function RhythmComposer() {
 
     clearRecordingTimer();
     clearCountInTimer();
-    applyComposerSteps(emptySteps(1));
+    updateRecordingSteps(emptySteps(1));
     setSelectedStep(0);
     selectedStepRef.current = 0;
     elapsedRecordingStepsRef.current = 0;
@@ -837,13 +906,26 @@ export default function RhythmComposer() {
       return;
     }
 
+    if (isRecording) {
+      const nextRecordingSteps =
+        targetStep < recordingStepsRef.current.length
+          ? [...recordingStepsRef.current]
+          : resizeSteps(recordingStepsRef.current, targetStep + 1);
+
+      nextRecordingSteps[targetStep] = symbol;
+      updateRecordingSteps(nextRecordingSteps);
+      return;
+    }
+
+    const currentComposerSteps =
+      composerStepsFromTracks(currentTracksRef.current) ?? emptySteps(DEFAULT_STEP_COUNT);
     const nextSteps =
-      targetStep < stepsRef.current.length
-        ? [...stepsRef.current]
-        : resizeSteps(stepsRef.current, targetStep + 1);
+      targetStep < currentComposerSteps.length
+        ? [...currentComposerSteps]
+        : resizeSteps(currentComposerSteps, targetStep + 1);
 
     nextSteps[targetStep] = symbol;
-    applyComposerSteps(nextSteps);
+    applyCurrentComposerSteps(nextSteps);
   }
 
   function moveSelectedStep(offset: number) {
@@ -863,9 +945,11 @@ export default function RhythmComposer() {
       return;
     }
 
-    const nextSteps = [...stepsRef.current];
+    const currentComposerSteps =
+      composerStepsFromTracks(currentTracksRef.current) ?? emptySteps(DEFAULT_STEP_COUNT);
+    const nextSteps = [...currentComposerSteps];
     nextSteps[selectedStepRef.current] = ".";
-    applyComposerSteps(nextSteps);
+    applyCurrentComposerSteps(nextSteps);
   }
 
   function clearGrid() {
@@ -873,7 +957,7 @@ export default function RhythmComposer() {
       return;
     }
 
-    applyComposerSteps(emptySteps(stepCount || DEFAULT_STEP_COUNT));
+    applyCurrentComposerSteps(emptySteps(stepCount || DEFAULT_STEP_COUNT));
     setSelectedStep(0);
     selectedStepRef.current = 0;
     setRecordStatus("Ready");
@@ -1138,12 +1222,16 @@ export default function RhythmComposer() {
   }, [selectedStep]);
 
   useEffect(() => {
-    stepsRef.current = steps;
-  }, [steps]);
+    recordedTracksRef.current = cloneTracks(recordedTracks);
+  }, [recordedTracks]);
 
   useEffect(() => {
-    parsedTracksRef.current = parsedTracks;
-  }, [parsedTracks]);
+    currentTracksRef.current = cloneTracks(currentTracks);
+  }, [currentTracks]);
+
+  useEffect(() => {
+    recordingStepsRef.current = recordingSteps;
+  }, [recordingSteps]);
 
   useEffect(() => {
     transcriptionRef.current = transcription;
@@ -1388,6 +1476,7 @@ export default function RhythmComposer() {
               step="1"
               disabled={isRecordLocked}
               value={tempo}
+              suppressHydrationWarning
               onChange={(event) => updateTempo(Number(event.target.value))}
             />
             <output>{tempo} BPM</output>
@@ -1482,7 +1571,7 @@ export default function RhythmComposer() {
 
           <div className="grid-row composer-step-row" style={gridStyle}>
             <div className="track-name">Alfaia</div>
-            {steps.map((symbol, index) => (
+            {displaySteps.map((symbol, index) => (
               <button
                 type="button"
                 className={`step-cell composer-cell ${
@@ -1507,7 +1596,12 @@ export default function RhythmComposer() {
         ref={previewPlayerRef}
         rhythm={rhythm}
         samples={previewSamples}
+        editableNotes={!isRecordLocked}
         enableKeyboardShortcuts={false}
+        patternBaseline={recordedTracks}
+        patternDirty={!isRecordLocked && isPatternDirty}
+        onPatternChange={handlePreviewPatternChange}
+        onPatternReset={resetCurrentPattern}
         onTempoChange={updateTempo}
       />
 
@@ -1520,6 +1614,7 @@ export default function RhythmComposer() {
           aria-describedby={
             hasTranscriptionErrors ? "composer-transcription-errors" : undefined
           }
+          suppressHydrationWarning
           onChange={handleTranscriptionChange}
         />
       </label>
