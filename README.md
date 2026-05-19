@@ -1,5 +1,7 @@
 # Baque Fácil
 
+![Baque Fácil hero image](public/alfaia-editorial-hero.png)
+
 Baque Fácil is an Astro app for learning, practicing and composing Maracatu
 rhythm patterns. It combines Markdown-authored rhythm lessons with interactive
 React rhythm grids, audio playback, and an Alfaia composer.
