@@ -37,6 +37,8 @@ additional requested v1 items.
 ## V1 Nice To Have
 
 ### Your Items
+- switch mute icons
+- radio (random rhythms)
 - quiz
 - keep screen awake during practice
 - Create the first `.baque.json` collection schema.
