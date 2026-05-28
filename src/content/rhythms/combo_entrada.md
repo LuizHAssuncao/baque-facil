@@ -1,6 +1,6 @@
 ---
-title: "Combo 1 - Entrada"
-slug: "combo1"
+title: "Entrada"
+slug: "combo_entrada"
 tempo: 90
 subdivision: 16
 difficulty: "beginner"

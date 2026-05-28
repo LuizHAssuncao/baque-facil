@@ -1,6 +1,6 @@
 ---
-title: "Combo 2 - Parada + Arrasto"
-slug: "combo2"
+title: "Parada + Arrasto"
+slug: "combo_parada_arrasto"
 tempo: 105
 subdivision: 16
 difficulty: "beginner"
