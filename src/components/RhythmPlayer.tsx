@@ -901,9 +901,9 @@ function RhythmPlayer(
                       onClick={() => toggleTrackMute(track.name)}
                     >
                       {isMuted ? (
-                        <Volume2 aria-hidden="true" size={16} />
-                      ) : (
                         <VolumeX aria-hidden="true" size={16} />
+                      ) : (
+                        <Volume2 aria-hidden="true" size={16} />
                       )}
                     </button>
                   </span>

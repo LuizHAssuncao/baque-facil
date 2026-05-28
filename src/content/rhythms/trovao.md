@@ -9,9 +9,6 @@ instruments:
 ---
 
 ```rhythm
-Gongue:
-. X . . | X . X . | . X . . | X . X .
-
 Alfaia:
 R . L R | . R L . | R . L . | . . . .
 ```
