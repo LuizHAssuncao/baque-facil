@@ -3,7 +3,7 @@ title: "Martelo break"
 slug: "combo_martelo_break"
 tempo: 105
 subdivision: 16
-difficulty: "beginner"
+difficulty: "intermediate"
 instruments:
   - "Alfaia"
 ---
