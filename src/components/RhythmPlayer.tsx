@@ -70,7 +70,7 @@ const TRACK_COLUMN_MAX_REM = 9;
 const COPY_FEEDBACK_TIMEOUT_MS = 2_000;
 
 const NOTE_CYCLES: Record<string, string[]> = {
-  Alfaia: ["L", "R", "."],
+  Alfaia: ["L", "R", "B", "."],
   Gongue: ["X", "."],
 };
 

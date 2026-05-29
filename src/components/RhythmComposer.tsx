@@ -24,8 +24,8 @@ import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import { validateRhythm } from "../lib/validateRhythm";
 import type { Rhythm, RhythmTrack, Subdivision } from "../lib/rhythmTypes";
 
-type ComposerSymbol = "." | "L" | "R";
-type HitSymbol = Exclude<ComposerSymbol, ".">;
+type ComposerSymbol = "." | "L" | "R" | "B";
+type HitSymbol = "L" | "R";
 type HitInputSource = "touchstart" | "pointerdown" | "keyboard" | "click";
 type BrowserWindowWithAudio = Window &
   typeof globalThis & {
@@ -47,6 +47,7 @@ const PLAYHEAD_TARGET_RATIO = 0.35;
 const PREVIEW_SAMPLES = {
   "Alfaia.L": sampleMap["Alfaia.L"],
   "Alfaia.R": sampleMap["Alfaia.R"],
+  "Alfaia.B": sampleMap["Alfaia.B"],
 };
 const HIT_SAMPLE_URLS: Record<HitSymbol, string> = {
   L: sampleMap["Alfaia.L"],
@@ -225,7 +226,7 @@ function parseTranscriptionTracks(
 }
 
 function isComposerSymbol(symbol: string): symbol is ComposerSymbol {
-  return symbol === "." || symbol === "L" || symbol === "R";
+  return symbol === "." || symbol === "L" || symbol === "R" || symbol === "B";
 }
 
 function composerStepsFromTracks(tracks: RhythmTrack[]) {
