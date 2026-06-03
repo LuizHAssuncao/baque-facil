@@ -1,5 +1,5 @@
 ---
-title: "4 - Parada"
+title: "4 - Parada de Quatro"
 slug: "parada"
 tempo: 105
 subdivision: 16
@@ -11,5 +11,5 @@ instruments:
 
 ```rhythm
 Alfaia:
-. R . . | R L R . | R L R . | R L . R | L R . . | . . . . | . . . . | . . . .
+. R . . | R L . . | R L R . | R L . R | L R . . | . . . . | . . . . | . . . .
 ```
