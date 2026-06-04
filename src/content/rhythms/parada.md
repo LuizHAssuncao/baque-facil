@@ -1,7 +1,7 @@
 ---
 title: "4 - Parada de Quatro"
 slug: "parada"
-tempo: 105
+tempo: 100
 subdivision: 16
 difficulty: "beginner"
 instruments:
