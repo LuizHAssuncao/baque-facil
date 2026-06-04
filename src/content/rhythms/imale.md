@@ -11,5 +11,5 @@ instruments:
 
 ```rhythm
 Alfaia:
-L . R . | L R . . | L R . . | R . . .
+R . . . | L . R . | L R . . | L R . .
 ```

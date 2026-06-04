@@ -57,7 +57,6 @@ export type RhythmPlayerHandle = {
   togglePlayback: () => void;
 };
 
-const DEFAULT_AUDIBLE_TRACK = "Alfaia";
 const AUTOPLAY_START_TIMEOUT_MS = 400;
 const IOS_SILENT_MODE_HELP_KEY = "baque-facil-ios-silent-mode-help-seen";
 const IOS_AUDIO_HELP_PATH = "/help/ios-audio/";
@@ -71,12 +70,9 @@ const COPY_FEEDBACK_TIMEOUT_MS = 2_000;
 
 const NOTE_CYCLES: Record<string, string[]> = {
   Alfaia: ["L", "R", "B", "."],
+  Caixa: ["X", "."],
   Gongue: ["X", "."],
 };
-
-function defaultMutedTracks(trackNames: string[]) {
-  return trackNames.filter((name) => name !== DEFAULT_AUDIBLE_TRACK);
-}
 
 function cloneTracks(tracks: RhythmTrack[]) {
   return tracks.map((track) => ({
@@ -223,10 +219,7 @@ function RhythmPlayer(
   const [localTracks, setLocalTracks] = useState(() => cloneTracks(rhythm.tracks));
   const currentTracks = isPatternControlled ? rhythm.tracks : localTracks;
   const trackNamesKey = JSON.stringify(currentTracks.map((track) => track.name));
-  const defaultMutedTrackNames = useMemo(
-    () => defaultMutedTracks(JSON.parse(trackNamesKey) as string[]),
-    [trackNamesKey],
-  );
+  const defaultMutedTrackNames = useMemo<string[]>(() => [], [trackNamesKey]);
   const [tempo, setTempo] = useState(() => clampTempo(rhythm.tempo));
   const [loop, setLoop] = useState(true);
   const [activeStep, setActiveStep] = useState<number | null>(null);

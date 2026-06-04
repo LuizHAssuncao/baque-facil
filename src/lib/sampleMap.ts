@@ -6,6 +6,7 @@ export const sampleMap: SampleMap = {
   "Alfaia.R": "/samples/alfaia/right-accent.wav",
   "Alfaia.L": "/samples/alfaia/left-ghost.wav",
   "Alfaia.B": "/samples/alfaia/border-hit.wav",
+  "Caixa.X": "/samples/caixa/snare-hit.wav",
   "Gongue.X": "/samples/gongue/high-loud.wav",
   "Gongue.x": "/samples/gongue/low-light.wav",
 };
