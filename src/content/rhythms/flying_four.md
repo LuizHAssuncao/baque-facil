@@ -1,7 +1,7 @@
 ---
 title: "Flying four"
 slug: "combo_flying_four"
-tempo: 105
+tempo: 100
 subdivision: 16
 difficulty: "intermediate"
 instruments:

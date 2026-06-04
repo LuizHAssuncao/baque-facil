@@ -1,7 +1,7 @@
 ---
 title: "Martelo break"
 slug: "combo_martelo_break"
-tempo: 105
+tempo: 100
 subdivision: 16
 difficulty: "intermediate"
 instruments:
