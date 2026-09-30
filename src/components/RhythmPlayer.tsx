@@ -11,6 +11,7 @@ import {
 import {
   ClipboardCopy,
   Keyboard,
+  Pencil,
   Play,
   Repeat,
   RepeatOff,
@@ -44,6 +45,7 @@ type RhythmPlayerProps = {
   samples: Record<string, string>;
   autoPlay?: boolean;
   editableNotes?: boolean;
+  customizeHref?: string;
   enableKeyboardShortcuts?: boolean;
   patternBaseline?: RhythmTrack[];
   patternDirty?: boolean;
@@ -206,6 +208,7 @@ function RhythmPlayer(
     samples,
     autoPlay = false,
     editableNotes = false,
+    customizeHref,
     enableKeyboardShortcuts = true,
     patternBaseline,
     patternDirty,
@@ -934,6 +937,12 @@ function RhythmPlayer(
       </div>
 
       <div className="player-secondary-actions">
+        {customizeHref ? (
+          <a className="customize-rhythm-button" href={customizeHref}>
+            <Pencil aria-hidden="true" size={14} />
+            Customize
+          </a>
+        ) : null}
         <button
           type="button"
           className="copy-transcription-button"
