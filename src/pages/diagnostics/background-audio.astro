@@ -1,0 +1,105 @@
+---
+import { ArrowLeft } from "lucide-react";
+import "../../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Background Audio Test | Baque Fácil</title>
+  </head>
+  <body>
+    <main class="page-shell diagnostic-page" data-audio-diagnostic>
+      <a class="back-link" href="/">
+        <ArrowLeft aria-hidden="true" size={18} />
+        All rhythms
+      </a>
+      <header class="page-header compact">
+        <p class="eyebrow">Playback diagnostic · v1</p>
+        <h1>Background audio test</h1>
+        <p>
+          Four evenly spaced clicks, with a higher click on beat one. At 120 BPM,
+          the buffer repeats every two seconds. Listen for any extra pause before beat one.
+        </p>
+      </header>
+
+      <section class="diagnostic-card" aria-label="Test playback">
+        <p class="diagnostic-status" role="status" aria-label="Test playback status" data-status>
+          Loading test controls…
+        </p>
+        <div class="controls">
+          <button type="button" data-start disabled>Start beat</button>
+          <button type="button" data-stop disabled>Stop</button>
+        </div>
+        <div class="diagnostic-tempo">
+          <label for="diagnostic-tempo">Tempo</label>
+          <output for="diagnostic-tempo" data-tempo-label>120 BPM</output>
+          <input id="diagnostic-tempo" type="range" min="60" max="180" value="120" step="1" />
+        </div>
+        <p class="diagnostic-note">
+          Tempo changes immediately. For this click test, changing speed also changes pitch.
+        </p>
+        <dl class="diagnostic-readings">
+          <div><dt>Audio engine</dt><dd data-engine>Not started</dd></div>
+          <div><dt>Background audio setting</dt><dd data-session>Checking support…</dd></div>
+          <div><dt>Audio clock</dt><dd data-clock>0.0 s</dd></div>
+          <div><dt>Last background check</dt><dd data-background>No check yet</dd></div>
+        </dl>
+        <p class="diagnostic-note">
+          Counters may freeze while the screen is locked. Sound runs independently of these
+          counters. A moving audio clock alone does not prove that sound was audible.
+        </p>
+        <noscript><p>Enable JavaScript to run this audio test.</p></noscript>
+      </section>
+
+      <section class="diagnostic-card" aria-labelledby="test-instructions">
+        <h2 id="test-instructions">Test on your iPhone</h2>
+        <ol class="diagnostic-steps">
+          <li>Open this page in Safari and tap <strong>Start beat</strong>. Listen for 20 seconds.</li>
+          <li>Switch to another app that is not playing audio. Listen for at least one minute.</li>
+          <li>Return here, then lock the phone for at least two minutes. Listen for gaps or silence.</li>
+          <li>Return, change the tempo, and repeat. Record what you heard, then tap <strong>Copy report</strong>.</li>
+        </ol>
+        <p>
+          Keep this tab open. If sound stops, return here before tapping Resume or Start:
+          the test logs the interruption and never automatically resumes playback.
+        </p>
+      </section>
+
+      <section class="diagnostic-card" aria-labelledby="test-report">
+        <h2 id="test-report">Your result</h2>
+        <label for="diagnostic-result">What did you hear while away?</label>
+        <select id="diagnostic-result">
+          <option value="Not recorded">Choose a result</option>
+          <option>Continuous beat, no gaps</option>
+          <option>Beat continued, but with gaps</option>
+          <option>Sound stopped</option>
+        </select>
+        <div class="controls">
+          <button type="button" data-copy>Copy report</button>
+        </div>
+        <p class="diagnostic-note" role="status" data-copy-status>
+          Logs stay in this tab. Nothing is sent automatically.
+        </p>
+        <details>
+          <summary>View diagnostic log</summary>
+          <label for="diagnostic-log">Diagnostic report</label>
+          <textarea id="diagnostic-log" rows="12" readonly spellcheck="false"></textarea>
+        </details>
+      </section>
+      <p class="diagnostic-note">
+        This page tests a looping Web Audio buffer with the playback audio-session setting.
+        It is separate from the rhythm player and Markdown lessons.
+      </p>
+    </main>
+    <script>
+      import { initBackgroundAudioDiagnostic } from "../../lib/audio/backgroundAudioDiagnostic";
+
+      const root = document.querySelector<HTMLElement>("[data-audio-diagnostic]");
+      if (root) initBackgroundAudioDiagnostic(root);
+    </script>
+  </body>
+</html>

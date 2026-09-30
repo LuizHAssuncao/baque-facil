@@ -4,6 +4,7 @@ const routes = [
   { name: "home", path: "/", heading: "Baque Fácil" },
   { name: "compose", path: "/compose/", heading: "Alfaia Composer" },
   { name: "ios-audio-help", path: "/help/ios-audio/", heading: "Can't hear sound?" },
+  { name: "background-audio-test", path: "/diagnostics/background-audio/", heading: "Background audio test" },
   { name: "rhythm-marcacao", path: "/rhythms/marcacao/", heading: "1 - Marcação" },
   { name: "rhythm-combo-entrada", path: "/rhythms/combo_entrada/", heading: "Entrada" },
   { name: "rhythm-combo", path: "/rhythms/combo_parada_arrasto/", heading: "Parada + Arrasto" },
@@ -189,6 +190,7 @@ test("Customize preserves every track, long patterns, and the source tempo", asy
 
 test("composer edits preview pattern without changing recorded grid", async ({ page }) => {
   await page.goto("/compose/");
+  await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
 
   const transcription = page.getByRole("textbox", { name: "Transcription" });
   const recordedStep = page.getByRole("button", { name: "Step 1: .", exact: true });
