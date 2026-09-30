@@ -4,6 +4,7 @@ import LanguagePicker from "../components/LanguagePicker.astro";
 import T from "../components/TranslatedText.astro";
 import { translatedAttributes, type Message } from "../lib/i18n/messages";
 import { getCollection } from "astro:content";
+import { ChevronRight, Headphones, PencilLine, Radio } from "lucide-react";
 import LanguageChoices from "../components/LanguageChoices.astro";
 import Disclaimer from "../components/Disclaimer.astro";
 import "../styles/global.css";
@@ -15,6 +16,32 @@ const isCombo = (rhythm: (typeof rhythms)[number]) =>
   rhythm.slug.startsWith("combo") || rhythm.data.title.toLowerCase().startsWith("combo");
 const comboRhythms = rhythms.filter(isCombo);
 const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
+const homeTools = [
+  {
+    id: "radio",
+    heading: "Radio",
+    title: "Listen to Baque Radio",
+    description: "Play along with a mix of Maracatu rhythms.",
+    href: "/radio/",
+    icon: Radio,
+  },
+  {
+    id: "listening",
+    heading: "Listening practice",
+    title: "Rhythm Quiz",
+    description: "Listen and find the matching rhythm.",
+    href: "/quiz/",
+    icon: Headphones,
+  },
+  {
+    id: "composer",
+    heading: "Composer",
+    title: "Compose an Alfaia rhythm",
+    description: "Record an Alfaia rhythm on a beat-based grid",
+    href: "/compose/",
+    icon: PencilLine,
+  },
+] as const;
 ---
 
 <!doctype html>
@@ -74,27 +101,32 @@ const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
         </div>
       </section>
 
-      <section class="home-section" aria-labelledby="radio-heading">
-        <h2 id="radio-heading"><T message="Radio" /></h2>
-        <a class="rhythm-link radio-home-link" href="/radio/">
-          <strong><T message="Listen to Baque Radio" /></strong>
-        </a>
-      </section>
-
-      <section class="home-section" aria-labelledby="listening-heading">
-        <h2 id="listening-heading"><T message="Listening practice" /></h2>
-        <a class="rhythm-link" href="/quiz/">
-          <strong><T message="Rhythm Quiz" /></strong>
-        </a>
-      </section>
-
-      <section class="home-section" aria-labelledby="composer-heading">
-        <h2 id="composer-heading"><T message="Composer" /></h2>
-        <a class="rhythm-link compose-link" href="/compose/">
-          <strong><T message="Compose an Alfaia rhythm" /></strong>
-          <span><T message="Record an Alfaia rhythm on a beat-based grid" /></span>
-        </a>
-      </section>
+      <div class="home-tools">
+        {
+          homeTools.map(({ id, heading, title, description, href, icon: Icon }) => (
+            <section class="home-section" aria-labelledby={`${id}-heading`}>
+              <h2 id={`${id}-heading`}><T message={heading} /></h2>
+              <a
+                class="home-tool-card"
+                href={href}
+                aria-labelledby={`${id}-title`}
+                aria-describedby={`${id}-description`}
+              >
+                <span class="home-tool-icon" aria-hidden="true">
+                  <Icon size={22} />
+                </span>
+                <span class="home-tool-copy">
+                  <strong id={`${id}-title`}><T message={title} /></strong>
+                  <span class="home-tool-description" id={`${id}-description`}>
+                    <T message={description} />
+                  </span>
+                </span>
+                <ChevronRight className="home-tool-arrow" size={20} aria-hidden="true" />
+              </a>
+            </section>
+          ))
+        }
+      </div>
 
       <details class="preference-disclosure">
         <summary><T message="Settings" /></summary>
