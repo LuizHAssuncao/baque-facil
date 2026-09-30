@@ -2,6 +2,7 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 const routes = [
   { name: "home", path: "/", heading: "Baque Fácil" },
+  { name: "quiz", path: "/quiz/", heading: "Rhythm quiz" },
   { name: "compose", path: "/compose/", heading: "Alfaia Composer" },
   { name: "ios-audio-help", path: "/help/ios-audio/", heading: "Can't hear sound?" },
   { name: "background-audio-test", path: "/diagnostics/background-audio/", heading: "Background audio test" },

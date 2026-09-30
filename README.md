@@ -10,6 +10,8 @@ React rhythm grids, audio playback, and an Alfaia composer.
 
 - Rhythm index with separate practice rhythm and combo sections.
 - Generated rhythm pages from Markdown content in `src/content/rhythms/`.
+- A listening quiz at `/quiz/`: match a rhythm name to one of three audio options,
+  with unlimited replay and practice, no notation, and no scoring.
 - Fixed-note rhythm player with tempo control, looping, mute controls, restart,
   keyboard support, and background media playback. The composer preview remains editable.
 - Alfaia composer with recording controls, metronome, transcription editing, and
@@ -119,6 +121,15 @@ A few example of sample keys are:
 
 When adding a new instrument or symbol, add the sample under `public/samples/`,
 update `src/lib/sampleMap.ts` and verify a rhythm page that uses it.
+
+The quiz pool comes directly from the rhythm collection via `/quiz/rhythms.json`.
+Adding a valid, audible rhythm to `src/content/rhythms/` includes it automatically
+in the next site build; there is no separate quiz list or opt-in flag. The quiz
+fetches the pool again for every round, so open sessions pick up a newly deployed
+library. As with the rest of this static Astro site, production content changes
+require the normal build and deployment. Invalid or silent patterns are excluded,
+and each round needs three distinct sounds. All options use the existing drum
+samples at 90 BPM, with anonymous media controls and no automatic playback.
 
 ## Verification
 

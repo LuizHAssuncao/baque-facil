@@ -1,0 +1,32 @@
+---
+import { ArrowLeft } from "lucide-react";
+import Disclaimer from "../../components/Disclaimer.astro";
+import RhythmQuiz from "../../components/RhythmQuiz";
+import "../../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Get to know Maracatu rhythms by ear. Read a rhythm name, listen, and find its sound." />
+    <title>Rhythm quiz | Baque Fácil</title>
+  </head>
+  <body>
+    <main class="page-shell quiz-page">
+      <a class="back-link" href="/">
+        <ArrowLeft aria-hidden="true" size={18} />
+        All rhythms
+      </a>
+      <header class="page-header quiz-header">
+        <p class="eyebrow">Listening practice</p>
+        <h1>Rhythm quiz</h1>
+        <p>Read the name, listen to the options, and find the matching rhythm.</p>
+      </header>
+      <RhythmQuiz client:load />
+      <noscript><p>Enable JavaScript to listen to the options and practice.</p></noscript>
+      <Disclaimer />
+    </main>
+  </body>
+</html>
