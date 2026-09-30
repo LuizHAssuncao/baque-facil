@@ -68,6 +68,11 @@ player/composer, keyboard, or layout changes.
 - Keep broad refactors out of small behavior/content changes. `RhythmPlayer.tsx`
   and `RhythmComposer.tsx` are large and stateful; change them narrowly unless
   the task is explicitly a refactor.
+- Whenever a UI change adds, replaces, or deletes a string, apply the same
+  change in every supported language (currently `en-CA` and `pt-BR`). This
+  includes visible text, accessibility labels, tooltips, errors, and page metadata.
+  Update the relevant translations in the same change, and remove unused
+  translation entries when a string is deleted.
 
 ## Rhythm Content
 
