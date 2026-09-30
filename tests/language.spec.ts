@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { sampleMap } from "../src/lib/sampleMap";
 import { portuguese, translate } from "../src/lib/i18n/messages";
 
 const languageKey = "baque-facil-language";
@@ -105,19 +106,41 @@ test("switching language preserves active rhythm playback and tempo", async ({ p
   await page.getByRole("button", { name: "Parar", exact: true }).click();
 });
 
-test("quiz keeps the same round and answer while translating controls", async ({ page }) => {
+test("quiz translates new feedback without resetting the correct-answer advance timer", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-10-01T12:00:00Z") });
+  await page.addInitScript(() => { Math.random = () => 0; });
+  await page.route("**/quiz/rhythms.json", (route) => route.fulfill({ json: {
+    samples: sampleMap,
+    rhythms: [
+      { title: "Marcação", slug: "marcacao", tempo: 90, subdivision: 16, tracks: [{ name: "Alfaia", steps: ["R", ".", "L", "."] }] },
+      { title: "Imalê", slug: "imale", tempo: 90, subdivision: 16, tracks: [{ name: "Alfaia", steps: ["L", "R", "L", "."] }] },
+      { title: "Trovão", slug: "trovao", tempo: 90, subdivision: 16, tracks: [{ name: "Alfaia", steps: ["R", "R", ".", "L"] }] },
+    ],
+  } }));
   await page.goto("/quiz/");
-  await chooseLanguage(page, english);
-  await expect(page.getByRole("button", { name: "Choose option A" })).toBeEnabled();
-  const prompt = await page.locator("#quiz-prompt").innerText();
-  await page.getByRole("button", { name: "Choose option A" }).click();
-  const result = await page.locator(".quiz-option").first().getAttribute("data-result");
+  await chooseLanguage(page, portugueseLabel);
+  await expect(page.getByRole("button", { name: "Escolher opção A" })).toBeEnabled();
+  await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
+  await page.clock.pauseAt(new Date("2026-10-01T12:01:00Z"));
+  await expect(page.locator(".quiz-listen-hint")).toHaveText("Cada opção toca duas vezes. Ouça novamente quantas vezes quiser.");
+  await page.getByRole("button", { name: "Escolher opção A" }).click();
+  await expect(page.getByRole("status", { name: "Resultado da resposta" })).toContainText("A opção A é Trovão. Ouça novamente e escolha outra.");
+  await expect(page.locator(".quiz-option").first()).toContainText("Não corresponde");
+  await switchLanguage(page, english);
+  await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
+  await expect(page.getByRole("status", { name: "Answer feedback" })).toContainText("Option A is Trovão. Listen again and choose another.");
+  await page.getByRole("button", { name: "Choose option C" }).click();
+  await expect(page.getByRole("status", { name: "Answer feedback" })).toContainText("Correct!");
+  await page.clock.fastForward(1_000);
   await switchLanguage(page, portugueseLabel);
-  await expect(page.getByRole("heading", { name: "Quiz", exact: true })).toBeVisible();
-  await expect(page.locator("#quiz-prompt")).toHaveText(prompt);
-  await expect(page.locator(".quiz-option").first()).toHaveAttribute("data-result", result!);
-  await expect(page.getByRole("button", { name: "Reproduzir áudio B" })).toBeVisible();
-  await expect(page.locator(".quiz-feedback")).toHaveText(result === "correct" ? "Isso mesmo!" : "Ouça mais uma vez.");
+  await expect(page.getByRole("button", { name: "A opção C está correta" })).toBeDisabled();
+  await expect(page.getByRole("status", { name: "Resultado da resposta" })).toContainText("A opção C corresponde a Imalê. Vamos para o próximo ritmo…");
+  await page.clock.fastForward(999);
+  await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
+  await page.clock.fastForward(1);
+  await page.clock.resume();
+  await expect(page.locator("#quiz-prompt")).not.toHaveText("Imalê");
+  await expect(page.getByRole("status", { name: "Resultado da resposta" })).toHaveText("Escolha com calma.");
 });
 
 test("first-visit dialog supports keyboard navigation without triggering composer shortcuts", async ({ page }) => {
@@ -180,6 +203,7 @@ test("all main pages render Portuguese without errors or horizontal overflow", a
   for (const [path, heading] of [
     ["/", "Baque Fácil"],
     ["/quiz/", "Quiz"],
+    ["/radio/", "Rádio Baque"],
     ["/compose/", "Compositor de alfaia"],
     ["/compose/marcacao/", "Compositor de alfaia"],
     ["/rhythms/combo_parada_arrasto/", "Parada + Arrasto"],
@@ -191,6 +215,10 @@ test("all main pages render Portuguese without errors or horizontal overflow", a
     await expect(page.getByRole("dialog")).not.toBeVisible();
     await expect(page.locator('[data-rendered-locale="en-CA"]')).toHaveCount(0);
     if (path === "/compose/") await expect(page).toHaveTitle("Compor | Baque Fácil");
+    if (path === "/radio/") {
+      await expect(page).toHaveTitle("Rádio Baque | Baque Fácil");
+      await expect(page.getByRole("slider", { name: "Tempo da rádio" })).toBeVisible();
+    }
     if (path === "/quiz/") {
       await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Conheça os ritmos de maracatu/);
     }

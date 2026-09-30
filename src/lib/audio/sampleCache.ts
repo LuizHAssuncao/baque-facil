@@ -6,15 +6,27 @@ export const RENDER_SAMPLE_RATE = 44_100;
 export class SampleCache {
   private buffers = new Map<string, Promise<AudioBuffer>>();
 
-  load(url: string): Promise<AudioBuffer> {
+  load(url: string, signal?: AbortSignal): Promise<AudioBuffer> {
     const existing = this.buffers.get(url);
     if (existing) return existing;
 
     const promise = (async () => {
-      const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-      if (!response.ok) throw new TranslatableError("Unable to load a drum sample. Please try again.");
-      const decoder = new OfflineAudioContext(2, 1, RENDER_SAMPLE_RATE);
-      return decoder.decodeAudioData(await response.arrayBuffer());
+      const request = new AbortController();
+      const abort = () => request.abort(signal?.reason);
+      const timeout = setTimeout(() => request.abort(), 15_000);
+      signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) abort();
+      try {
+        const response = await fetch(url, { signal: request.signal });
+        if (!response.ok) throw new TranslatableError("Unable to load a drum sample. Please try again.");
+        const decoder = new OfflineAudioContext(2, 1, RENDER_SAMPLE_RATE);
+        const bytes = await response.arrayBuffer();
+        request.signal.throwIfAborted();
+        return await decoder.decodeAudioData(bytes);
+      } finally {
+        clearTimeout(timeout);
+        signal?.removeEventListener("abort", abort);
+      }
     })();
     this.buffers.set(url, promise);
     void promise.catch(() => this.buffers.delete(url));

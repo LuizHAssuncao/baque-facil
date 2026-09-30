@@ -6,6 +6,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 const routes = [
+  { name: "radio", path: "/radio/", heading: "Baque Radio" },
   { name: "home", path: "/", heading: "Baque Fácil" },
   { name: "quiz", path: "/quiz/", heading: "Quiz" },
   { name: "compose", path: "/compose/", heading: "Alfaia Composer" },

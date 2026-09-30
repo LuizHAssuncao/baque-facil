@@ -1,11 +1,13 @@
 import { useTranslation } from "../lib/i18n/useTranslation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Check, Headphones, Play, RotateCcw, SkipForward, Square } from "lucide-react";
+import { ArrowRight, Check, Headphones, Play, RotateCcw, SkipForward, Square, X } from "lucide-react";
 import { useRenderedPlayback } from "../lib/audio/useRenderedPlayback";
 import type { RenderedPlayback } from "../lib/audio/renderedPlayback";
-import { createQuizRound, QUIZ_TEMPO, type QuizLibrary, type QuizRound } from "../lib/rhythmQuiz";
+import { createQuizRound, QUIZ_PLAY_COUNT, QUIZ_TEMPO, type QuizLibrary, type QuizRound } from "../lib/rhythmQuiz";
 import type { Rhythm } from "../lib/rhythmTypes";
 import type { SampleMap } from "../lib/sampleMap";
+
+const AUTO_ADVANCE_DELAY_MS = 2_000;
 
 type OptionProps = {
   rhythm: Rhythm;
@@ -21,7 +23,15 @@ function AudioOption({ rhythm, samples, label, answered, result, onPlay, onChoos
   const { t } = useTranslation();
   const request = useMemo(() => ({
     // Media controls must not reveal the rhythm's name either.
-    rhythm: { ...rhythm, title: t("Option {label}", { label }) },
+    rhythm: {
+      ...rhythm,
+      title: t("Option {label}", { label }),
+      // Render both passes together so drum tails overlap the repeat naturally.
+      tracks: rhythm.tracks.map((track) => ({
+        ...track,
+        steps: Array.from({ length: QUIZ_PLAY_COUNT }, () => track.steps).flat(),
+      })),
+    },
     samples,
     tempo: QUIZ_TEMPO,
     loop: false,
@@ -62,8 +72,11 @@ function AudioOption({ rhythm, samples, label, answered, result, onPlay, onChoos
         disabled={answered || !snapshot.ready || Boolean(snapshot.error)}
         onClick={onChoose}
       >
-        {result === "correct" ? <><Check size={18} aria-hidden="true" />{t("Matched")}</> : t("Choose this")}
+        {result === "correct" ? <><Check size={18} aria-hidden="true" /> {t("Correct")}</> : t("Choose this")}
       </button>
+      {result === "retry" && (
+        <p className="quiz-option-result"><X size={18} aria-hidden="true" /> {t("Not a match")}</p>
+      )}
       {snapshot.error && <p className="quiz-audio-error" role="alert">{t("Audio {label} couldn’t play. Tap Retry to try again.", { label })}</p>}
     </li>
   );
@@ -80,11 +93,25 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
   const { t, locale } = useTranslation();
   const [selected, setSelected] = useState<string | null>(null);
   const prompt = useRef<HTMLHeadingElement>(null);
+  const feedback = useRef<HTMLDivElement>(null);
   const answered = selected === round.prompt.slug;
+  const selectedIndex = round.options.findIndex((rhythm) => rhythm.slug === selected);
+  const selectedRhythm = round.options[selectedIndex];
+  const selectedLabel = selectedRhythm ? String.fromCharCode(65 + selectedIndex) : null;
 
   useEffect(() => {
-    if (focusPrompt) prompt.current?.focus({ preventScroll: true });
+    if (focusPrompt) prompt.current?.focus();
   }, [focusPrompt]);
+
+  useEffect(() => {
+    if (selected) feedback.current?.scrollIntoView({ block: "nearest" });
+  }, [selected]);
+
+  useEffect(() => {
+    if (!answered) return;
+    const timeout = setTimeout(onNext, AUTO_ADVANCE_DELAY_MS);
+    return () => clearTimeout(timeout);
+  }, [answered, onNext]);
 
   return (
     <section data-rendered-locale={locale} className="quiz-practice" aria-labelledby="quiz-prompt">
@@ -93,7 +120,7 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
         <p className="eyebrow">{t("Which audio matches?")}</p>
         <h2 id="quiz-prompt" ref={prompt} tabIndex={-1}>{round.prompt.title}</h2>
       </div>
-      <p className="quiz-listen-hint">{t("Listen as often as you like, then choose.")}</p>
+      <p className="quiz-listen-hint">{t("Each option plays twice. Replay as often as you like.")}</p>
       <ol className="quiz-options" aria-label={t("Audio options")}>
         {round.options.map((rhythm, index) => (
           <AudioOption
@@ -109,9 +136,28 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
         ))}
       </ol>
       <div className="quiz-footer">
-        <p className="quiz-feedback" role="status" data-correct={answered || undefined}>
-          {answered ? <><Check size={20} aria-hidden="true" />{t("That’s it!")}</> : t(selected ? "Give it another listen." : "Take your time.")}
-        </p>
+        <div
+          className="quiz-feedback"
+          ref={feedback}
+          role="status"
+          aria-label={t("Answer feedback")}
+          aria-atomic="true"
+          data-result={selected ? answered ? "correct" : "incorrect" : undefined}
+        >
+          {selectedRhythm ? (
+            <>
+              <span className="quiz-feedback-icon" aria-hidden="true">
+                {answered ? <Check size={25} /> : <X size={25} />}
+              </span>
+              <div>
+                <strong>{t(answered ? "Correct!" : "Incorrect — try again")}</strong>
+                <p>{answered
+                  ? t("Option {label} matches {title}. Moving to the next rhythm…", { label: selectedLabel!, title: round.prompt.title })
+                  : t("Option {label} is {title}. Listen again and choose another.", { label: selectedLabel!, title: selectedRhythm.title })}</p>
+              </div>
+            </>
+          ) : t("Take your time.")}
+        </div>
         <button className={`quiz-button ${answered ? "quiz-next" : "quiz-skip"}`} type="button" onClick={onNext}>
           {answered ? <>{t("Next rhythm")}<ArrowRight size={18} aria-hidden="true" /></> : <>{t("Skip")}<SkipForward size={17} aria-hidden="true" /></>}
         </button>
@@ -163,6 +209,8 @@ export default function RhythmQuiz() {
     }
   }, [stopPlayback]);
 
+  const nextRound = useCallback(() => { void loadRound(true); }, [loadRound]);
+
   useEffect(() => {
     void loadRound();
     return () => {
@@ -190,7 +238,7 @@ export default function RhythmQuiz() {
       round={round}
       samples={samples}
       focusPrompt={focusNextPrompt.current}
-      onNext={() => void loadRound(true)}
+      onNext={nextRound}
       onStop={stopPlayback}
       onPlay={(player) => { stopPlayback(); activePlayer.current = player; }}
     />

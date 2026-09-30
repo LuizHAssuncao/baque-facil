@@ -38,6 +38,10 @@ test("quiz eligibility follows library additions and rejects unplayable patterns
   expect(buildQuizRhythms([entry])).toMatchObject([{ slug: entry.slug, title: entry.data.title }]);
   const invalid = ["No rhythm block", "```rhythm\nR L\n```", "```rhythm\nAlfaia:\nQ .\n```", "```rhythm\nAlfaia:\n. . . .\n```", "```rhythm\nAlfaia:\nR .\nCaixa:\nX\n```"];
   for (const body of invalid) expect(buildQuizRhythms([{ ...entry, body }])).toEqual([]);
+  // Both passes must fit the renderer's 180-second limit at the quiz tempo.
+  const longestPattern = ["R", ...Array<string>(539).fill(".")];
+  expect(buildQuizRhythms([{ ...entry, body: `\`\`\`rhythm\nAlfaia:\n${longestPattern.join(" ")}\n\`\`\`` }])).toHaveLength(1);
+  expect(buildQuizRhythms([{ ...entry, body: `\`\`\`rhythm\nAlfaia:\n${longestPattern.join(" ")} .\n\`\`\`` }])).toEqual([]);
 });
 
 test("rounds keep one correct answer, distinct sounds, and no consecutive prompt repeats", () => {
@@ -66,10 +70,12 @@ test("rounds keep one correct answer, distinct sounds, and no consecutive prompt
   expect(prompts.size).toBe(3);
 });
 
-test("quiz is linked from home and provides retry, match, and next without notation", async ({ page }) => {
+test("quiz gives clear feedback and advances only after a correct answer", async ({ page }, testInfo) => {
   const errors: string[] = [];
+  let requests = 0;
   page.on("pageerror", (error) => errors.push(error.message));
-  await mockLibrary(page);
+  await mockLibrary(page, () => { requests += 1; return library; });
+  await page.clock.install({ time: new Date("2026-10-01T12:00:00Z") });
   await page.goto("/");
   await page.getByRole("link", { name: /Quiz/ }).click();
   await expect(page).toHaveURL("/quiz/");
@@ -79,21 +85,71 @@ test("quiz is linked from home and provides retry, match, and next without notat
   await expect(page.locator(".rhythm-grid, .step-cell, pre, textarea, audio, canvas, .content")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /transcription/i })).toHaveCount(0);
   await expect(page.locator(".quiz-options")).not.toContainText(/Marcação|Imalê|Trovão/);
+  await page.clock.pauseAt(new Date("2026-10-01T12:01:00Z"));
 
+  const feedback = page.getByRole("status", { name: "Answer feedback" });
+  await expect(feedback).not.toContainText(/Marcação|Trovão/);
   await page.getByRole("button", { name: "Choose option A" }).click();
-  await expect(page.getByRole("status")).toHaveText("Give it another listen.");
+  await expect(feedback).toContainText("Incorrect — try again");
+  await expect(feedback).toContainText("Option A is Trovão. Listen again and choose another.");
+  await expect(feedback).not.toContainText("Marcação");
+  await expect(feedback).toHaveAttribute("data-result", "incorrect");
+  await expect(feedback).toBeInViewport({ ratio: 1 });
+  await expect(page.locator(".quiz-option").first()).toContainText("Not a match");
   await expect(page.getByRole("button", { name: "Skip", exact: true })).toBeEnabled();
+  await page.clock.fastForward(4_000);
+  await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
+  expect(requests).toBe(1);
+  await page.screenshot({ path: testInfo.outputPath("quiz-incorrect.png"), fullPage: true });
+
+  await page.getByRole("button", { name: "Choose option B" }).click();
+  await expect(feedback).toContainText("Incorrect — try again");
+  await expect(feedback).toContainText("Option B is Marcação. Listen again and choose another.");
+  await expect(feedback).not.toContainText("Trovão");
+  await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
+
   await page.getByRole("button", { name: "Choose option C" }).click();
-  await expect(page.getByRole("status")).toHaveText("That’s it!");
+  await expect(feedback).toContainText("Correct!");
+  await expect(feedback).toContainText("Option C matches Imalê. Moving to the next rhythm…");
+  await expect(feedback).toHaveAttribute("data-result", "correct");
+  await expect(feedback).toHaveAttribute("aria-atomic", "true");
+  await expect(feedback).toBeInViewport({ ratio: 1 });
   await expect(page.getByRole("button", { name: "Option C is correct" })).toBeDisabled();
   await expect(page.locator(".quiz-choose:enabled")).toHaveCount(0);
   await expect(page.locator(".rhythm-grid, .step-cell, pre, textarea")).toHaveCount(0);
-  await page.getByRole("button", { name: "Next rhythm" }).click();
-  await waitForAudio(page);
+  await page.screenshot({ path: testInfo.outputPath("quiz-correct.png"), fullPage: true });
+
+  await page.clock.fastForward(1_500);
+  await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
+  expect(requests).toBe(1);
+  await page.clock.fastForward(500);
   await expect(page.locator("#quiz-prompt")).not.toHaveText("Imalê");
+  await page.clock.resume();
+  await waitForAudio(page);
   await expect(page.locator("#quiz-prompt")).toBeFocused();
-  await expect(page.getByRole("status")).toHaveText("Take your time.");
+  await expect(page.locator("#quiz-prompt")).toBeInViewport();
+  await expect(feedback).toHaveText("Take your time.");
+  expect(requests).toBe(2);
   expect(errors).toEqual([]);
+});
+
+test("manual next cancels the automatic advance instead of skipping another rhythm", async ({ page }) => {
+  let requests = 0;
+  await mockLibrary(page, () => { requests += 1; return library; });
+  await page.clock.install({ time: new Date("2026-10-01T12:00:00Z") });
+  await page.goto("/quiz/");
+  await waitForAudio(page);
+  await page.clock.pauseAt(new Date("2026-10-01T12:01:00Z"));
+  await page.getByRole("button", { name: "Choose option C" }).click();
+  await expect(page.getByRole("status", { name: "Answer feedback" })).toContainText("Correct!");
+  await page.getByRole("button", { name: "Next rhythm" }).click();
+  await page.clock.resume();
+  await waitForAudio(page);
+  const nextPrompt = await page.locator("#quiz-prompt").textContent();
+  expect(requests).toBe(2);
+  await page.clock.fastForward(5_000);
+  await expect(page.locator("#quiz-prompt")).toHaveText(nextPrompt!);
+  expect(requests).toBe(2);
 });
 
 test("next round refreshes the library and supports an insufficient pool", async ({ page }) => {
@@ -148,22 +204,42 @@ test("audio failures can be retried without starting playback automatically", as
   await expect(page.getByRole("button", { name: /Stop audio/ })).toHaveCount(0);
 });
 
-test("audio uses real samples, one source at a time, anonymous titles, and stops between rounds", async ({ page }) => {
+test("audio plays each sequence twice, uses one source at a time, and stops between rounds", async ({ page }) => {
   await mockLibrary(page);
   await page.addInitScript(() => {
-    const probe = { voices: [] as { stopped: boolean; loop: boolean; duration: number; hasSound: boolean }[], contexts: [] as AudioContext[] };
+    const probe = { voices: [] as { stopped: boolean; loop: boolean; duration: number; hasSound: boolean; onsets: number[] }[], contexts: [] as AudioContext[] };
     (window as unknown as { quizAudioProbe: typeof probe }).quizAudioProbe = probe;
+    const schedules = new WeakMap<AudioBuffer, number[]>();
+    const NativeOfflineContext = window.OfflineAudioContext;
+    window.OfflineAudioContext = class extends NativeOfflineContext {
+      private onsets: number[] = [];
+      createBufferSource() {
+        const source = super.createBufferSource();
+        const start = source.start.bind(source);
+        source.start = (when = 0, offset = 0) => {
+          this.onsets.push(when);
+          start(when, offset);
+        };
+        return source;
+      }
+      async startRendering() {
+        const buffer = await super.startRendering();
+        schedules.set(buffer, this.onsets.sort((a, b) => a - b));
+        return buffer;
+      }
+    };
     const NativeContext = window.AudioContext;
     window.AudioContext = class extends NativeContext {
       constructor(options?: AudioContextOptions) { super(options); probe.contexts.push(this); }
       createBufferSource() {
         const source = super.createBufferSource();
-        const voice = { stopped: false, loop: false, duration: 0, hasSound: false };
+        const voice = { stopped: false, loop: false, duration: 0, hasSound: false, onsets: [] as number[] };
         const start = source.start.bind(source);
         source.start = (when = 0, offset = 0) => {
           voice.loop = source.loop;
           voice.duration = source.buffer!.duration;
           voice.hasSound = source.buffer!.getChannelData(0).some((value) => Math.abs(value) > 0.001);
+          voice.onsets = schedules.get(source.buffer!) ?? [];
           probe.voices.push(voice);
           start(when, offset);
         };
@@ -174,7 +250,7 @@ test("audio uses real samples, one source at a time, anonymous titles, and stops
     };
   });
   const probe = () => page.evaluate(() => {
-    const value = (window as unknown as { quizAudioProbe: { voices: { stopped: boolean; loop: boolean; duration: number; hasSound: boolean }[]; contexts: AudioContext[] } }).quizAudioProbe;
+    const value = (window as unknown as { quizAudioProbe: { voices: { stopped: boolean; loop: boolean; duration: number; hasSound: boolean; onsets: number[] }[]; contexts: AudioContext[] } }).quizAudioProbe;
     return { voices: value.voices, contexts: value.contexts.map((context) => context.state) };
   });
   await page.goto("/quiz/");
@@ -193,13 +269,25 @@ test("audio uses real samples, one source at a time, anonymous titles, and stops
   const voices = (await probe()).voices;
   expect(voices).toHaveLength(3);
   expect(voices.every((voice) => !voice.loop && voice.hasSound)).toBe(true);
-  expect(voices.every((voice) => voice.duration >= (60 / QUIZ_TEMPO) * 4)).toBe(true);
+  // The fixed shuffle makes A Trovão and B Marcação. Verify actual note times,
+  // including Replay, rather than accepting a longer buffer with trailing silence.
+  for (const [index, rhythm] of [rhythms[2], rhythms[0], rhythms[0]].entries()) {
+    const stepDuration = (60 / QUIZ_TEMPO) * (4 / rhythm.subdivision);
+    const steps = rhythm.tracks[0].steps;
+    const expectedOnsets = [0, 1].flatMap((pass) => steps.flatMap((step, index) =>
+      step === "." ? [] : [(pass * steps.length + index) * stepDuration],
+    ));
+    expect(voices[index].onsets).toHaveLength(expectedOnsets.length);
+    expectedOnsets.forEach((onset, hit) => expect(voices[index].onsets[hit]).toBeCloseTo(onset, 4));
+    // The fixture's real drum samples last 1 2/3 seconds; retain the final tail.
+    expect(voices[index].duration).toBeCloseTo(expectedOnsets.at(-1)! + 5 / 3, 4);
+  }
   await page.getByRole("button", { name: "Skip", exact: true }).click();
   await waitForAudio(page);
   await expect.poll(async () => (await probe()).voices.every((voice) => voice.stopped)).toBe(true);
   await expect.poll(async () => (await probe()).contexts.every((state) => state === "closed")).toBe(true);
   await page.getByRole("button", { name: "Play audio A" }).click();
-  // A full cycle finishes naturally and the same button becomes Replay.
+  // Both passes and the final decay finish naturally, then the button becomes Replay.
   await expect(page.getByRole("button", { name: "Replay audio A" })).toBeVisible({ timeout: 10_000 });
   await page.getByRole("button", { name: "Replay audio A" }).click();
   await page.getByRole("button", { name: "Choose option A" }).click();
