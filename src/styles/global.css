@@ -788,13 +788,6 @@ button.step-cell:disabled {
   font-weight: 800;
 }
 
-.playback-message {
-  margin: 0.5rem 0 0.9rem;
-  color: var(--muted-strong);
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
-
 .player-status[data-tone="error"] {
   color: var(--danger);
 }

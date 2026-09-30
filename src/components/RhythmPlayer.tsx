@@ -885,20 +885,6 @@ function RhythmPlayer(
         </label>
       </div>
 
-      {useRenderedAudio ? (
-        <p className="playback-message" role="status" aria-label="Playback status">
-          {rendered.snapshot.preparing
-            ? isPlaying
-              ? `Preparing ${tempo} BPM · playing ${rendered.snapshot.playingTempo} BPM.`
-              : "Preparing audio…"
-            : rendered.snapshot.pending
-              ? `Update ready · playing ${rendered.snapshot.playingTempo} BPM until the next repetition.`
-              : isPlaying
-                ? `Playing ${rendered.snapshot.playingTempo} BPM. You can switch apps or lock your screen.`
-                : "Tap Play to listen. Tempo and mute changes restart at the next repetition."}
-        </p>
-      ) : null}
-
       <div className="grid-scroll" aria-label="Parsed rhythm grid" ref={gridScrollRef}>
         <div className="rhythm-grid" style={gridShellStyle}>
           <div className="grid-row count-row" style={gridStyle}>

@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 async function openPlayer(page: Page) {
   await page.goto("/rhythms/marcacao/");
   await expect(page.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
+  await expect(page.getByRole("status", { name: "Playback status" })).toHaveCount(0);
   return page.locator("audio[data-rendered-player]");
 }
 
@@ -15,8 +16,8 @@ test("media playback starts, changes tempo, loops, and stops", async ({ page }) 
   expect(await audio.evaluate((element: HTMLAudioElement) => element.loop)).toBe(true);
   const originalSource = await audio.getAttribute("src");
   await page.getByRole("slider", { name: "Tempo" }).fill("110");
-  await expect(page.getByRole("status", { name: "Playback status" })).toContainText("Playing 110 BPM", { timeout: 15_000 });
-  expect(await audio.getAttribute("src")).not.toBe(originalSource);
+  await expect.poll(() => audio.getAttribute("src"), { timeout: 15_000 }).not.toBe(originalSource);
+  await expect(page.getByRole("status", { name: "Playback status" })).toHaveCount(0);
   expect(await audio.evaluate((element: HTMLAudioElement) => element.playbackRate)).toBe(1);
   // Exercise the native file boundary without waiting for the full rendered track.
   await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = element.duration - 0.15; });
@@ -32,16 +33,19 @@ test("media playback starts, changes tempo, loops, and stops", async ({ page }) 
 
 test("latest tempo wins and finishing preparation cannot undo Stop", async ({ page }) => {
   const audio = await openPlayer(page);
+  const originalSource = await audio.getAttribute("src");
   await page.getByRole("button", { name: "Play", exact: true }).click();
   const slider = page.getByRole("slider", { name: "Tempo" });
   await slider.fill("30");
   await slider.fill("130");
   await slider.fill("100");
   await page.getByRole("button", { name: "Stop", exact: true }).click();
-  await expect(page.getByRole("status", { name: "Playback status" })).toContainText("Tap Play");
+  await expect.poll(() => audio.getAttribute("src")).not.toBe(originalSource);
+  await expect.poll(() => audio.evaluate((element: HTMLAudioElement) => element.duration)).toBeCloseTo(24, 3);
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
   await page.getByRole("button", { name: "Play", exact: true }).click();
-  await expect(page.getByRole("status", { name: "Playback status" })).toContainText("Playing 100 BPM");
+  await expect.poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeGreaterThan(0.1);
 });
 
 test("mute regenerates the mix and one-shot playback finishes", async ({ page }) => {
@@ -49,6 +53,7 @@ test("mute regenerates the mix and one-shot playback finishes", async ({ page })
   const originalSource = await audio.getAttribute("src");
   await page.getByRole("button", { name: "Mute Alfaia", exact: true }).click();
   await expect.poll(() => audio.getAttribute("src")).not.toBe(originalSource);
+  await expect(page.getByRole("status", { name: "Playback status" })).toHaveCount(0);
   const peak = await audio.evaluate(async (element: HTMLAudioElement) => {
     const bytes = await (await fetch(element.src)).arrayBuffer();
     const buffer = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(bytes);
@@ -68,19 +73,27 @@ test("hidden page keeps its current track until a visible update can apply", asy
   const audio = await openPlayer(page);
   await page.getByRole("button", { name: "Play", exact: true }).click();
   const originalSource = await audio.getAttribute("src");
+  let preparedAudio = false;
+  await page.exposeFunction("onAudioPrepared", () => { preparedAudio = true; });
   await page.evaluate(() => {
+    const createObjectURL = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = (object) => {
+      const url = createObjectURL(object);
+      void (window as Window & { onAudioPrepared: () => Promise<void> }).onAudioPrepared();
+      return url;
+    };
     Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await page.getByRole("slider", { name: "Tempo" }).fill("120");
-  await expect(page.getByRole("status", { name: "Playback status" })).toContainText("Update ready");
+  await expect.poll(() => preparedAudio).toBe(true);
   expect(await audio.getAttribute("src")).toBe(originalSource);
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(false);
   await page.evaluate(() => {
     delete (document as unknown as { hidden?: boolean }).hidden;
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await expect(page.getByRole("status", { name: "Playback status" })).toContainText("Playing 120 BPM", { timeout: 15_000 });
+  await expect.poll(() => audio.getAttribute("src"), { timeout: 15_000 }).not.toBe(originalSource);
 });
 
 test("sample failures can be retried without reloading", async ({ page }) => {
@@ -89,7 +102,8 @@ test("sample failures can be retried without reloading", async ({ page }) => {
   await expect(page.locator(".player-status")).toContainText("Unable to load");
   await page.unroute("**/samples/**");
   await page.getByRole("button", { name: "Play", exact: true }).click();
-  await expect(page.getByRole("status", { name: "Playback status" })).toContainText("Tap Play");
+  await expect.poll(() => page.locator("audio[data-rendered-player]").getAttribute("src")).toBeTruthy();
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
 });
