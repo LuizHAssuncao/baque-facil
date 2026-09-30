@@ -5,23 +5,17 @@ const routes = [
   { name: "compose", path: "/compose/", heading: "Alfaia Composer" },
   { name: "ios-audio-help", path: "/help/ios-audio/", heading: "Can't hear sound?" },
   { name: "rhythm-marcacao", path: "/rhythms/marcacao/", heading: "Marcação" },
-  { name: "rhythm-combo1", path: "/rhythms/combo1/", heading: "Combo 1" },
+  { name: "rhythm-combo-entrada", path: "/rhythms/combo_entrada/", heading: "Entrada" },
 ];
 
 const marcacaoRhythmBlock = [
-  "Gongue:",
-  ". X . . | X . X . | . X . . | X . X .",
-  "",
   "Alfaia:",
-  ". . . . | . . L R | . . L R | . . R .",
+  "R . . . | . . . . | L R . . | L R . .",
 ].join("\n");
 
 const marcacaoWithEditedAlfaiaStep = [
-  "Gongue:",
-  ". X . . | X . X . | . X . . | X . X .",
-  "",
   "Alfaia:",
-  ". . . . | . . R R | . . L R | . . R .",
+  "R . . . | . . . . | R R . . | L R . .",
 ].join("\n");
 
 async function collectRuntimeErrors(page: Page) {
@@ -98,33 +92,33 @@ test("predefined rhythm player notes cycle and reset", async ({ page }) => {
   await page.goto("/rhythms/marcacao/");
   await grantClipboardPermissions(page);
 
-  const gongueStep = page.getByRole("button", { name: "Gongue step 2: X" });
+  const alfaiaStep = page.getByRole("button", { name: "Alfaia step 9: L" });
 
-  await gongueStep.click();
-  await expect(page.getByRole("button", { name: "Gongue step 2: ." })).toBeVisible();
+  await alfaiaStep.click();
+  await expect(page.getByRole("button", { name: "Alfaia step 9: R" })).toBeVisible();
 
   const resetButton = page.getByRole("button", { name: "Reset pattern" });
 
   await expect(resetButton).toBeVisible();
   await resetButton.click();
-  await expect(page.getByRole("button", { name: "Gongue step 2: X" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Alfaia step 9: L" })).toBeVisible();
   await expect(resetButton).toBeHidden();
 
-  await page.getByRole("button", { name: "Alfaia step 7: L" }).click();
-  await expect(page.getByRole("button", { name: "Alfaia step 7: R" })).toBeVisible();
+  await page.getByRole("button", { name: "Alfaia step 9: L" }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 9: R" })).toBeVisible();
   await page.getByRole("button", { name: "Copy transcription" }).click();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(
     marcacaoWithEditedAlfaiaStep,
   );
 
-  await page.getByRole("button", { name: "Alfaia step 7: R" }).click();
-  await expect(page.getByRole("button", { name: "Alfaia step 7: B" })).toBeVisible();
+  await page.getByRole("button", { name: "Alfaia step 9: R" }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 9: B" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Alfaia step 7: B" }).click();
-  await expect(page.getByRole("button", { name: "Alfaia step 7: ." })).toBeVisible();
+  await page.getByRole("button", { name: "Alfaia step 9: B" }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 9: ." })).toBeVisible();
 
-  await page.getByRole("button", { name: "Alfaia step 7: ." }).click();
-  await expect(page.getByRole("button", { name: "Alfaia step 7: L" })).toBeVisible();
+  await page.getByRole("button", { name: "Alfaia step 9: ." }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 9: L" })).toBeVisible();
 });
 
 test("composer edits preview pattern without changing recorded grid", async ({ page }) => {
