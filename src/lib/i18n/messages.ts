@@ -3,7 +3,7 @@ export const portuguese = {
   "Language": "Idioma",
   "Settings": "Configurações",
   "Maracatu rhythm studio": "Estúdio de ritmos de maracatu",
-  "Learn, practice, and compose alfaia patterns with a tactile beat grid.": "Aprenda, pratique e crie ritmos de alfaia em uma grade interativa.",
+  "Learn, listen and compose alfaia patterns.": "Aprenda, ouça e crie ritmos de alfaia.",
   "Rhythms": "Ritmos",
   "Combos": "Combos",
   "All rhythms": "Todos os ritmos",
