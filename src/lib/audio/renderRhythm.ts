@@ -1,6 +1,5 @@
 import type { Rhythm } from "../rhythmTypes";
 import { clampTempo } from "../tempo";
-import { encodeWav } from "./encodeWav";
 import { RENDER_SAMPLE_RATE, SampleCache } from "./sampleCache";
 
 export type RenderRequest = {
@@ -12,7 +11,7 @@ export type RenderRequest = {
 };
 
 export type RenderedRhythm = {
-  blob: Blob;
+  buffer: AudioBuffer;
   tempo: number;
   loop: boolean;
   stepCount: number;
@@ -42,9 +41,8 @@ export async function renderRhythm(
   }
   const cycleFrames = Math.round((60 / tempo) * (4 / rhythm.subdivision) * stepCount * RENDER_SAMPLE_RATE);
   const cycleDuration = cycleFrames / RENDER_SAMPLE_RATE;
-  // Bound memory use; several repetitions reduce native file-loop transitions.
-  const repetitions = loop ? Math.max(1, Math.ceil(24 / cycleDuration)) : 1;
-  if (cycleDuration * repetitions > 180) {
+  // Web Audio repeats this single cycle without reopening a media file.
+  if (cycleDuration > 180) {
     throw new Error("This rhythm is too long to prepare on this device.");
   }
 
@@ -59,11 +57,11 @@ export async function renderRhythm(
   }));
 
   const tailFrames = hits.reduce((end, hit) => Math.max(end, hit.frame + hit.buffer.length), cycleFrames);
-  const length = loop ? cycleFrames * repetitions : tailFrames;
+  const length = loop ? cycleFrames : tailFrames;
   const context = new OfflineAudioContext(2, length, RENDER_SAMPLE_RATE);
   const history = loop ? Math.ceil(Math.max(0, ...hits.map((hit) => hit.buffer.duration)) / cycleDuration) : 0;
 
-  for (let cycle = -history; cycle < repetitions; cycle += 1) {
+  for (let cycle = -history; cycle < 1; cycle += 1) {
     for (const hit of hits) {
       const startTime = (cycle * cycleFrames + hit.frame) / RENDER_SAMPLE_RATE;
       if (startTime + hit.buffer.duration <= 0) continue;
@@ -76,5 +74,17 @@ export async function renderRhythm(
   }
 
   const buffer = await context.startRendering();
-  return { blob: encodeWav(buffer), tempo, loop, stepCount, cycleDuration };
+  // Keep the float buffer and attenuate only mixes that would clip.
+  let peak = 0;
+  for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+    for (const value of buffer.getChannelData(channel)) peak = Math.max(peak, Math.abs(value));
+  }
+  if (peak > 0.98) {
+    const gain = 0.98 / peak;
+    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+      const data = buffer.getChannelData(channel);
+      for (let frame = 0; frame < data.length; frame += 1) data[frame] *= gain;
+    }
+  }
+  return { buffer, tempo, loop, stepCount, cycleDuration };
 }

@@ -787,7 +787,6 @@ function RhythmPlayer(
       aria-label={`${rhythm.title} player`}
       onClickCapture={(event) => blurPointerActivatedButton(event.target, event.detail)}
     >
-      {useRenderedAudio ? <audio ref={rendered.audioRef} data-rendered-player hidden /> : null}
       {showIosSilentModeHelp ? (
         <div className="audio-help-backdrop">
           <div

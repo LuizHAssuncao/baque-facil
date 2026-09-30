@@ -22,7 +22,7 @@ React rhythm grids, audio playback, and an Alfaia composer.
 - [Astro](https://astro.build/) for routing, static generation, and content
   collections.
 - [React](https://react.dev/) islands for the rhythm player and composer.
-- Offline Web Audio rendering and HTML audio for rhythm-page playback.
+- Offline rendering and native Web Audio buffer looping for rhythm-page playback.
 - [Tone.js](https://tonejs.github.io/) for the composer's editable preview.
 - Web Audio and HTML audio fallbacks for composer hit input.
 - [Playwright](https://playwright.dev/) for layout and interaction checks.
@@ -142,25 +142,33 @@ and the iOS audio help flow when relevant.
 ## Background rhythm playback
 
 Rhythm pages keep Markdown as their source and render the current tempo and mute
-selection into a temporary WAV on the device. The media element plays that WAV
-directly, without scheduling individual hits through a live AudioContext.
-Looping audio contains complete repetitions and wrapped sample tails; one-shot
-audio includes the final decay. Rendered audio is not uploaded or persisted.
+selection into an AudioBuffer on the device. A native AudioBufferSourceNode repeats
+one complete cycle, including wrapped sample tails. There is no media-file restart
+or JavaScript timer between repetitions. One-shot audio includes the final decay.
+Rendered buffers are not uploaded or persisted. Mixes are attenuated if needed to
+avoid clipping. Playback requests `navigator.audioSession.type = "playback"` where
+supported, using the mechanism tested with the diagnostic on iPhone Safari.
 
-Tempo/mute updates are debounced and rendered serially. Playback continues at
-the old tempo until the replacement is ready, then restarts at the next visible
-rhythm boundary. The media source change can introduce a short gap. While the
-page is hidden, the existing audio continues and pending changes wait for the
-page to return. A browser may require another Play tap after an interruption.
-The composer still uses live audio and requires the page to remain visible.
+Tempo/mute updates are debounced and rendered serially, retaining the instruments'
+original pitch. Playback continues while the new buffer prepares. The new buffer
+starts at the next rhythm boundary, with a five-millisecond crossfade scheduled on
+the audio clock. A scheduled change completes even if the page becomes hidden;
+changes still preparing in the background wait until the page returns. At most two
+sources coexist during a transition; the muted old source is released on return.
+Obsolete changes and stopped sources are canceled so Stop never restarts playback.
+
+Play resumes an interrupted context from a user gesture. Stop resets the rhythm,
+while supported media-session Pause/Play controls preserve its position. Navigation
+stops playback, and disposal releases sources, buffers, and the AudioContext. The
+composer still uses live audio and requires the page to remain visible.
 
 Playwright covers audio rendering and browser controls, but cannot establish iOS
 background playback reliability. Before releasing, test on a physical iPhone:
 
 1. Play a short rhythm, switch apps, and lock the screen for at least 15 minutes.
-2. Listen across several file-loop boundaries for gaps or missing hits.
+2. Listen across several rhythm-loop boundaries for gaps or missing hits.
 3. Change tempo between 30 and 130 BPM, including rapid changes and a long combo.
-4. Lock during a pending change; confirm the old audio continues until returning.
+4. Lock during a pending change; confirm playback continues through the transition.
 5. Exercise mute, Stop, Restart, one-shot playback, and lock-screen play/pause.
 6. Test interruption/resume and Bluetooth route changes.
 

@@ -4,8 +4,10 @@
 
 Baque Fácil is an Astro 4 app for learning and composing Maracatu rhythm
 patterns. Astro owns routing, content loading, and static page generation.
-React islands provide the interactive rhythm player and composer. Audio playback
-uses Tone.js in the player and Web Audio/HTML audio fallbacks in the composer.
+React islands provide the interactive rhythm player and composer. Built-in rhythms
+use rendered Web Audio buffers with native looping and a playback audio session.
+The editable composer preview uses Tone.js, with Web Audio/HTML audio fallbacks
+for composer input.
 
 Core user flows:
 
@@ -17,6 +19,7 @@ Core user flows:
 - `/compose/[slug]/`: the same composer preloaded with an editable copy of a
   built-in rhythm, including its tracks, tempo, subdivision, and transcription.
 - `/help/ios-audio/`: troubleshooting page linked from iOS audio prompts.
+- `/diagnostics/background-audio/`: isolated looping-buffer test with local reports.
 
 ## Project Structure
 
@@ -111,12 +114,15 @@ the new key.
 
 ## Player And Composer Notes
 
-- `RhythmPlayer` dynamically imports Tone.js, schedules steps on
+- Built-in `RhythmPlayer` playback renders one cycle with wrapped sample tails,
+  uses a native looping AudioBufferSourceNode, and schedules tempo/mute crossfades
+  at rhythm boundaries. Rendering preserves sample pitch. Markdown remains the source.
+- The editable `RhythmPlayer` preview dynamically imports Tone.js, schedules steps on
   `Tone.Transport`, scrolls the active playhead into view, supports loop,
   restart, mute buttons, tempo changes, editable cells, keyboard shortcuts, and
   iOS silent-mode help.
-- Rhythm pages pass `autoPlay`, but browsers may block audio until user
-  interaction. The component handles blocked autoplay silently.
+- Built-in rhythm playback starts with a user Play tap after rendering finishes.
+  The component's live mode handles blocked autoplay silently when requested.
 - `RhythmComposer` records only an Alfaia track by default. It syncs a Markdown
   transcription textarea with parsed preview tracks, embeds `RhythmPlayer` for
   preview, and has separate keyboard/pointer/touch paths for low-latency hit

@@ -3,7 +3,6 @@ import { INITIAL_PLAYBACK, RenderedPlayback } from "./renderedPlayback";
 import { renderRequestKey, type RenderRequest } from "./renderRhythm";
 
 export function useRenderedPlayback(enabled: boolean, request: RenderRequest) {
-  const audioRef = useRef<HTMLAudioElement>(null);
   const controller = useRef<RenderedPlayback | null>(null);
   const [snapshot, setSnapshot] = useState(INITIAL_PLAYBACK);
   const key = renderRequestKey(request);
@@ -11,8 +10,8 @@ export function useRenderedPlayback(enabled: boolean, request: RenderRequest) {
   requestRef.current = request;
 
   useEffect(() => {
-    if (!enabled || !audioRef.current) return;
-    const player = new RenderedPlayback(audioRef.current, requestRef.current.rhythm.title, setSnapshot);
+    if (!enabled) return;
+    const player = new RenderedPlayback(requestRef.current.rhythm.title, setSnapshot);
     controller.current = player;
     player.update(requestRef.current);
     return () => {
@@ -25,5 +24,5 @@ export function useRenderedPlayback(enabled: boolean, request: RenderRequest) {
     controller.current?.update(requestRef.current);
   }, [key]);
 
-  return { audioRef, controller, snapshot };
+  return { controller, snapshot };
 }
