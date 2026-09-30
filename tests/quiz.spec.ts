@@ -77,7 +77,7 @@ test("quiz gives clear feedback and advances only after a correct answer", async
   await mockLibrary(page, () => { requests += 1; return library; });
   await page.clock.install({ time: new Date("2026-10-01T12:00:00Z") });
   await page.goto("/");
-  await page.getByRole("link", { name: /Quiz/ }).click();
+  await page.getByRole("link", { name: "Rhythm Quiz", exact: true }).click();
   await expect(page).toHaveURL("/quiz/");
   await waitForAudio(page);
   await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");

@@ -46,14 +46,6 @@ const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
         </div>
       </header>
 
-      <section class="home-section" aria-labelledby="radio-heading">
-        <h2 id="radio-heading"><T message="Radio" /></h2>
-        <a class="rhythm-link radio-home-link" href="/radio/">
-          <strong><T message="Listen to Baque Radio" /></strong>
-          <span><T message="A fresh shuffle of rhythms, at your pace. Listen or play along." /></span>
-        </a>
-      </section>
-
       <section class="home-section" aria-labelledby="rhythms-heading">
         <h2 id="rhythms-heading"><T message="Rhythms" /></h2>
         <div class="rhythm-list">
@@ -82,11 +74,17 @@ const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
         </div>
       </section>
 
+      <section class="home-section" aria-labelledby="radio-heading">
+        <h2 id="radio-heading"><T message="Radio" /></h2>
+        <a class="rhythm-link radio-home-link" href="/radio/">
+          <strong><T message="Listen to Baque Radio" /></strong>
+        </a>
+      </section>
+
       <section class="home-section" aria-labelledby="listening-heading">
         <h2 id="listening-heading"><T message="Listening practice" /></h2>
         <a class="rhythm-link" href="/quiz/">
-          <strong><T message="Quiz" /></strong>
-          <span><T message="Read a rhythm name and find its sound" /></span>
+          <strong><T message="Rhythm Quiz" /></strong>
         </a>
       </section>
 
