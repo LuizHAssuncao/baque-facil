@@ -13,7 +13,8 @@ React rhythm grids, audio playback, and an Alfaia composer.
 - A listening quiz at `/quiz/`: match a rhythm name to one of three audio options,
   with unlimited replay and practice, clear answer feedback, no notation, and no
   scoring. Correct answers advance automatically after a two-second confirmation;
-  incorrect answers stay on the same rhythm for another try.
+  incorrect answers identify the selected rhythm and stay on the same question
+  for another try.
 - Fixed-note rhythm player with tempo control, looping, mute controls, restart,
   keyboard support, and background media playback. The composer preview remains editable.
 - Alfaia composer with recording controls, metronome, transcription editing, and

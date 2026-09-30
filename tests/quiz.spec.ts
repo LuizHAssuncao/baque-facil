@@ -83,9 +83,11 @@ test("quiz gives clear feedback and advances only after a correct answer", async
   await page.clock.pauseAt(new Date("2026-10-01T12:01:00Z"));
 
   const feedback = page.getByRole("status", { name: "Answer feedback" });
+  await expect(feedback).not.toContainText(/Marcação|Trovão/);
   await page.getByRole("button", { name: "Choose option A" }).click();
   await expect(feedback).toContainText("Incorrect — try again");
-  await expect(feedback).toContainText("Option A doesn’t match this rhythm.");
+  await expect(feedback).toContainText("Option A is Trovão. Listen again and choose another.");
+  await expect(feedback).not.toContainText("Marcação");
   await expect(feedback).toHaveAttribute("data-result", "incorrect");
   await expect(feedback).toBeInViewport({ ratio: 1 });
   await expect(page.locator(".quiz-option").first()).toContainText("Not a match");
@@ -94,6 +96,12 @@ test("quiz gives clear feedback and advances only after a correct answer", async
   await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
   expect(requests).toBe(1);
   await page.screenshot({ path: testInfo.outputPath("quiz-incorrect.png"), fullPage: true });
+
+  await page.getByRole("button", { name: "Choose option B" }).click();
+  await expect(feedback).toContainText("Incorrect — try again");
+  await expect(feedback).toContainText("Option B is Marcação. Listen again and choose another.");
+  await expect(feedback).not.toContainText("Trovão");
+  await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
 
   await page.getByRole("button", { name: "Choose option C" }).click();
   await expect(feedback).toContainText("Correct!");

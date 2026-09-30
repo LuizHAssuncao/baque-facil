@@ -662,6 +662,7 @@ p {
   align-items: center;
   gap: 0.45rem;
   margin: 0;
+  scroll-margin-block: 1rem;
   color: var(--muted-strong);
 }
 

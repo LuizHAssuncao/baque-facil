@@ -92,9 +92,9 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
   const prompt = useRef<HTMLHeadingElement>(null);
   const feedback = useRef<HTMLDivElement>(null);
   const answered = selected === round.prompt.slug;
-  const selectedLabel = selected
-    ? String.fromCharCode(65 + round.options.findIndex((rhythm) => rhythm.slug === selected))
-    : null;
+  const selectedIndex = round.options.findIndex((rhythm) => rhythm.slug === selected);
+  const selectedRhythm = round.options[selectedIndex];
+  const selectedLabel = selectedRhythm ? String.fromCharCode(65 + selectedIndex) : null;
 
   useEffect(() => {
     if (focusPrompt) prompt.current?.focus();
@@ -141,7 +141,7 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
           aria-atomic="true"
           data-result={selected ? answered ? "correct" : "incorrect" : undefined}
         >
-          {selected ? (
+          {selectedRhythm ? (
             <>
               <span className="quiz-feedback-icon" aria-hidden="true">
                 {answered ? <Check size={25} /> : <X size={25} />}
@@ -150,7 +150,7 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
                 <strong>{answered ? "Correct!" : "Incorrect — try again"}</strong>
                 <p>{answered
                   ? `Option ${selectedLabel} matches ${round.prompt.title}. Moving to the next rhythm…`
-                  : `Option ${selectedLabel} doesn’t match this rhythm. Listen again and choose another.`}</p>
+                  : `Option ${selectedLabel} is ${selectedRhythm.title}. Listen again and choose another.`}</p>
               </div>
             </>
           ) : "Take your time."}
