@@ -15,6 +15,45 @@ async function switchLanguage(page: Page, name: string) {
   await page.locator(".language-bar").getByRole("button", { name }).click();
 }
 
+test("home difficulty tags keep a single border when switching languages", async ({ page }) => {
+  await page.goto("/");
+  await chooseLanguage(page, english);
+
+  const cards = page.locator(".rhythm-list .rhythm-link");
+  const tags = cards.locator(":scope > span");
+  expect(await cards.count()).toBeGreaterThan(0);
+  await expect(tags).toHaveCount(await cards.count());
+
+  for (const [locale, language] of [
+    ["en-CA", english],
+    ["pt-BR", portugueseLabel],
+    ["en-CA", english],
+  ]) {
+    await switchLanguage(page, language);
+    await expect(page.locator("html")).toHaveAttribute("lang", locale);
+
+    for (const tag of await tags.all()) {
+      await expect(tag.locator("[data-language]:visible")).toHaveCount(1);
+      await expect(tag.locator(`[data-language="${locale}"]`)).toBeVisible();
+
+      // Count rendered borders so nested translation markup cannot add a second pill.
+      const borderedLayers = await tag.evaluate((element) =>
+        [element, ...element.querySelectorAll("*")].filter((layer) => {
+          if (layer.getClientRects().length === 0) return false;
+          const style = getComputedStyle(layer);
+          return [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth]
+            .some((width) => parseFloat(width) > 0);
+        }).length,
+      );
+      expect(borderedLayers, `${locale}: ${await tag.innerText()}`).toBe(1);
+
+      const label = tag.locator(`[data-language="${locale}"]`);
+      await expect(label).toHaveCSS("padding", "0px");
+      await expect(label).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    }
+  }
+});
+
 test("translated messages retain every interpolation parameter", () => {
   const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
   for (const [key, value] of Object.entries(portuguese)) {
