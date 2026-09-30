@@ -1,4 +1,8 @@
 ---
+import LanguageHead from "../../components/LanguageHead.astro";
+import LanguagePicker from "../../components/LanguagePicker.astro";
+import T from "../../components/TranslatedText.astro";
+import { translatedAttributes, errorMessage, type Message } from "../../lib/i18n/messages";
 import { getCollection } from "astro:content";
 import { ArrowLeft } from "lucide-react";
 import Disclaimer from "../../components/Disclaimer.astro";
@@ -6,7 +10,7 @@ import RhythmPlayer from "../../components/RhythmPlayer";
 import { extractRhythmBlock } from "../../lib/extractRhythmBlock";
 import { parseRhythm } from "../../lib/parseRhythm";
 import { sampleEntriesForRhythm } from "../../lib/sampleMap";
-import { validateRhythm } from "../../lib/validateRhythm";
+import { validateRhythmIssues } from "../../lib/validateRhythm";
 import type { Rhythm } from "../../lib/rhythmTypes";
 import "../../styles/global.css";
 
@@ -32,7 +36,7 @@ const nextRhythm =
     : null;
 const rhythmBlock = extractRhythmBlock(entry.body);
 let rhythm: Rhythm | null = null;
-let errors: string[] = [];
+let errors: Message[] = [];
 
 if (!rhythmBlock) {
   errors = ["Rhythm block not found. Add a fenced ```rhythm block to this Markdown file."];
@@ -45,9 +49,9 @@ if (!rhythmBlock) {
       subdivision: entry.data.subdivision,
       tracks: parseRhythm(rhythmBlock),
     };
-    errors = validateRhythm(rhythm);
+    errors = validateRhythmIssues(rhythm);
   } catch (cause) {
-    errors = [cause instanceof Error ? cause.message : "Unable to parse rhythm block."];
+    errors = [errorMessage(cause, "Unable to parse rhythm block.")];
   }
 }
 
@@ -55,31 +59,33 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en-CA">
   <head>
     <meta charset="UTF-8" />
+    <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{entry.data.title} | Baque Fácil</title>
   </head>
   <body>
     <main class="page-shell">
+      <LanguagePicker />
       <a class="back-link" href="/">
         <ArrowLeft aria-hidden="true" size={18} />
-        All rhythms
+        <T message="All rhythms" />
       </a>
 
       <header class="page-header compact editorial-header">
-        <p class="eyebrow">{entry.data.difficulty}</p>
+        <p class="eyebrow"><T message={entry.data.difficulty as Message} /></p>
         <h1>{entry.data.title}</h1>
       </header>
 
       {
         errors.length > 0 ? (
-          <section class="error-panel" aria-label="Rhythm validation errors">
-            <h2>Rhythm errors</h2>
+          <section class="error-panel" {...translatedAttributes({ "aria-label": "Rhythm validation errors" })}>
+            <h2><T message="Rhythm errors" /></h2>
             <ul>
               {errors.map((error) => (
-                <li>{error}</li>
+                <li><T message={error} /></li>
               ))}
             </ul>
           </section>
@@ -98,11 +104,11 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
         <Content />
       </article>
 
-      <nav class="rhythm-nav" aria-label="Rhythm pages">
+      <nav class="rhythm-nav" {...translatedAttributes({ "aria-label": "Rhythm pages" })}>
         {
           previousRhythm ? (
             <a href={`/rhythms/${previousRhythm.slug}/`}>
-              <span>Previous</span>
+              <span><T message="Previous" /></span>
               <strong>{previousRhythm.data.title}</strong>
             </a>
           ) : (
@@ -112,7 +118,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
         {
           nextRhythm ? (
             <a href={`/rhythms/${nextRhythm.slug}/`}>
-              <span>Next</span>
+              <span><T message="Next" /></span>
               <strong>{nextRhythm.data.title}</strong>
             </a>
           ) : (

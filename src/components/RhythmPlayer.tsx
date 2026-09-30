@@ -1,3 +1,5 @@
+import { useTranslation } from "../lib/i18n/useTranslation";
+import { errorMessage, TranslatableError, type Message } from "../lib/i18n/messages";
 import {
   forwardRef,
   useEffect,
@@ -121,11 +123,11 @@ function hasEditableSymbol(trackName: string, symbol: string) {
   return nextEditableSymbol(trackName, symbol) !== null;
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: Message) {
   let timeoutId: number | undefined;
 
   const timeout = new Promise<never>((_, reject) => {
-    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    timeoutId = window.setTimeout(() => reject(new TranslatableError(message)), timeoutMs);
   });
 
   try {
@@ -221,6 +223,7 @@ function RhythmPlayer(
   }: RhythmPlayerProps,
   ref: ForwardedRef<RhythmPlayerHandle>,
 ) {
+  const { t, locale } = useTranslation();
   const isPatternControlled = onPatternChange !== undefined;
   const [localTracks, setLocalTracks] = useState(() => cloneTracks(rhythm.tracks));
   const currentTracks = isPatternControlled ? rhythm.tracks : localTracks;
@@ -231,8 +234,8 @@ function RhythmPlayer(
   const [toneActiveStep, setActiveStep] = useState<number | null>(null);
   const [toneIsPlaying, setIsPlaying] = useState(false);
   const [toneStatus, setStatus] = useState("idle");
-  const [toneError, setError] = useState<string | null>(null);
-  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [toneError, setError] = useState<Message | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<Message | null>(null);
   const [mutedTracks, setMutedTracks] = useState<string[]>(() => defaultMutedTrackNames);
   const [isIos, setIsIos] = useState(false);
   const [showIosSilentModeHelp, setShowIosSilentModeHelp] = useState(false);
@@ -536,7 +539,7 @@ function RhythmPlayer(
     }
 
     if (Tone.getContext().state !== "running") {
-      throw new Error("Audio context could not start.");
+      throw new TranslatableError("Audio context could not start.");
     }
 
     const missingSamples = Object.entries(samples).filter(
@@ -652,7 +655,7 @@ function RhythmPlayer(
     }
   }
 
-  function showCopyFeedback(message: string) {
+  function showCopyFeedback(message: Message) {
     if (copyFeedbackTimeoutRef.current !== null) {
       window.clearTimeout(copyFeedbackTimeoutRef.current);
     }
@@ -745,7 +748,7 @@ function RhythmPlayer(
       }
 
       setStatus("error");
-      setError(cause instanceof Error ? cause.message : "Playback failed.");
+      setError(errorMessage(cause, "Playback failed."));
     }
   }
 
@@ -784,7 +787,8 @@ function RhythmPlayer(
   return (
     <section
       className="player-panel"
-      aria-label={`${rhythm.title} player`}
+      data-rendered-locale={locale}
+      aria-label={t("{title} player", { title: rhythm.title })}
       onClickCapture={(event) => blurPointerActivatedButton(event.target, event.detail)}
     >
       {showIosSilentModeHelp ? (
@@ -796,23 +800,16 @@ function RhythmPlayer(
             aria-labelledby={`${rhythm.slug}-ios-silent-mode-title`}
             aria-describedby={`${rhythm.slug}-ios-silent-mode-description`}
           >
-            <p className="eyebrow">iOS audio</p>
-            <h2 id={`${rhythm.slug}-ios-silent-mode-title`}>Make sure Silent Mode is off</h2>
-            <p id={`${rhythm.slug}-ios-silent-mode-description`}>
-              On iPhone and iPad, Silent Mode can prevent browser audio from playing. Turn
-              Silent Mode off, raise the volume, then press Play.
-            </p>
+            <p className="eyebrow">{t("iOS audio")}</p>
+            <h2 id={`${rhythm.slug}-ios-silent-mode-title`}>{t("Make sure Silent Mode is off")}</h2>
+            <p id={`${rhythm.slug}-ios-silent-mode-description`}>{t("On iPhone and iPad, Silent Mode can prevent browser audio from playing. Turn Silent Mode off, raise the volume, then press Play.")}</p>
             <div className="audio-help-actions">
-              <a href={IOS_AUDIO_HELP_PATH} onClick={acknowledgeIosSilentModeHelp}>
-                Troubleshooting steps
-              </a>
+              <a href={IOS_AUDIO_HELP_PATH} onClick={acknowledgeIosSilentModeHelp}>{t("Troubleshooting steps")}</a>
               <button
                 type="button"
                 ref={iosSilentModeButtonRef}
                 onClick={acknowledgeIosSilentModeHelp}
-              >
-                Got it
-              </button>
+              >{t("Got it")}</button>
             </div>
           </div>
         </div>
@@ -823,44 +820,40 @@ function RhythmPlayer(
           type="button"
           onClick={togglePlayback}
           disabled={status === "loading"}
-          aria-label={isPlaying ? "Stop" : "Play"}
-          title={isPlaying ? "Stop" : "Play"}
+          aria-label={t(isPlaying ? "Stop" : "Play")}
+          title={t(isPlaying ? "Stop" : "Play")}
         >
           {isPlaying ? (
             <Square aria-hidden="true" size={18} />
           ) : (
             <Play aria-hidden="true" size={18} />
           )}
-          {isPlaying ? "Stop" : "Play"}
+          {t(isPlaying ? "Stop" : "Play")}
         </button>
         <button
           type="button"
           onClick={restart}
           disabled={status === "loading"}
-          aria-label="Restart"
-          title="Restart"
+          aria-label={t("Restart")}
+          title={t("Restart")}
         >
-          <RotateCcw aria-hidden="true" size={18} />
-          Restart
-        </button>
+          <RotateCcw aria-hidden="true" size={18} />{t("Restart")}</button>
         {isPatternDirty ? (
           <button
             type="button"
             className="reset-pattern-button"
             onClick={resetPattern}
-            aria-label="Reset pattern"
-            title="Reset pattern"
+            aria-label={t("Reset pattern")}
+            title={t("Reset pattern")}
           >
-            <RotateCcw aria-hidden="true" size={16} />
-            Reset
-          </button>
+            <RotateCcw aria-hidden="true" size={16} />{t("Reset")}</button>
         ) : null}
         <button
           type="button"
           className="loop-toggle"
           aria-pressed={loop}
-          aria-label={loop ? "Disable loop" : "Enable loop"}
-          title={loop ? "Loop on" : "Loop off"}
+          aria-label={t(loop ? "Disable loop" : "Enable loop")}
+          title={t(loop ? "Loop on" : "Loop off")}
           onClick={() => setLoop((currentLoop) => !currentLoop)}
         >
           {loop ? (
@@ -868,10 +861,10 @@ function RhythmPlayer(
           ) : (
             <RepeatOff aria-hidden="true" size={18} />
           )}
-          Loop
+          {t("Loop")}
         </button>
         <label className="tempo-control">
-          <span>Tempo</span>
+          <span>{t("Tempo")}</span>
           <input
             type="range"
             min={MIN_TEMPO}
@@ -884,10 +877,10 @@ function RhythmPlayer(
         </label>
       </div>
 
-      <div className="grid-scroll" aria-label="Parsed rhythm grid" ref={gridScrollRef}>
+      <div className="grid-scroll" aria-label={t("Parsed rhythm grid")} ref={gridScrollRef}>
         <div className="rhythm-grid" style={gridShellStyle}>
           <div className="grid-row count-row" style={gridStyle}>
-            <div className="track-name">Count</div>
+            <div className="track-name">{t("Count")}</div>
             {labels.map((label, index) => (
               <div
                 className={`step-cell count-cell ${activeStep === index ? "active" : ""}`}
@@ -917,8 +910,8 @@ function RhythmPlayer(
                       type="button"
                       className="track-mute-button"
                       aria-pressed={isMuted}
-                      aria-label={isMuted ? `Unmute ${track.name}` : `Mute ${track.name}`}
-                      title={isMuted ? `Unmute ${track.name}` : `Mute ${track.name}`}
+                      aria-label={t(isMuted ? "Unmute {track}" : "Mute {track}", { track: track.name })}
+                      title={t(isMuted ? "Unmute {track}" : "Mute {track}", { track: track.name })}
                       onClick={() => toggleTrackMute(track.name)}
                     >
                       {isMuted ? (
@@ -942,8 +935,8 @@ function RhythmPlayer(
                     <button
                       type="button"
                       className={cellClassName}
-                      aria-label={`${track.name} step ${index + 1}: ${displayedSymbol}`}
-                      title={`${track.name} step ${index + 1}: ${displayedSymbol}`}
+                      aria-label={t("{track} step {step}: {symbol}", { track: track.name, step: index + 1, symbol: displayedSymbol })}
+                      title={t("{track} step {step}: {symbol}", { track: track.name, step: index + 1, symbol: displayedSymbol })}
                       onClick={() => cycleNote(trackIndex, index)}
                       key={`${track.name}-${index}`}
                     >
@@ -964,33 +957,29 @@ function RhythmPlayer(
       <div className="player-secondary-actions">
         {customizeHref ? (
           <a className="customize-rhythm-button" href={customizeHref}>
-            <Pencil aria-hidden="true" size={14} />
-            Customize
-          </a>
+            <Pencil aria-hidden="true" size={14} />{t("Customize")}</a>
         ) : null}
         <button
           type="button"
           className="copy-transcription-button"
           onClick={copyTranscription}
-          aria-label="Copy transcription"
-          title="Copy transcription"
+          aria-label={t("Copy transcription")}
+          title={t("Copy transcription")}
         >
-          <ClipboardCopy aria-hidden="true" size={14} />
-          Copy
-        </button>
+          <ClipboardCopy aria-hidden="true" size={14} />{t("Copy")}</button>
         <div
           className="player-status"
           data-tone={error ? "error" : copyFeedback ? "success" : "idle"}
           aria-live="polite"
         >
-          {copyFeedback ?? error ?? null}
+          {copyFeedback ? t(copyFeedback) : error ? t(error) : null}
         </div>
       </div>
 
       {isIos ? (
         <p className="ios-audio-help-link">
-          Still no sound on iPhone or iPad?{" "}
-          <a href={IOS_AUDIO_HELP_PATH}>Try iOS audio troubleshooting</a>.
+          {t("Still no sound on iPhone or iPad?")}{" "}
+          <a href={IOS_AUDIO_HELP_PATH}>{t("Try iOS audio troubleshooting")}</a>.
         </p>
       ) : null}
 
@@ -1005,9 +994,7 @@ function RhythmPlayer(
             ref={shortcutHelpTriggerRef}
             onClick={() => setShowShortcutHelp(true)}
           >
-            <Keyboard aria-hidden="true" size={15} />
-            Shortcuts
-          </button>
+            <Keyboard aria-hidden="true" size={15} />{t("Shortcuts")}</button>
 
           {showShortcutHelp ? (
             <div
@@ -1023,10 +1010,10 @@ function RhythmPlayer(
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="shortcut-help-header">
-                  <h2 id={`${rhythm.slug}-shortcut-help-title`}>Keyboard shortcuts</h2>
+                  <h2 id={`${rhythm.slug}-shortcut-help-title`}>{t("Keyboard shortcuts")}</h2>
                   <button
                     type="button"
-                    aria-label="Close keyboard shortcuts"
+                    aria-label={t("Close keyboard shortcuts")}
                     ref={shortcutHelpCloseButtonRef}
                     onClick={(event) => closeShortcutHelp(event.detail === 0)}
                   >
@@ -1037,34 +1024,34 @@ function RhythmPlayer(
                 <dl className="shortcut-list">
                   <div>
                     <dt>
-                      <kbd>Space</kbd>
+                      <kbd>{t("Space")}</kbd>
                     </dt>
-                    <dd>Play or stop</dd>
+                    <dd>{t("Play or stop")}</dd>
                   </div>
                   <div>
                     <dt>
-                      <kbd>Backspace</kbd>
+                      <kbd>{t("Backspace")}</kbd>
                     </dt>
-                    <dd>Restart</dd>
+                    <dd>{t("Restart")}</dd>
                   </div>
                   <div>
                     <dt>
                       <kbd>L</kbd>
                     </dt>
-                    <dd>Enable or disable loop</dd>
+                    <dd>{t("Enable or disable loop")}</dd>
                   </div>
                   <div>
                     <dt>
                       <kbd>+</kbd>
                       <kbd>=</kbd>
                     </dt>
-                    <dd>Increase tempo</dd>
+                    <dd>{t("Increase tempo")}</dd>
                   </div>
                   <div>
                     <dt>
                       <kbd>-</kbd>
                     </dt>
-                    <dd>Decrease tempo</dd>
+                    <dd>{t("Decrease tempo")}</dd>
                   </div>
                 </dl>
               </div>

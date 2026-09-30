@@ -1,11 +1,15 @@
 ---
+import LanguageHead from "../../components/LanguageHead.astro";
+import LanguagePicker from "../../components/LanguagePicker.astro";
+import T from "../../components/TranslatedText.astro";
+import { translatedAttributes, errorMessage, type Message } from "../../lib/i18n/messages";
 import { getCollection } from "astro:content";
 import { ArrowLeft } from "lucide-react";
 import Disclaimer from "../../components/Disclaimer.astro";
 import RhythmComposer from "../../components/RhythmComposer";
 import { extractRhythmBlock } from "../../lib/extractRhythmBlock";
 import { parseRhythm } from "../../lib/parseRhythm";
-import { validateRhythm } from "../../lib/validateRhythm";
+import { validateRhythmIssues } from "../../lib/validateRhythm";
 import type { Rhythm } from "../../lib/rhythmTypes";
 import "../../styles/global.css";
 
@@ -24,7 +28,7 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 let initialRhythm: Rhythm | undefined;
 let initialTranscription: string | undefined;
-let errors: string[] = [];
+let errors: Message[] = [];
 
 if (entry) {
   const rhythmBlock = extractRhythmBlock(entry.body);
@@ -40,7 +44,7 @@ if (entry) {
         subdivision: entry.data.subdivision,
         tracks: parseRhythm(rhythmBlock),
       };
-      errors = validateRhythm(initialRhythm);
+      errors = validateRhythmIssues(initialRhythm);
       initialTranscription = [
         "---",
         `title: ${JSON.stringify(entry.data.title)}`,
@@ -55,46 +59,48 @@ if (entry) {
         "",
       ].join("\n");
     } catch (cause) {
-      errors = [cause instanceof Error ? cause.message : "Unable to load rhythm."];
+      errors = [errorMessage(cause, "Unable to load rhythm.")];
     }
   }
 }
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en-CA">
   <head>
     <meta charset="UTF-8" />
+    <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preload" href="/samples/alfaia/left-ghost.wav" as="audio" type="audio/wav" />
     <link rel="preload" href="/samples/alfaia/right-accent.wav" as="audio" type="audio/wav" />
-    <title>{entry ? `Customize ${entry.data.title}` : "Compose"} | Baque Fácil</title>
+    <title data-i18n-text={JSON.stringify(entry ? { key: "Customize {title} | Baque Fácil", values: { title: entry.data.title } } : "Compose | Baque Fácil")}>{entry ? `Customize ${entry.data.title}` : "Compose"} | Baque Fácil</title>
   </head>
   <body>
     <main class="page-shell">
+      <LanguagePicker />
       <a class="back-link" href="/">
         <ArrowLeft aria-hidden="true" size={18} />
-        All rhythms
+        <T message="All rhythms" />
       </a>
 
       <header class="page-header compact editorial-header">
-        <p class="eyebrow">Composer</p>
-        <h1>Alfaia Composer</h1>
+        <p class="eyebrow"><T message="Composer" /></p>
+        <h1><T message="Alfaia Composer" /></h1>
         {
           entry ? (
-            <p>Customize {entry.data.title} in your own copy and export the transcription.</p>
+            <p><T message="Customize {title} in your own copy and export the transcription." values={{ title: entry.data.title }} /></p>
           ) : (
-            <p>Record an Alfaia rhythm on a beat-based grid and export the transcription.</p>
+            <p><T message="Record an Alfaia rhythm on a beat-based grid and export the transcription." /></p>
           )
         }
       </header>
 
       {
         errors.length > 0 ? (
-          <section class="error-panel" aria-label="Rhythm validation errors">
-            <h2>Rhythm errors</h2>
+          <section class="error-panel" {...translatedAttributes({ "aria-label": "Rhythm validation errors" })}>
+            <h2><T message="Rhythm errors" /></h2>
             <ul>
-              {errors.map((error) => <li>{error}</li>)}
+              {errors.map((error) => <li><T message={error} /></li>)}
             </ul>
           </section>
         ) : (

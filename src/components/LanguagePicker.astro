@@ -1,0 +1,18 @@
+---
+import LanguageChoices from "./LanguageChoices.astro";
+import T from "./TranslatedText.astro";
+import { translatedAttributes } from "../lib/i18n/messages";
+---
+<nav class="language-bar" {...translatedAttributes({ "aria-label": "Language" })}>
+  <span class="language-label"><T message="Language" /></span>
+  <LanguageChoices />
+</nav>
+<dialog class="language-dialog" aria-labelledby="language-dialog-title" aria-describedby="language-dialog-description">
+  <h2 id="language-dialog-title"><span lang="en-CA">Choose your language</span><span lang="pt-BR">Escolha seu idioma</span></h2>
+  <p id="language-dialog-description"><span lang="en-CA">You can change this anytime.</span><span lang="pt-BR">Você pode mudar a qualquer momento.</span></p>
+  <LanguageChoices />
+</dialog>
+<script>
+  import { initLanguageControls } from "../lib/i18n/browser";
+  initLanguageControls();
+</script>

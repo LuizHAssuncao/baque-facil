@@ -1,0 +1,12 @@
+---
+import { LANGUAGE_STORAGE_KEY, DEFAULT_LOCALE } from "../lib/i18n/preference";
+---
+<!-- Runs before the body is parsed, so translated Astro text paints in the saved language. -->
+<script is:inline define:vars={{ LANGUAGE_STORAGE_KEY, DEFAULT_LOCALE }}>
+  try {
+    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    document.documentElement.lang = saved === "pt-BR" ? saved : DEFAULT_LOCALE;
+  } catch {
+    document.documentElement.lang = DEFAULT_LOCALE;
+  }
+</script>

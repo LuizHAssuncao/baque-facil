@@ -1,4 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
+
+// Existing interaction coverage runs with an explicitly saved language.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("baque-facil-language", "en-CA"));
+});
 import { buildQuizRhythms, createQuizRound, QUIZ_TEMPO, type QuizLibrary } from "../src/lib/rhythmQuiz";
 import { parseRhythm } from "../src/lib/parseRhythm";
 import type { Rhythm } from "../src/lib/rhythmTypes";
@@ -66,7 +71,7 @@ test("quiz is linked from home and provides retry, match, and next without notat
   page.on("pageerror", (error) => errors.push(error.message));
   await mockLibrary(page);
   await page.goto("/");
-  await page.getByRole("link", { name: /Rhythm quiz/ }).click();
+  await page.getByRole("link", { name: /Quiz/ }).click();
   await expect(page).toHaveURL("/quiz/");
   await waitForAudio(page);
   await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");

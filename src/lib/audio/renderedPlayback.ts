@@ -1,5 +1,6 @@
 import { renderRequestKey, renderRhythm, type RenderRequest, type RenderedRhythm } from "./renderRhythm";
 import { SampleCache } from "./sampleCache";
+import { errorMessage, type Message } from "../i18n/messages";
 
 export type PlaybackSnapshot = {
   ready: boolean;
@@ -8,7 +9,7 @@ export type PlaybackSnapshot = {
   playing: boolean;
   activeStep: number | null;
   playingTempo: number | null;
-  error: string | null;
+  error: Message | null;
 };
 
 export const INITIAL_PLAYBACK: PlaybackSnapshot = {
@@ -103,7 +104,7 @@ export class RenderedPlayback {
       }
     } catch (cause) {
       if (desired.version === this.version) {
-        this.emit({ preparing: false, error: cause instanceof Error ? cause.message : "Unable to prepare audio. Press Play to try again." });
+        this.emit({ preparing: false, error: errorMessage(cause, "Unable to prepare audio. Press Play to try again.") });
       }
     } finally {
       this.rendering = false;
@@ -354,6 +355,16 @@ export class RenderedPlayback {
         } catch { /* Not all browsers expose all media controls. */ }
       }
     } catch { /* Lock-screen metadata must not prevent playback. */ }
+  }
+
+  setTitle(title: string) {
+    this.title = title;
+    // Update this player's metadata only while it owns the playing media session.
+    try {
+      if (this.snapshot.playing && this.mediaActions.length && navigator.mediaSession.metadata) {
+        navigator.mediaSession.metadata.title = title;
+      }
+    } catch { /* Optional lock-screen metadata must not affect playback. */ }
   }
 
   private updateMediaState() {

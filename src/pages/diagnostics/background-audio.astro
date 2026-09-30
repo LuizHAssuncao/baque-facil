@@ -1,99 +1,87 @@
 ---
+import LanguageHead from "../../components/LanguageHead.astro";
+import LanguagePicker from "../../components/LanguagePicker.astro";
+import T from "../../components/TranslatedText.astro";
+import { translatedAttributes } from "../../lib/i18n/messages";
 import { ArrowLeft } from "lucide-react";
 import "../../styles/global.css";
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en-CA">
   <head>
     <meta charset="UTF-8" />
+    <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>Background Audio Test | Baque Fácil</title>
+    <title data-i18n-text={JSON.stringify("Background Audio Test | Baque Fácil")}>Background Audio Test | Baque Fácil</title>
   </head>
   <body>
     <main class="page-shell diagnostic-page" data-audio-diagnostic>
+      <LanguagePicker />
       <a class="back-link" href="/">
         <ArrowLeft aria-hidden="true" size={18} />
-        All rhythms
+        <T message="All rhythms" />
       </a>
       <header class="page-header compact">
-        <p class="eyebrow">Playback diagnostic · v1</p>
-        <h1>Background audio test</h1>
-        <p>
-          Four evenly spaced clicks, with a higher click on beat one. At 120 BPM,
-          the buffer repeats every two seconds. Listen for any extra pause before beat one.
-        </p>
+        <p class="eyebrow"><T message="Playback diagnostic · v1" /></p>
+        <h1><T message="Background audio test" /></h1>
+        <p><T message="Four evenly spaced clicks, with a higher click on beat one. At 120 BPM, the buffer repeats every two seconds. Listen for any extra pause before beat one." /></p>
       </header>
 
-      <section class="diagnostic-card" aria-label="Test playback">
-        <p class="diagnostic-status" role="status" aria-label="Test playback status" data-status>
-          Loading test controls…
-        </p>
+      <section class="diagnostic-card" {...translatedAttributes({ "aria-label": "Test playback" })}>
+        <p class="diagnostic-status" role="status" {...translatedAttributes({ "aria-label": "Test playback status" })} data-status><T message="Loading test controls…" /></p>
         <div class="controls">
-          <button type="button" data-start disabled>Start beat</button>
-          <button type="button" data-stop disabled>Stop</button>
+          <button type="button" data-start disabled><T message="Start beat" /></button>
+          <button type="button" data-stop disabled><T message="Stop" /></button>
         </div>
         <div class="diagnostic-tempo">
-          <label for="diagnostic-tempo">Tempo</label>
+          <label for="diagnostic-tempo"><T message="Tempo" /></label>
           <output for="diagnostic-tempo" data-tempo-label>120 BPM</output>
           <input id="diagnostic-tempo" type="range" min="60" max="180" value="120" step="1" />
         </div>
-        <p class="diagnostic-note">
-          Tempo changes immediately. For this click test, changing speed also changes pitch.
-        </p>
+        <p class="diagnostic-note"><T message="Tempo changes immediately. For this click test, changing speed also changes pitch." /></p>
         <dl class="diagnostic-readings">
-          <div><dt>Audio engine</dt><dd data-engine>Not started</dd></div>
-          <div><dt>Background audio setting</dt><dd data-session>Checking support…</dd></div>
-          <div><dt>Audio clock</dt><dd data-clock>0.0 s</dd></div>
-          <div><dt>Last background check</dt><dd data-background>No check yet</dd></div>
+          <div><dt><T message="Audio engine" /></dt><dd data-engine><T message="Not started" /></dd></div>
+          <div><dt><T message="Background audio setting" /></dt><dd data-session><T message="Checking support…" /></dd></div>
+          <div><dt><T message="Audio clock" /></dt><dd data-clock>0.0 s</dd></div>
+          <div><dt><T message="Last background check" /></dt><dd data-background><T message="No check yet" /></dd></div>
         </dl>
-        <p class="diagnostic-note">
-          Counters may freeze while the screen is locked. Sound runs independently of these
-          counters. A moving audio clock alone does not prove that sound was audible.
-        </p>
-        <noscript><p>Enable JavaScript to run this audio test.</p></noscript>
+        <p class="diagnostic-note"><T message="Counters may freeze while the screen is locked. Sound runs independently of these counters. A moving audio clock alone does not prove that sound was audible." /></p>
+        <noscript><p><T message="Enable JavaScript to run this audio test." /></p></noscript>
       </section>
 
       <section class="diagnostic-card" aria-labelledby="test-instructions">
-        <h2 id="test-instructions">Test on your iPhone</h2>
+        <h2 id="test-instructions"><T message="Test on your iPhone" /></h2>
         <ol class="diagnostic-steps">
-          <li>Open this page in Safari and tap <strong>Start beat</strong>. Listen for 20 seconds.</li>
-          <li>Switch to another app that is not playing audio. Listen for at least one minute.</li>
-          <li>Return here, then lock the phone for at least two minutes. Listen for gaps or silence.</li>
-          <li>Return, change the tempo, and repeat. Record what you heard, then tap <strong>Copy report</strong>.</li>
+          <li><T message="Open this page in Safari and tap Start beat. Listen for 20 seconds." /></li>
+          <li><T message="Switch to another app that is not playing audio. Listen for at least one minute." /></li>
+          <li><T message="Return here, then lock the phone for at least two minutes. Listen for gaps or silence." /></li>
+          <li><T message="Return, change the tempo, and repeat. Record what you heard, then tap Copy report." /></li>
         </ol>
-        <p>
-          Keep this tab open. If sound stops, return here before tapping Resume or Start:
-          the test logs the interruption and never automatically resumes playback.
-        </p>
+        <p><T message="Keep this tab open. If sound stops, return here before tapping Resume or Start: the test logs the interruption and never automatically resumes playback." /></p>
       </section>
 
       <section class="diagnostic-card" aria-labelledby="test-report">
-        <h2 id="test-report">Your result</h2>
-        <label for="diagnostic-result">What did you hear while away?</label>
+        <h2 id="test-report"><T message="Your result" /></h2>
+        <label for="diagnostic-result"><T message="What did you hear while away?" /></label>
         <select id="diagnostic-result">
-          <option value="Not recorded">Choose a result</option>
-          <option>Continuous beat, no gaps</option>
-          <option>Beat continued, but with gaps</option>
-          <option>Sound stopped</option>
+          <option value="Not recorded" data-i18n-text={JSON.stringify("Choose a result")}>{"Choose a result"}</option>
+          <option value="Continuous beat, no gaps" data-i18n-text={JSON.stringify("Continuous beat, no gaps")}>{"Continuous beat, no gaps"}</option>
+          <option value="Beat continued, but with gaps" data-i18n-text={JSON.stringify("Beat continued, but with gaps")}>{"Beat continued, but with gaps"}</option>
+          <option value="Sound stopped" data-i18n-text={JSON.stringify("Sound stopped")}>{"Sound stopped"}</option>
         </select>
         <div class="controls">
-          <button type="button" data-copy>Copy report</button>
+          <button type="button" data-copy><T message="Copy report" /></button>
         </div>
-        <p class="diagnostic-note" role="status" data-copy-status>
-          Logs stay in this tab. Nothing is sent automatically.
-        </p>
+        <p class="diagnostic-note" role="status" data-copy-status><T message="Logs stay in this tab. Nothing is sent automatically." /></p>
         <details>
-          <summary>View diagnostic log</summary>
-          <label for="diagnostic-log">Diagnostic report</label>
-          <textarea id="diagnostic-log" rows="12" readonly spellcheck="false"></textarea>
+          <summary><T message="View diagnostic log" /></summary>
+          <label for="diagnostic-log"><T message="Diagnostic report" /></label>
+          <textarea id="diagnostic-log" {...translatedAttributes({ "aria-label": "Diagnostic report" })} rows="12" readonly spellcheck="false"></textarea>
         </details>
       </section>
-      <p class="diagnostic-note">
-        This page tests a looping Web Audio buffer with the playback audio-session setting.
-        It is separate from the rhythm player and Markdown lessons.
-      </p>
+      <p class="diagnostic-note"><T message="This page tests a looping Web Audio buffer with the playback audio-session setting. It is separate from the rhythm player and Markdown lessons." /></p>
     </main>
     <script>
       import { initBackgroundAudioDiagnostic } from "../../lib/audio/backgroundAudioDiagnostic";

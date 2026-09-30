@@ -1,68 +1,56 @@
 ---
+import LanguageHead from "../../components/LanguageHead.astro";
+import LanguagePicker from "../../components/LanguagePicker.astro";
+import T from "../../components/TranslatedText.astro";
+import { translatedAttributes } from "../../lib/i18n/messages";
 import { ArrowLeft } from "lucide-react";
 import Disclaimer from "../../components/Disclaimer.astro";
 import "../../styles/global.css";
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en-CA">
   <head>
     <meta charset="UTF-8" />
+    <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>iOS Audio Troubleshooting | Baque Fácil</title>
+    <title data-i18n-text={JSON.stringify("iOS Audio Troubleshooting | Baque Fácil")}>{"iOS Audio Troubleshooting | Baque Fácil"}</title>
   </head>
   <body>
     <main class="page-shell">
+      <LanguagePicker />
       <a class="back-link" href="/">
         <ArrowLeft aria-hidden="true" size={18} />
-        All rhythms
+        <T message="All rhythms" />
       </a>
 
       <header class="page-header compact">
-        <p class="eyebrow">iOS audio</p>
-        <h1>Can't hear sound?</h1>
-        <p>Follow these checks in order on iPhone or iPad.</p>
+        <p class="eyebrow"><T message="iOS audio" /></p>
+        <h1><T message="Can&#x27;t hear sound?" /></h1>
+        <p><T message="Follow these checks in order on iPhone or iPad." /></p>
       </header>
 
-      <section class="help-steps" aria-label="iOS audio troubleshooting steps">
+      <section class="help-steps" {...translatedAttributes({ "aria-label": "iOS audio troubleshooting steps" })}>
         <ol>
           <li>
-            <h2>Start playback from the Play button</h2>
-            <p>
-              Wait for the rhythm's audio to finish preparing, then tap Play. iOS may
-              require another tap after a call or another audio interruption.
-            </p>
+            <h2><T message="Start playback from the Play button" /></h2>
+            <p><T message="Wait for the rhythm&#x27;s audio to finish preparing, then tap Play. iOS may require another tap after a call or another audio interruption." /></p>
           </li>
           <li>
-            <h2>Turn the volume up</h2>
-            <p>
-              Keep this page open, then press the physical volume up button until media volume
-              is audible.
-            </p>
+            <h2><T message="Turn the volume up" /></h2>
+            <p><T message="Keep this page open, then press the physical volume up button until media volume is audible." /></p>
           </li>
           <li>
-            <h2>Keep the rhythm page open in its tab</h2>
-            <p>
-              You can switch apps or lock the screen after playback starts. Closing the tab,
-              navigating away, or force-quitting the browser stops playback. If a tempo or mute
-              change is still preparing, the current rhythm continues. A change that is
-              already scheduled can finish while the screen is locked.
-            </p>
+            <h2><T message="Keep the rhythm page open in its tab" /></h2>
+            <p><T message="You can switch apps or lock the screen after playback starts. Closing the tab, navigating away, or force-quitting the browser stops playback. If a tempo or mute change is still preparing, the current rhythm continues. A change that is already scheduled can finish while the screen is locked." /></p>
           </li>
           <li>
-            <h2>Check Bluetooth and AirPlay</h2>
-            <p>
-              Open Control Center and confirm audio is not routed to headphones, a speaker, or
-              another AirPlay device.
-            </p>
+            <h2><T message="Check Bluetooth and AirPlay" /></h2>
+            <p><T message="Open Control Center and confirm audio is not routed to headphones, a speaker, or another AirPlay device." /></p>
           </li>
           <li>
-            <h2>Check Silent Mode when using the composer</h2>
-            <p>
-              The composer's live preview works differently from rhythm-page playback.
-              Turn Silent Mode off and keep the composer visible while recording or previewing.
-              If rhythm-page playback still fails, reload and tap Play again.
-            </p>
+            <h2><T message="Check Silent Mode when using the composer" /></h2>
+            <p><T message="The composer&#x27;s live preview works differently from rhythm-page playback. Turn Silent Mode off and keep the composer visible while recording or previewing. If rhythm-page playback still fails, reload and tap Play again." /></p>
           </li>
         </ol>
       </section>

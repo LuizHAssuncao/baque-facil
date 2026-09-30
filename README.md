@@ -18,6 +18,8 @@ React rhythm grids, audio playback, and an Alfaia composer.
   an embedded preview player.
 - Left-handed display preference stored locally without changing the underlying
   rhythm notation.
+- English (Canada) and Portuguese (Brazil), with a first-visit language picker,
+  controls on every page, and a saved browser preference.
 
 ## Tech Stack
 
@@ -74,6 +76,34 @@ src/styles/global.css   Global application styles
 public/                 Static images and audio samples
 tests/layout.spec.ts    Playwright smoke and interaction tests
 ```
+
+## Languages
+
+The interface supports `en-CA` and `pt-BR`. A bilingual dialog asks new visitors
+to choose a language on any page. The header and home-page Settings can change
+it at any time. The choice is stored in `localStorage` as `baque-facil-language`
+and synchronized across open tabs. It persists when the browser reopens; a new
+browser profile or cleared site data prompts again. When storage is unavailable,
+the language can still change for the current page. Escape dismisses the prompt
+without saving a choice.
+
+`src/lib/i18n/messages.ts` contains typed English source messages and their
+Brazilian Portuguese translations. Use `TranslatedText.astro` for Astro text,
+`translatedAttributes` for translated attributes, and `useTranslation` inside
+React components. Store message keys and parameters for dynamic errors/statuses
+so they also update when the language changes. Keep `Quiz` and `Tempo` in both
+languages. Lesson prose translations live beside the English text in Markdown,
+using `data-language` and `lang` attributes.
+
+Language changes update text in place, preserving playback, quiz progress, and
+composer edits. Rhythm names, instrument/sample identifiers, notation, shortcut
+keys, user-authored transcriptions, and raw diagnostic report data remain stable.
+The inline head initializer and bilingual Astro markup prevent an English text
+flash for returning Portuguese visitors. React uses a matching server snapshot
+and subscribes to the shared preference after hydration.
+
+Language behavior is covered by `tests/language.spec.ts`. Existing interaction
+tests explicitly select English through saved storage.
 
 ## Rhythm Content
 

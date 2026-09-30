@@ -1,8 +1,13 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
+// Existing interaction coverage runs with an explicitly saved language.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("baque-facil-language", "en-CA"));
+});
+
 const routes = [
   { name: "home", path: "/", heading: "Baque Fácil" },
-  { name: "quiz", path: "/quiz/", heading: "Rhythm quiz" },
+  { name: "quiz", path: "/quiz/", heading: "Quiz" },
   { name: "compose", path: "/compose/", heading: "Alfaia Composer" },
   { name: "ios-audio-help", path: "/help/ios-audio/", heading: "Can't hear sound?" },
   { name: "background-audio-test", path: "/diagnostics/background-audio/", heading: "Background audio test" },

@@ -38,6 +38,75 @@
   box-sizing: border-box;
 }
 
+html[lang="en-CA"] [data-language="pt-BR"],
+html[lang="pt-BR"] [data-language="en-CA"] {
+  display: none !important;
+}
+
+/* Keep English SSR islands from flashing before Portuguese hydration completes. */
+html[lang="pt-BR"] [data-rendered-locale="en-CA"] {
+  visibility: hidden;
+}
+
+.language-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.8rem;
+}
+
+.language-label { color: var(--muted-strong); }
+
+.language-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.language-choices button {
+  min-height: 44px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-strong);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.language-choices button[aria-pressed="true"] {
+  background: var(--teal-soft);
+  border-color: var(--teal);
+  color: var(--teal-deep);
+}
+
+.language-choices button:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.language-dialog {
+  width: min(30rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  padding: clamp(1.25rem, 5vw, 2rem);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+}
+
+.language-dialog::backdrop { background: rgb(20 24 22 / 0.6); }
+.language-dialog h2 { margin-top: 0; font-size: 1.4rem; }
+.language-dialog h2 span, .language-dialog p span { display: block; }
+.language-dialog p { color: var(--muted-strong); line-height: 1.5; }
+.language-dialog .language-choices { flex-direction: column; }
+.language-dialog .language-choices button { padding: 0.8rem 1rem; text-align: left; }
+.language-settings { margin: 1rem 0; }
+.language-settings .language-choices { margin-top: 0.5rem; }
+
 html {
   min-width: 320px;
   background:

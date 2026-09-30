@@ -1,0 +1,9 @@
+---
+import { translate, type Message, type MessageValues } from "../lib/i18n/messages";
+interface Props {
+  message: Message;
+  values?: MessageValues;
+}
+const { message, values } = Astro.props;
+---
+<span data-language="en-CA" lang="en-CA">{translate("en-CA", message, values)}</span><span data-language="pt-BR" lang="pt-BR">{translate("pt-BR", message, values)}</span>

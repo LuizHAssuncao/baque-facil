@@ -1,5 +1,10 @@
 ---
+import LanguageHead from "../components/LanguageHead.astro";
+import LanguagePicker from "../components/LanguagePicker.astro";
+import T from "../components/TranslatedText.astro";
+import { translatedAttributes, type Message } from "../lib/i18n/messages";
 import { getCollection } from "astro:content";
+import LanguageChoices from "../components/LanguageChoices.astro";
 import Disclaimer from "../components/Disclaimer.astro";
 import "../styles/global.css";
 
@@ -13,19 +18,21 @@ const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en-CA">
   <head>
     <meta charset="UTF-8" />
+    <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Baque Fácil</title>
   </head>
   <body>
     <main class="page-shell">
+      <LanguagePicker />
       <header class="page-header home-hero">
         <div class="home-hero-copy">
-          <p class="eyebrow">Maracatu rhythm studio</p>
+          <p class="eyebrow"><T message="Maracatu rhythm studio" /></p>
           <h1>Baque Fácil</h1>
-          <p>Learn, practice, and compose alfaia patterns with a tactile beat grid.</p>
+          <p><T message="Learn, practice, and compose alfaia patterns with a tactile beat grid." /></p>
         </div>
         <div class="home-hero-media" aria-hidden="true">
           <img
@@ -40,13 +47,13 @@ const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
       </header>
 
       <section class="home-section" aria-labelledby="rhythms-heading">
-        <h2 id="rhythms-heading">Rhythms</h2>
+        <h2 id="rhythms-heading"><T message="Rhythms" /></h2>
         <div class="rhythm-list">
           {
             practiceRhythms.map((rhythm) => (
               <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
                 <strong>{rhythm.data.title}</strong>
-                <span>{rhythm.data.difficulty}</span>
+                <span><T message={rhythm.data.difficulty as Message} /></span>
               </a>
             ))
           }
@@ -54,13 +61,13 @@ const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
       </section>
 
       <section class="home-section" aria-labelledby="combos-heading">
-        <h2 id="combos-heading">Combos</h2>
+        <h2 id="combos-heading"><T message="Combos" /></h2>
         <div class="rhythm-list">
           {
             comboRhythms.map((rhythm) => (
               <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
                 <strong>{rhythm.data.title}</strong>
-                <span>{rhythm.data.difficulty}</span>
+                <span><T message={rhythm.data.difficulty as Message} /></span>
               </a>
             ))
           }
@@ -68,28 +75,32 @@ const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
       </section>
 
       <section class="home-section" aria-labelledby="listening-heading">
-        <h2 id="listening-heading">Listening practice</h2>
+        <h2 id="listening-heading"><T message="Listening practice" /></h2>
         <a class="rhythm-link" href="/quiz/">
-          <strong>Rhythm quiz</strong>
-          <span>Read a rhythm name and find its sound</span>
+          <strong><T message="Quiz" /></strong>
+          <span><T message="Read a rhythm name and find its sound" /></span>
         </a>
       </section>
 
       <section class="home-section" aria-labelledby="composer-heading">
-        <h2 id="composer-heading">Composer</h2>
+        <h2 id="composer-heading"><T message="Composer" /></h2>
         <a class="rhythm-link compose-link" href="/compose/">
-          <strong>Compose an Alfaia rhythm</strong>
-          <span>Record an Alfaia rhythm on a beat-based grid</span>
+          <strong><T message="Compose an Alfaia rhythm" /></strong>
+          <span><T message="Record an Alfaia rhythm on a beat-based grid" /></span>
         </a>
       </section>
 
       <details class="preference-disclosure">
-        <summary>Settings</summary>
+        <summary><T message="Settings" /></summary>
+        <div class="language-settings" role="group" {...translatedAttributes({ "aria-label": "Language" })}>
+          <strong><T message="Language" /></strong>
+          <LanguageChoices />
+        </div>
         <label class="hand-preference-toggle">
           <input id="left-handed-mode" type="checkbox" />
           <span>
-            <strong>Left-handed mode</strong>
-            <small>Reverse R (right) and L (left) in rhythm grids.</small>
+            <strong><T message="Left-handed mode" /></strong>
+            <small><T message="Reverse R (right) and L (left) in rhythm grids." /></small>
           </span>
         </label>
       </details>

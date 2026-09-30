@@ -1,3 +1,4 @@
+import { useTranslation } from "../lib/i18n/useTranslation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Headphones, Play, RotateCcw, SkipForward, Square } from "lucide-react";
 import { useRenderedPlayback } from "../lib/audio/useRenderedPlayback";
@@ -17,14 +18,15 @@ type OptionProps = {
 };
 
 function AudioOption({ rhythm, samples, label, answered, result, onPlay, onChoose }: OptionProps) {
+  const { t } = useTranslation();
   const request = useMemo(() => ({
     // Media controls must not reveal the rhythm's name either.
-    rhythm: { ...rhythm, title: `Option ${label}` },
+    rhythm: { ...rhythm, title: t("Option {label}", { label }) },
     samples,
     tempo: QUIZ_TEMPO,
     loop: false,
     mutedTracks: [],
-  }), [rhythm, samples, label]);
+  }), [rhythm, samples, label, t]);
   const { controller, snapshot } = useRenderedPlayback(true, request);
   const [hasPlayed, setHasPlayed] = useState(false);
   const preparing = snapshot.preparing && !snapshot.ready;
@@ -37,7 +39,7 @@ function AudioOption({ rhythm, samples, label, answered, result, onPlay, onChoos
       <button
         className="quiz-button quiz-play"
         type="button"
-        aria-label={`${action} audio ${label}`}
+        aria-label={t("{action} audio {label}", { action: t(action), label })}
         disabled={preparing}
         onClick={() => {
           const player = controller.current;
@@ -51,18 +53,18 @@ function AudioOption({ rhythm, samples, label, answered, result, onPlay, onChoos
         }}
       >
         <Icon size={19} aria-hidden="true" />
-        {action}
+        {t(action)}
       </button>
       <button
         className="quiz-button quiz-choose"
         type="button"
-        aria-label={result === "correct" ? `Option ${label} is correct` : `Choose option ${label}`}
+        aria-label={t(result === "correct" ? "Option {label} is correct" : "Choose option {label}", { label })}
         disabled={answered || !snapshot.ready || Boolean(snapshot.error)}
         onClick={onChoose}
       >
-        {result === "correct" ? <><Check size={18} aria-hidden="true" /> Matched</> : "Choose this"}
+        {result === "correct" ? <><Check size={18} aria-hidden="true" />{t("Matched")}</> : t("Choose this")}
       </button>
-      {snapshot.error && <p className="quiz-audio-error" role="alert">Audio {label} couldn’t play. Tap Retry to try again.</p>}
+      {snapshot.error && <p className="quiz-audio-error" role="alert">{t("Audio {label} couldn’t play. Tap Retry to try again.", { label })}</p>}
     </li>
   );
 }
@@ -75,6 +77,7 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
   onPlay: (player: RenderedPlayback) => void;
   onStop: () => void;
 }) {
+  const { t, locale } = useTranslation();
   const [selected, setSelected] = useState<string | null>(null);
   const prompt = useRef<HTMLHeadingElement>(null);
   const answered = selected === round.prompt.slug;
@@ -84,14 +87,14 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
   }, [focusPrompt]);
 
   return (
-    <section className="quiz-practice" aria-labelledby="quiz-prompt">
+    <section data-rendered-locale={locale} className="quiz-practice" aria-labelledby="quiz-prompt">
       <div className="quiz-prompt-panel">
         <Headphones size={24} aria-hidden="true" />
-        <p className="eyebrow">Which audio matches?</p>
+        <p className="eyebrow">{t("Which audio matches?")}</p>
         <h2 id="quiz-prompt" ref={prompt} tabIndex={-1}>{round.prompt.title}</h2>
       </div>
-      <p className="quiz-listen-hint">Listen as often as you like, then choose.</p>
-      <ol className="quiz-options" aria-label="Audio options">
+      <p className="quiz-listen-hint">{t("Listen as often as you like, then choose.")}</p>
+      <ol className="quiz-options" aria-label={t("Audio options")}>
         {round.options.map((rhythm, index) => (
           <AudioOption
             key={rhythm.slug}
@@ -107,10 +110,10 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
       </ol>
       <div className="quiz-footer">
         <p className="quiz-feedback" role="status" data-correct={answered || undefined}>
-          {answered ? <><Check size={20} aria-hidden="true" /> That’s it!</> : selected ? "Give it another listen." : "Take your time."}
+          {answered ? <><Check size={20} aria-hidden="true" />{t("That’s it!")}</> : t(selected ? "Give it another listen." : "Take your time.")}
         </p>
         <button className={`quiz-button ${answered ? "quiz-next" : "quiz-skip"}`} type="button" onClick={onNext}>
-          {answered ? <>Next rhythm <ArrowRight size={18} aria-hidden="true" /></> : <>Skip <SkipForward size={17} aria-hidden="true" /></>}
+          {answered ? <>{t("Next rhythm")}<ArrowRight size={18} aria-hidden="true" /></> : <>{t("Skip")}<SkipForward size={17} aria-hidden="true" /></>}
         </button>
       </div>
     </section>
@@ -118,6 +121,7 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
 }
 
 export default function RhythmQuiz() {
+  const { t, locale } = useTranslation();
   const [round, setRound] = useState<QuizRound | null>(null);
   const [samples, setSamples] = useState<SampleMap>({});
   const [loading, setLoading] = useState(true);
@@ -169,15 +173,14 @@ export default function RhythmQuiz() {
     };
   }, [loadRound, stopPlayback]);
 
-  if (loading) return <div className="quiz-empty" role="status">Finding a rhythm…</div>;
+  if (loading) return <div data-rendered-locale={locale} className="quiz-empty" role="status">{t("Finding a rhythm…")}</div>;
   if (error || !round) return (
-    <section className="quiz-empty">
+    <section data-rendered-locale={locale} className="quiz-empty">
       <Headphones size={28} aria-hidden="true" />
-      <h2>{error ? "The rhythms couldn’t load" : "More rhythms needed"}</h2>
-      <p role="status">{error ? "Try again when you’re connected." : "This practice needs at least three different playable rhythms in the library."}</p>
+      <h2>{t(error ? "The rhythms couldn’t load" : "More rhythms needed")}</h2>
+      <p role="status">{t(error ? "Try again when you’re connected." : "This practice needs at least three different playable rhythms in the library.")}</p>
       <button className="quiz-button" type="button" onClick={() => void loadRound(true)}>
-        <RotateCcw size={18} aria-hidden="true" /> Try again
-      </button>
+        <RotateCcw size={18} aria-hidden="true" />{t("Try again")}</button>
     </section>
   );
 

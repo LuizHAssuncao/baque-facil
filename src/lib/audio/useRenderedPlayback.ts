@@ -24,5 +24,9 @@ export function useRenderedPlayback(enabled: boolean, request: RenderRequest) {
     controller.current?.update(requestRef.current);
   }, [key]);
 
+  useEffect(() => {
+    controller.current?.setTitle(request.rhythm.title);
+  }, [request.rhythm.title]);
+
   return { controller, snapshot };
 }

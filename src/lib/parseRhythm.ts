@@ -1,4 +1,5 @@
 import type { RhythmTrack } from "./rhythmTypes";
+import { TranslatableError } from "./i18n/messages";
 
 export function parseRhythm(input: string): RhythmTrack[] {
   const tracks: RhythmTrack[] = [];
@@ -15,7 +16,7 @@ export function parseRhythm(input: string): RhythmTrack[] {
       const name = line.slice(0, -1).trim();
 
       if (!name) {
-        throw new Error(`Line ${index + 1} has an empty track name.`);
+        throw new TranslatableError({ key: "Line {line} has an empty track name.", values: { line: index + 1 } });
       }
 
       activeTrack = { name, steps: [] };
@@ -24,7 +25,7 @@ export function parseRhythm(input: string): RhythmTrack[] {
     }
 
     if (!activeTrack) {
-      throw new Error(`Line ${index + 1} has steps before any track header.`);
+      throw new TranslatableError({ key: "Line {line} has steps before any track header.", values: { line: index + 1 } });
     }
 
     const steps = line

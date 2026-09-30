@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+// Existing interaction coverage runs with an explicitly saved language.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("baque-facil-language", "en-CA"));
+});
+
 declare global {
   interface Window {
     diagnosticCapture: {

@@ -1,3 +1,5 @@
+import { useTranslation } from "../lib/i18n/useTranslation";
+import { errorMessage, type Message, type MessageKey } from "../lib/i18n/messages";
 import {
   useEffect,
   useMemo,
@@ -21,7 +23,7 @@ import { parseRhythm } from "../lib/parseRhythm";
 import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { sampleEntriesForRhythm, sampleMap } from "../lib/sampleMap";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
-import { validateRhythm } from "../lib/validateRhythm";
+import { validateRhythmIssues } from "../lib/validateRhythm";
 import type { Rhythm, RhythmTrack, Subdivision } from "../lib/rhythmTypes";
 
 type RhythmComposerProps = {
@@ -108,6 +110,7 @@ function formatMarkdown(
   tempo: number,
   subdivision: Subdivision,
   title = DEFAULT_TITLE,
+  description = DEFAULT_DESCRIPTION,
 ) {
   return [
     "---",
@@ -119,7 +122,7 @@ function formatMarkdown(
     ...tracks.map((track) => `  - "${escapeYamlString(track.name)}"`),
     "---",
     "",
-    DEFAULT_DESCRIPTION,
+    description,
     "",
     "```rhythm",
     formatRhythmBlock(tracks, getStepsPerBeat(subdivision)),
@@ -218,7 +221,7 @@ function parseTranscriptionTracks(
 ) {
   try {
     const tracks = parseRhythm(rhythmInputFromTranscription(transcription));
-    const errors = validateRhythm({
+    const errors = validateRhythmIssues({
       title: DEFAULT_TITLE,
       slug: "compose-preview",
       tempo,
@@ -230,7 +233,7 @@ function parseTranscriptionTracks(
   } catch (cause) {
     return {
       tracks: [],
-      errors: [cause instanceof Error ? cause.message : "Unable to parse rhythm block."],
+      errors: [errorMessage(cause, "Unable to parse rhythm block.")],
     };
   }
 }
@@ -352,9 +355,10 @@ export default function RhythmComposer({
   initialRhythm,
   initialTranscription,
 }: RhythmComposerProps) {
+  const { t, locale } = useTranslation();
   const initialTempo = clampTempo(initialRhythm?.tempo ?? DEFAULT_TEMPO);
   const subdivision = initialRhythm?.subdivision ?? DEFAULT_SUBDIVISION;
-  const displayTitle = initialRhythm?.title ?? DEFAULT_TITLE;
+  const displayTitle = initialRhythm?.title ?? t(DEFAULT_TITLE);
   const [tempo, setTempo] = useState(initialTempo);
   const [recordedTracks, setRecordedTracks] = useState<RhythmTrack[]>(() =>
     cloneTracks(initialRhythm?.tracks ?? defaultTracks()),
@@ -369,12 +373,12 @@ export default function RhythmComposer({
     initialTranscription ??
     formatMarkdown(initialRhythm?.tracks ?? defaultTracks(), initialTempo, subdivision, displayTitle),
   );
-  const [transcriptionErrors, setTranscriptionErrors] = useState<string[]>([]);
+  const [transcriptionErrors, setTranscriptionErrors] = useState<Message[]>([]);
   const [selectedStep, setSelectedStep] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [countIn, setCountIn] = useState<number | null>(null);
   const [metronomeEnabled, setMetronomeEnabled] = useState(false);
-  const [recordStatus, setRecordStatus] = useState("Ready");
+  const [recordStatus, setRecordStatus] = useState<MessageKey>("Ready");
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [showPlayerTip, setShowPlayerTip] = useState(false);
   const [pressedHands, setPressedHands] = useState<Record<HitSymbol, boolean>>({
@@ -385,6 +389,17 @@ export default function RhythmComposer({
   const currentTracksRef = useRef(currentTracks);
   const recordingStepsRef = useRef(recordingSteps);
   const transcriptionRef = useRef(transcription);
+  const generatedTemplateRef = useRef(formatMarkdown(defaultTracks(), initialTempo, subdivision));
+  useEffect(() => {
+    if (initialRhythm || initialTranscription) return;
+    // Only translate a pristine generated template; never rewrite user-authored content.
+    if (locale !== document.documentElement.lang) return;
+    if (transcriptionRef.current !== generatedTemplateRef.current) return;
+    const localized = formatMarkdown(defaultTracks(), initialTempo, subdivision, t(DEFAULT_TITLE), t(DEFAULT_DESCRIPTION));
+    generatedTemplateRef.current = localized;
+    transcriptionRef.current = localized;
+    setTranscription(localized);
+  }, [locale, t, initialRhythm, initialTranscription, initialTempo, subdivision]);
   const selectedStepRef = useRef(selectedStep);
   const tempoRef = useRef(tempo);
   const metronomeEnabledRef = useRef(metronomeEnabled);
@@ -781,7 +796,7 @@ export default function RhythmComposer({
   }
 
   function stopRecording(
-    status = "Stopped",
+    status: MessageKey = "Stopped",
     shouldTrimTake = false,
     trimThroughStep = selectedStepRef.current,
   ) {
@@ -1469,12 +1484,13 @@ export default function RhythmComposer({
   return (
     <section
       className="composer-panel"
-      aria-label="Alfaia rhythm composer"
+      data-rendered-locale={locale}
+      aria-label={t("Alfaia rhythm composer")}
       onClickCapture={(event) => blurPointerActivatedButton(event.target, event.detail)}
     >
       <div className="composer-meta">
         <label>
-          <span>Tempo</span>
+          <span>{t("Tempo")}</span>
           <div className="composer-slider-row">
             <input
               type="range"
@@ -1491,21 +1507,21 @@ export default function RhythmComposer({
         </label>
       </div>
 
-      <div className="composer-actions" aria-label="Composer controls">
+      <div className="composer-actions" aria-label={t("Composer controls")}>
         <button
           type="button"
           className="metronome-toggle"
-          aria-label={metronomeEnabled ? "Turn metronome off" : "Turn metronome on"}
+          aria-label={t(metronomeEnabled ? "Turn metronome off" : "Turn metronome on")}
           aria-pressed={metronomeEnabled}
-          title={metronomeEnabled ? "Turn metronome off" : "Turn metronome on"}
+          title={t(metronomeEnabled ? "Turn metronome off" : "Turn metronome on")}
           onClick={() => toggleMetronome(!metronomeEnabled)}
         >
-          Metronome {metronomeEnabled ? "On" : "Off"}
+          {t(metronomeEnabled ? "Metronome On" : "Metronome Off")}
         </button>
         <button
           type="button"
           className={isRecordLocked ? "record-button recording" : "record-button"}
-          aria-label={isRecordLocked ? "Stop recording" : "Record"}
+          aria-label={t(isRecordLocked ? "Stop recording" : "Record")}
           onClick={toggleRecording}
         >
           {isRecordLocked ? (
@@ -1513,9 +1529,9 @@ export default function RhythmComposer({
           ) : (
             <CircleDot aria-hidden="true" size={18} />
           )}
-          {isRecordLocked ? "Stop" : "Record"}
+          {t(isRecordLocked ? "Stop" : "Record")}
         </button>
-        <span aria-live="polite">{recordStatus}</span>
+        <span aria-live="polite">{t(recordStatus)}</span>
       </div>
 
       {countIn !== null ? (
@@ -1524,7 +1540,7 @@ export default function RhythmComposer({
         </div>
       ) : null}
 
-      <div className="hand-keys" aria-label="Keyboard input controls">
+      <div className="hand-keys" aria-label={t("Keyboard input controls")}>
         <button
           type="button"
           className="hand-key left-hand"
@@ -1535,10 +1551,10 @@ export default function RhythmComposer({
           onPointerUp={(event) => releaseHitPointer("L", event)}
           onPointerCancel={(event) => releaseHitPointer("L", event)}
           onPointerLeave={(event) => releaseHitPointer("L", event)}
-          title="Left hand"
+          title={t("Left hand")}
         >
-          <span>Press F key</span>
-          <strong>Left</strong>
+          <span>{t("Press F key")}</span>
+          <strong>{t("Left")}</strong>
         </button>
         <button
           type="button"
@@ -1550,17 +1566,17 @@ export default function RhythmComposer({
           onPointerUp={(event) => releaseHitPointer("R", event)}
           onPointerCancel={(event) => releaseHitPointer("R", event)}
           onPointerLeave={(event) => releaseHitPointer("R", event)}
-          title="Right hand"
+          title={t("Right hand")}
         >
-          <span>Press J key</span>
-          <strong>Right</strong>
+          <span>{t("Press J key")}</span>
+          <strong>{t("Right")}</strong>
         </button>
       </div>
 
-      <div className="grid-scroll" aria-label="Editable rhythm grid" ref={gridScrollRef}>
+      <div className="grid-scroll" aria-label={t("Editable rhythm grid")} ref={gridScrollRef}>
         <div className="rhythm-grid composer-grid" style={gridShellStyle}>
           <div className="grid-row count-row composer-count-row" style={gridStyle}>
-            <div className="track-name">Count</div>
+            <div className="track-name">{t("Count")}</div>
             {labels.map((label, index) => (
               <div
                 className={`step-cell count-cell ${selectedStep === index ? "active" : ""} ${
@@ -1586,7 +1602,7 @@ export default function RhythmComposer({
                 } ${selectedStep === index ? "active" : ""} ${
                   index % beatStepCount === 0 ? "beat-start" : ""
                 }`}
-                aria-label={`Step ${index + 1}: ${symbol}`}
+                aria-label={t("Step {step}: {symbol}", { step: index + 1, symbol })}
                 aria-pressed={selectedStep === index}
                 disabled={isRecordLocked}
                 onClick={() => selectStep(index)}
@@ -1621,20 +1637,18 @@ export default function RhythmComposer({
           onClick={() => setShowPlayerTip((isVisible) => !isVisible)}
         >
           <Lightbulb aria-hidden="true" size={15} />
-          <span>Tip</span>
+          <span>{t("Tip")}</span>
         </button>
         <div
           className="player-tip-popover"
           id={PLAYER_TIP_ID}
           role="note"
           hidden={!showPlayerTip}
-        >
-          Try clicking on a note in the player. This will toggle the note.
-        </div>
+        >{t("Try clicking on a note in the player. This will toggle the note.")}</div>
       </div>
 
       <label className="markdown-output">
-        <span>Transcription</span>
+        <span>{t("Transcription")}</span>
         <textarea
           value={transcription}
           rows={15}
@@ -1654,8 +1668,8 @@ export default function RhythmComposer({
           role="alert"
         >
           <ul>
-            {transcriptionErrors.map((error) => (
-              <li key={error}>{error}</li>
+            {transcriptionErrors.map((error, index) => (
+              <li key={index}>{t(error)}</li>
             ))}
           </ul>
         </div>
@@ -1670,9 +1684,7 @@ export default function RhythmComposer({
         ref={shortcutHelpTriggerRef}
         onClick={() => setShowShortcutHelp(true)}
       >
-        <Keyboard aria-hidden="true" size={15} />
-        Shortcuts
-      </button>
+        <Keyboard aria-hidden="true" size={15} />{t("Shortcuts")}</button>
 
       {showShortcutHelp ? (
         <div
@@ -1688,10 +1700,10 @@ export default function RhythmComposer({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="shortcut-help-header">
-              <h2 id="composer-shortcut-help-title">Composer shortcuts</h2>
+              <h2 id="composer-shortcut-help-title">{t("Composer shortcuts")}</h2>
               <button
                 type="button"
-                aria-label="Close composer shortcuts"
+                aria-label={t("Close composer shortcuts")}
                 ref={shortcutHelpCloseButtonRef}
                 onClick={(event) => closeShortcutHelp(event.detail === 0)}
               >
@@ -1702,59 +1714,59 @@ export default function RhythmComposer({
             <dl className="shortcut-list">
               <div>
                 <dt>
-                  <kbd>Space</kbd>
+                  <kbd>{t("Space")}</kbd>
                 </dt>
-                <dd>Play or stop</dd>
+                <dd>{t("Play or stop")}</dd>
               </div>
               <div>
                 <dt>
                   <kbd>L</kbd>
                 </dt>
-                <dd>Toggle loop</dd>
+                <dd>{t("Toggle loop")}</dd>
               </div>
               <div>
                 <dt>
                   <kbd>R</kbd>
                 </dt>
-                <dd>Start or stop recording</dd>
+                <dd>{t("Start or stop recording")}</dd>
               </div>
               <div>
                 <dt>
                   <kbd>M</kbd>
                 </dt>
-                <dd>Toggle metronome</dd>
+                <dd>{t("Toggle metronome")}</dd>
               </div>
               <div>
                 <dt>
                   <kbd>C</kbd>
                 </dt>
-                <dd>Clear grid</dd>
+                <dd>{t("Clear grid")}</dd>
               </div>
               <div>
                 <dt>
                   <kbd>+</kbd>
                   <kbd>=</kbd>
                 </dt>
-                <dd>Increase tempo</dd>
+                <dd>{t("Increase tempo")}</dd>
               </div>
               <div>
                 <dt>
                   <kbd>-</kbd>
                 </dt>
-                <dd>Decrease tempo</dd>
+                <dd>{t("Decrease tempo")}</dd>
               </div>
               <div>
                 <dt>
                   <kbd>F</kbd>
                   <kbd>J</kbd>
                 </dt>
-                <dd>Add left or right hit</dd>
+                <dd>{t("Add left or right hit")}</dd>
               </div>
               <div>
                 <dt>
-                  <kbd>Backspace</kbd>
+                  <kbd>{t("Backspace")}</kbd>
                 </dt>
-                <dd>Clear selected step</dd>
+                <dd>{t("Clear selected step")}</dd>
               </div>
             </dl>
           </div>

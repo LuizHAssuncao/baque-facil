@@ -1,3 +1,6 @@
+import { translate, type Message } from "../i18n/messages";
+import { getLocale, subscribeLocale } from "../i18n/preference";
+
 const BASE_TEMPO = 120;
 const LOG_KEY = "baque-background-audio-diagnostic-v1";
 
@@ -23,6 +26,7 @@ export function createDiagnosticBeat(context: BaseAudioContext): AudioBuffer {
 }
 
 export function initBackgroundAudioDiagnostic(root: HTMLElement): void {
+  const t = (message: Message) => translate(getLocale(), message);
   const find = <T extends HTMLElement>(selector: string): T => {
     const element = root.querySelector<T>(selector);
     if (!element) throw new Error(`Missing diagnostic control: ${selector}`);
@@ -46,7 +50,10 @@ export function initBackgroundAudioDiagnostic(root: HTMLElement): void {
   let source: AudioBufferSourceNode | null = null;
   let starting = false;
   let frame = 0;
-  let idleMessage = "Ready. Tap Start beat, then listen while switching apps or locking the phone.";
+  let idleMessage: Message = "Ready. Tap Start beat, then listen while switching apps or locking the phone.";
+  let sessionMessage: Message = audioSession ? "Available; requested when you start" : "Audio Session API unavailable";
+  let backgroundMessage: Message = "No check yet";
+  let copyMessage: Message = "Logs stay in this tab. Nothing is sent automatically.";
   let background: { context: AudioContext; wallTime: number; audioTime: number } | null = null;
   let entries: string[] = [];
   try {
@@ -59,7 +66,7 @@ export function initBackgroundAudioDiagnostic(root: HTMLElement): void {
       "Baque Fácil background audio diagnostic v1",
       `Page: ${location.href}`,
       `Browser: ${navigator.userAgent}`,
-      `Audio session: ${sessionStatus.textContent}`,
+      `Audio session: ${translate("en-CA", sessionMessage)}`,
       `Tempo: ${tempo.value} BPM`,
       `Listening result: ${result.value}`,
       "Audio clock readings are not proof of audible playback.",
@@ -77,34 +84,37 @@ export function initBackgroundAudioDiagnostic(root: HTMLElement): void {
 
   function update(): void {
     const running = context?.state === "running" && source !== null;
-    engine.textContent = context?.state ?? "Not started";
+    engine.textContent = t(context?.state ?? "Not started");
+    sessionStatus.textContent = t(sessionMessage);
+    backgroundStatus.textContent = t(backgroundMessage);
+    copyStatus.textContent = t(copyMessage);
     clock.textContent = `${(context?.currentTime ?? 0).toFixed(1)} s`;
     start.disabled = starting || running || typeof AudioContext === "undefined";
-    start.textContent = context && source && !running ? "Resume beat" : "Start beat";
+    start.textContent = t(context && source && !running ? "Resume beat" : "Start beat");
     stop.disabled = context === null;
-    status.textContent = starting ? "Starting…" : running
-      ? `Playing at ${tempo.value} BPM. Listen for gaps when the four beats repeat.`
-      : context && source ? `Audio engine is ${context.state}. Tap Resume beat to try again.` : idleMessage;
+    status.textContent = t(starting ? "Starting…" : running
+      ? { key: "Playing at {tempo} BPM. Listen for gaps when the four beats repeat.", values: { tempo: tempo.value } }
+      : context && source ? { key: "Audio engine is {state}. Tap Resume beat to try again.", values: { state: t(context.state) } } : idleMessage);
   }
 
   function requestPlaybackSession(): void {
     if (!audioSession) {
-      sessionStatus.textContent = "Audio Session API unavailable";
+      sessionMessage = "Audio Session API unavailable";
       log("Playback audio session unavailable; this browser cannot test the Safari setting.");
       return;
     }
     try {
       audioSession.type = "playback";
-      sessionStatus.textContent = audioSession.type === "playback"
-        ? "playback (accepted)" : `Requested playback; reported ${audioSession.type}`;
+      sessionMessage = audioSession.type === "playback"
+        ? "playback (accepted)" : { key: "Requested playback; reported {type}", values: { type: audioSession.type } };
       log(`Audio session requested playback; reported ${audioSession.type}.`);
     } catch (error) {
-      sessionStatus.textContent = "Playback request failed";
+      sessionMessage = "Playback request failed";
       log(`Audio session request failed: ${String(error)}`);
     }
   }
 
-  function stopBeat(message = "Stopped. Tap Start beat for another test."): void {
+  function stopBeat(message: Message = "Stopped. Tap Start beat for another test."): void {
     background = null;
     if (source) {
       source.stop();
@@ -122,7 +132,7 @@ export function initBackgroundAudioDiagnostic(root: HTMLElement): void {
     if (audioSession && originalSessionType !== undefined) {
       try {
         audioSession.type = originalSessionType;
-        sessionStatus.textContent = `${audioSession.type} (inactive)`;
+        sessionMessage = { key: "{type} (inactive)", values: { type: audioSession.type } };
       } catch (error) { log(`Audio session reset failed: ${String(error)}`); }
     }
     update();
@@ -179,7 +189,7 @@ export function initBackgroundAudioDiagnostic(root: HTMLElement): void {
         const wall = (Date.now() - background.wallTime) / 1000;
         const audio = context.currentTime - background.audioTime;
         const message = `Away ${wall.toFixed(1)} s; audio clock advanced ${audio.toFixed(1)} s.`;
-        backgroundStatus.textContent = message;
+        backgroundMessage = { key: "Away {wall} s; audio clock advanced {audio} s.", values: { wall: wall.toFixed(1), audio: audio.toFixed(1) } };
         log(`${message} Listening is needed to confirm uninterrupted sound.`);
       }
       background = null;
@@ -208,13 +218,14 @@ export function initBackgroundAudioDiagnostic(root: HTMLElement): void {
     updateReport();
     try {
       await navigator.clipboard.writeText(report.value);
-      copyStatus.textContent = "Report copied. Paste it into our conversation.";
+      copyMessage = "Report copied. Paste it into our conversation.";
     } catch {
       find<HTMLDetailsElement>("details").open = true;
       report.focus();
       report.select();
-      copyStatus.textContent = "Copy unavailable. Select and copy the report below.";
+      copyMessage = "Copy unavailable. Select and copy the report below.";
     }
+    update();
   });
   document.addEventListener("visibilitychange", checkBackground);
   window.addEventListener("pagehide", (event) => {
@@ -229,7 +240,7 @@ export function initBackgroundAudioDiagnostic(root: HTMLElement): void {
       refreshClock();
     }
   });
-  sessionStatus.textContent = audioSession ? "Available; requested when you start" : "Audio Session API unavailable";
+  subscribeLocale(() => { update(); updateReport(); });
   if (typeof AudioContext === "undefined") idleMessage = "This browser does not support Web Audio.";
   log("Page loaded. Playback requires a tap; earlier log entries may be from a previous load.");
   update();

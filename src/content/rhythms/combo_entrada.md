@@ -8,7 +8,9 @@ instruments:
   - "Alfaia"
 ---
 
-Pre-requisites:
+<p data-language="en-CA" lang="en-CA">Pre-requisites:</p>
+<p data-language="pt-BR" lang="pt-BR">Pré-requisitos:</p>
+
 - Marcação
 - Imalê
 

@@ -1,4 +1,5 @@
 import type { Rhythm } from "../rhythmTypes";
+import { TranslatableError } from "../i18n/messages";
 import { clampTempo } from "../tempo";
 import { RENDER_SAMPLE_RATE, SampleCache } from "./sampleCache";
 
@@ -37,13 +38,13 @@ export async function renderRhythm(
   const tempo = clampTempo(request.tempo);
   const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
   if (!stepCount || rhythm.tracks.some((track) => track.steps.length !== stepCount)) {
-    throw new Error("The rhythm needs equally sized, nonempty tracks.");
+    throw new TranslatableError("The rhythm needs equally sized, nonempty tracks.");
   }
   const cycleFrames = Math.round((60 / tempo) * (4 / rhythm.subdivision) * stepCount * RENDER_SAMPLE_RATE);
   const cycleDuration = cycleFrames / RENDER_SAMPLE_RATE;
   // Web Audio repeats this single cycle without reopening a media file.
   if (cycleDuration > 180) {
-    throw new Error("This rhythm is too long to prepare on this device.");
+    throw new TranslatableError("This rhythm is too long to prepare on this device.");
   }
 
   const hits: { frame: number; buffer: AudioBuffer }[] = [];
@@ -51,7 +52,7 @@ export async function renderRhythm(
     await Promise.all(track.steps.map(async (symbol, index) => {
       if (symbol === "." || symbol === "-") return;
       const url = samples[`${track.name}.${symbol}`];
-      if (!url) throw new Error(`Missing sample for ${track.name}.${symbol}.`);
+      if (!url) throw new TranslatableError({ key: "Missing sample for {sample}.", values: { sample: `${track.name}.${symbol}` } });
       hits.push({ frame: Math.round(index * cycleFrames / stepCount), buffer: await cache.load(url) });
     }));
   }));

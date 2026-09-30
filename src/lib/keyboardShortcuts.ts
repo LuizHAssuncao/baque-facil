@@ -5,6 +5,8 @@ function isShortcutActivationKey(event: KeyboardEvent) {
 }
 
 export function shouldIgnoreKeyboardShortcut(event: KeyboardEvent) {
+  // Native dialogs make the page inert, but document-level shortcut handlers still run.
+  if (document.querySelector(".language-dialog[open]")) return true;
   const { target } = event;
 
   if (!(target instanceof HTMLElement)) {

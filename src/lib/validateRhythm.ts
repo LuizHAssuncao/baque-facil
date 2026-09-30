@@ -1,5 +1,6 @@
 import { allowedSymbolsForTrack, sampleMap, type SampleMap } from "./sampleMap";
 import type { Rhythm } from "./rhythmTypes";
+import { translate, type Message } from "./i18n/messages";
 
 const SUPPORTED_SUBDIVISIONS = new Set([8, 16, 32]);
 
@@ -7,7 +8,14 @@ export function validateRhythm(
   rhythm: Rhythm,
   samples: SampleMap = sampleMap,
 ): string[] {
-  const errors: string[] = [];
+  return validateRhythmIssues(rhythm, samples).map((issue) => translate("en-CA", issue));
+}
+
+export function validateRhythmIssues(
+  rhythm: Rhythm,
+  samples: SampleMap = sampleMap,
+): Message[] {
+  const errors: Message[] = [];
   const trackNames = new Set<string>();
   const duplicateNames = new Set<string>();
   const unknownSymbols = new Set<string>();
@@ -34,13 +42,14 @@ export function validateRhythm(
     trackNames.add(track.name);
 
     if (track.steps.length === 0) {
-      errors.push(`${track.name} must have at least one step.`);
+      errors.push({ key: "{track} must have at least one step.", values: { track: track.name } });
     }
 
     if (track.steps.length !== expectedStepCount) {
-      errors.push(
-        `${track.name} has ${track.steps.length} steps, but ${expectedTrackName} has ${expectedStepCount}. Each track must have the same number of steps.`,
-      );
+      errors.push({
+        key: "{track} has {count} steps, but {expectedTrack} has {expectedCount}. Each track must have the same number of steps.",
+        values: { track: track.name, count: track.steps.length, expectedTrack: expectedTrackName, expectedCount: expectedStepCount },
+      });
     }
 
     track.steps.forEach((symbol) => {
@@ -57,15 +66,16 @@ export function validateRhythm(
         }
 
         unknownSymbols.add(errorKey);
-        errors.push(
-          `Unknown symbol "${symbol}" in ${track.name}. Allowed symbols for ${track.name} are ${allowedSymbolsForTrack(track.name, samples).join(", ")}.`,
-        );
+        errors.push({
+          key: 'Unknown symbol "{symbol}" in {track}. Allowed symbols for {track} are {allowed}.',
+          values: { symbol, track: track.name, allowed: allowedSymbolsForTrack(track.name, samples).join(", ") },
+        });
       }
     });
   });
 
   duplicateNames.forEach((trackName) => {
-    errors.push(`Track "${trackName}" is duplicated.`);
+    errors.push({ key: 'Track "{track}" is duplicated.', values: { track: trackName } });
   });
 
   return errors;
