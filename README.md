@@ -10,6 +10,8 @@ React rhythm grids, audio playback, and an Alfaia composer.
 
 - Rhythm index with separate practice rhythm and combo sections.
 - Generated rhythm pages from Markdown content in `src/content/rhythms/`.
+- Baque Radio at `/radio/`: a locally generated, shuffled MP3 mix with continuous
+  native playback, rhythm selection, tempo, Skip, and Stay on this rhythm.
 - A listening quiz at `/quiz/`: match a rhythm name to one of three audio options,
   with unlimited replay and practice, clear answer feedback, no notation, and no
   scoring. Correct answers advance automatically after a two-second confirmation;
@@ -28,6 +30,8 @@ React rhythm grids, audio playback, and an Alfaia composer.
 - [React](https://react.dev/) islands for the rhythm player and composer.
 - Offline rendering and native Web Audio buffer looping for rhythm-page playback.
 - [Tone.js](https://tonejs.github.io/) for the composer's editable preview.
+- [Mediabunny](https://mediabunny.dev/) and its MP3 encoder, powered by
+  [LAME](https://lame.sourceforge.io/), for browser radio recordings.
 - Web Audio and HTML audio fallbacks for composer hit input.
 - [Playwright](https://playwright.dev/) for layout and interaction checks.
 
@@ -153,6 +157,44 @@ npm run check:layout
 For audio changes, also manually exercise playback, restart, loop, mute/unmute,
 tempo changes, composer hit buttons, keyboard shortcuts, transcription parsing,
 and the iOS audio help flow when relevant.
+
+## Baque Radio
+
+Open `/radio/`, choose rhythms and a tempo, then press Play. Preparation runs on
+the device and can be cancelled. Keep the page open until the recording is ready;
+some browsers require another Play tap after preparation. Defaults are all regular
+rhythms, 90 BPM, eight repetitions, and about 20 minutes. Combos are optional and
+play once per turn because they already contain longer sequences.
+
+Each new session or Shuffle again builds a fresh sequence in complete shuffled
+rounds, avoiding adjacent repeats when multiple rhythms are selected. The estimated
+duration and file size are shown before preparation. The finished recording loops
+in its existing order. Skip seeks to the next group; Stay on this rhythm prepares
+a short looping recording, and Back to mix returns to the next group. Settings
+take effect through Apply settings. Preferences persist locally; recordings do
+not survive a page reload, and restored preferences never start playback.
+
+No backend is required. Only application code, the encoder, and short drum samples
+download; the mix stays local. MP3 at 128 kbps uses about 19.2 MB per 20 minutes.
+Mixing uses two-second PCM chunks (about 0.7 MB each), retaining short samples and
+compressed output rather than a full uncompressed recording. Replacement files
+temporarily coexist; obsolete Blob URLs and encoder workers are released. Encoding
+is lazy-loaded and runs in a worker. The pinned encoder versions and small Xing/LAME
+metadata adapter are covered by an actual encode/decode timing test; rerun it when
+upgrading the encoder.
+
+One native HTML audio element owns playback and looping. Rhythm transitions are
+inside the recording, so background playback does not depend on JavaScript timers.
+The visible grid follows the media clock on return. Lock-screen title changes and
+optional Skip controls depend on browser support; continuous audio does not depend
+on these callbacks. Navigating away stops playback.
+
+**Physical locked-phone verification remains pending.** Before release, test at
+least 30 minutes on iPhone Safari and Android Chrome, including the file loop,
+Stay, lock-screen pause/resume, app switching, Bluetooth, and interruptions. Listen
+for missing attacks, gaps, or clicks, and measure preparation time and memory on a
+lower-powered phone. Desktop and emulated mobile tests cannot establish this.
+See the [implementation and verification plan](specifications/radio-implementation-plan.md).
 
 ## Background rhythm playback
 
