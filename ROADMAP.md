@@ -38,7 +38,7 @@ additional requested v1 items.
 
 ### Your Items
 - switch mute icons
-- radio (random rhythms)
+- [Radio](specifications/radio-implementation-plan.md): implemented; physical locked-phone verification pending.
 - quiz
 - keep screen awake during practice
 - Create the first `.baque.json` collection schema.

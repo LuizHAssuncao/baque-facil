@@ -1,6 +1,7 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 const routes = [
+  { name: "radio", path: "/radio/", heading: "Baque Radio" },
   { name: "home", path: "/", heading: "Baque Fácil" },
   { name: "quiz", path: "/quiz/", heading: "Rhythm quiz" },
   { name: "compose", path: "/compose/", heading: "Alfaia Composer" },

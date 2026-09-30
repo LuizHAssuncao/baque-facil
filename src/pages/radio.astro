@@ -1,0 +1,39 @@
+---
+import { getCollection } from "astro:content";
+import { ArrowLeft } from "lucide-react";
+import Disclaimer from "../components/Disclaimer.astro";
+import RhythmRadio from "../components/RhythmRadio";
+import { extractRhythmBlock } from "../lib/extractRhythmBlock";
+import { parseRhythm } from "../lib/parseRhythm";
+import { validateRhythm } from "../lib/validateRhythm";
+import { sampleMap } from "../lib/sampleMap";
+import type { RadioEntry } from "../lib/radio/timeline";
+import "../styles/global.css";
+
+const entries: RadioEntry[] = (await getCollection("rhythms")).sort((a, b) => a.data.title.localeCompare(b.data.title)).map((entry) => {
+  const block = extractRhythmBlock(entry.body);
+  if (!block) throw new Error(`Radio: ${entry.slug} has no rhythm block.`);
+  const rhythm = { title: entry.data.title, slug: entry.slug, tempo: entry.data.tempo, subdivision: entry.data.subdivision, tracks: parseRhythm(block) };
+  const errors = validateRhythm(rhythm);
+  if (errors.length) throw new Error(`Radio: ${entry.slug}: ${errors.join(" ")}`);
+  return { rhythm, difficulty: entry.data.difficulty, combo: entry.slug.startsWith("combo") || entry.data.title.toLowerCase().startsWith("combo") };
+});
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Listen and play along with a shuffled mix of Maracatu rhythms. Choose your tempo and let Baque Radio keep the practice going." />
+    <title>Baque Radio | Baque Fácil</title>
+  </head>
+  <body>
+    <main class="page-shell radio-page">
+      <a class="back-link" href="/"><ArrowLeft size={18} aria-hidden="true" /> All rhythms</a>
+      <header class="page-header radio-header"><p class="eyebrow">Listen · recognise · play along</p><h1>Baque Radio</h1><p>A little more listening. A little more rhythm in your day.</p></header>
+      <RhythmRadio entries={entries} samples={sampleMap} client:load />
+      <noscript><p>Enable JavaScript to prepare and play your radio mix.</p></noscript>
+      <Disclaimer />
+    </main>
+  </body>
+</html>

@@ -12,6 +12,8 @@ for composer input.
 Core user flows:
 
 - `/`: rhythm index, combo grouping, composer link, left-handed display setting.
+- `/radio/`: browser-generated MP3 mixes played through one native looping audio
+  element, with a frame-based timeline for the visible grid and seeking.
 - `/rhythms/[slug]/`: generated from Markdown rhythm entries and rendered with
   a read-only `RhythmPlayer` and a Customize link.
 - `/compose/`: `RhythmComposer`, with recording, metronome, transcription
@@ -30,6 +32,9 @@ Core user flows:
 - `src/lib/`: parser, validator, shared rhythm types, sample map, tempo bounds,
   grid layout helpers, keyboard shortcut helpers, and hand-display preference
   utilities.
+- `src/lib/radio/`: shuffled timelines, bounded PCM mixing, lazy MP3 encoding,
+  gapless metadata, and native-media playback controller. Keep the MP3 timing
+  round-trip test passing when upgrading the pinned encoder dependencies.
 - `src/content/rhythms/`: Markdown lesson entries consumed by Astro content
   collections.
 - `src/content/config.ts`: frontmatter schema for rhythm content.
@@ -38,6 +43,8 @@ Core user flows:
 - `public/`: static images and audio samples. Audio samples are grouped under
   `public/samples/<instrument>/`.
 - `tests/layout.spec.ts`: Playwright smoke and interaction tests.
+- `tests/radio*.spec.ts`: radio timeline/mixer, real encoding, controls, and
+  generation benchmark. Emulated mobile tests do not verify physical phone locking.
 
 ## Commands
 
