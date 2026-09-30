@@ -32,9 +32,10 @@ Core user flows:
 - `src/lib/`: parser, validator, shared rhythm types, sample map, tempo bounds,
   grid layout helpers, keyboard shortcut helpers, and hand-display preference
   utilities.
-- `src/lib/radio/`: shuffled timelines, bounded PCM mixing, lazy MP3 encoding,
-  gapless metadata, and native-media playback controller. Keep the MP3 timing
-  round-trip test passing when upgrading the pinned encoder dependencies.
+- `src/lib/radio/`: shuffled timelines and native-media playback controller.
+- `src/lib/audio/`: rendered rhythm playback, shared bounded PCM mixing, lazy
+  MP3 encoding, gapless metadata, and finite pattern exports. Keep the MP3 timing
+  round-trip tests passing when upgrading the pinned encoder dependencies.
 - `src/content/rhythms/`: Markdown lesson entries consumed by Astro content
   collections.
 - `src/content/config.ts`: frontmatter schema for rhythm content.
@@ -146,6 +147,10 @@ the new key.
   inputs, textareas, links, and buttons remains accessible.
 - Hand-display reversal is a UI preference stored in `localStorage`; do not
   mutate the underlying rhythm symbols for that display-only setting.
+- `Mp3ExportControl` captures the player's pattern, tempo, and mutes. Composer
+  validation and recording guards arrive through explicit props. Radio downloads
+  always use the full mix descriptor, including while a held pattern plays.
+  Download URLs must remain independent of playback URLs.
 
 ## Styling And Layout
 

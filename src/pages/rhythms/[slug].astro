@@ -95,6 +95,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
             rhythm={rhythm}
             samples={sampleEntries}
             playbackMode="rendered"
+            exportRepetitions={entry.slug.startsWith("combo") || entry.data.title.toLowerCase().startsWith("combo") ? 1 : 8}
             customizeHref={`/compose/${entry.slug}/`}
           />
         ) : null

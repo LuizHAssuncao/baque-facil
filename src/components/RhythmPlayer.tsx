@@ -40,6 +40,7 @@ import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm, RhythmTrack } from "../lib/rhythmTypes";
 import { useRenderedPlayback } from "../lib/audio/useRenderedPlayback";
+import { Mp3ExportControl } from "./Mp3ExportControl";
 
 type ToneModule = typeof import("tone");
 
@@ -56,6 +57,8 @@ type RhythmPlayerProps = {
   onPatternChange?: (tracks: RhythmTrack[]) => void;
   onPatternReset?: () => void;
   onTempoChange?: (tempo: number) => void;
+  exportRepetitions?: number;
+  exportDisabledReason?: Message;
 };
 
 export type RhythmPlayerHandle = {
@@ -220,6 +223,8 @@ function RhythmPlayer(
     onPatternChange,
     onPatternReset,
     onTempoChange,
+    exportRepetitions = 8,
+    exportDisabledReason,
   }: RhythmPlayerProps,
   ref: ForwardedRef<RhythmPlayerHandle>,
 ) {
@@ -227,6 +232,7 @@ function RhythmPlayer(
   const isPatternControlled = onPatternChange !== undefined;
   const [localTracks, setLocalTracks] = useState(() => cloneTracks(rhythm.tracks));
   const currentTracks = isPatternControlled ? rhythm.tracks : localTracks;
+  const exportRhythm = useMemo(() => ({ ...rhythm, tracks: currentTracks }), [rhythm, currentTracks]);
   const trackNamesKey = JSON.stringify(currentTracks.map((track) => track.name));
   const defaultMutedTrackNames = useMemo<string[]>(() => [], [trackNamesKey]);
   const [tempo, setTempo] = useState(() => clampTempo(rhythm.tempo));
@@ -876,6 +882,15 @@ function RhythmPlayer(
           <output>{tempo} BPM</output>
         </label>
       </div>
+
+      <Mp3ExportControl
+        rhythm={exportRhythm}
+        samples={samples}
+        tempo={tempo}
+        mutedTracks={mutedTracks}
+        defaultRepetitions={exportRepetitions}
+        disabledReason={exportDisabledReason}
+      />
 
       <div className="grid-scroll" aria-label={t("Parsed rhythm grid")} ref={gridScrollRef}>
         <div className="rhythm-grid" style={gridShellStyle}>

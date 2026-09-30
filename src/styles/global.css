@@ -2216,6 +2216,74 @@ kbd {
   max-width: 43rem;
   margin: 1.15rem 0 1.5rem;
 }
+.mp3-export {
+  margin: 0 0 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-soft);
+}
+.mp3-export summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  color: var(--teal-deep);
+  cursor: pointer;
+  font-weight: 650;
+  list-style: none;
+}
+.mp3-export summary::-webkit-details-marker { display: none; }
+.mp3-export summary::after { content: "+"; margin-left: auto; }
+.mp3-export[open] summary::after { content: "−"; }
+.mp3-panel {
+  padding: 0.85rem;
+  border-top: 1px solid var(--line-strong);
+}
+.mp3-panel p, .radio-download p { margin: 0.65rem 0; line-height: 1.5; }
+.mp3-panel p:empty { display: none; }
+.mp3-note { color: var(--muted-strong); font-size: 0.85rem; }
+.mp3-repetitions, .mp3-actions, .mp3-progress {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.mp3-repetitions select {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-strong);
+  color: var(--ink);
+}
+.mp3-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-strong);
+  color: var(--teal-deep);
+  font-weight: 650;
+  cursor: pointer;
+}
+.mp3-button:hover:not(:disabled) { background: var(--teal-soft); }
+.mp3-button:disabled { opacity: 0.55; cursor: not-allowed; }
+.mp3-button[hidden] { display: none; }
+.mp3-button:focus-visible, .mp3-export summary:focus-visible, .mp3-repetitions select:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+.mp3-progress progress { flex: 1; min-width: 0; accent-color: var(--teal); }
+.mp3-result { margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid var(--line-strong); }
+.mp3-filename { overflow-wrap: anywhere; font-weight: 650; }
+.mp3-error { color: #9c3026; }
+.radio-download { margin-top: 1rem; }
+
 .radio-controls {
   display: flex;
   flex-wrap: wrap;

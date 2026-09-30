@@ -2,9 +2,8 @@ import { TranslatableError } from "../i18n/messages";
 import type { Rhythm } from "../rhythmTypes";
 import { clampTempo } from "../tempo";
 
-export const RADIO_SAMPLE_RATE = 44_100;
-export const RADIO_BITRATE = 128_000;
-export const RADIO_CHUNK_FRAMES = RADIO_SAMPLE_RATE * 2;
+import { MP3_SAMPLE_RATE as RADIO_SAMPLE_RATE } from "../audio/mp3Constants";
+export { MP3_SAMPLE_RATE as RADIO_SAMPLE_RATE, MP3_BITRATE as RADIO_BITRATE, PCM_CHUNK_FRAMES as RADIO_CHUNK_FRAMES } from "../audio/mp3Constants";
 export const RADIO_PREFERENCES_KEY = "baque-facil-radio-v1";
 
 export type RadioEntry = { rhythm: Rhythm; difficulty: string; combo: boolean };

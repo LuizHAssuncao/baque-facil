@@ -17,7 +17,7 @@ export function shouldIgnoreKeyboardShortcut(event: KeyboardEvent) {
     return true;
   }
 
-  const button = target.closest("button");
+  const button = target.closest("button, summary");
   if (button) {
     return isShortcutActivationKey(event);
   }

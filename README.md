@@ -21,6 +21,7 @@ React rhythm grids, audio playback, and an Alfaia composer.
   keyboard support, and background media playback. The composer preview remains editable.
 - Alfaia composer with recording controls, metronome, transcription editing, and
   an embedded preview player.
+- MP3 downloads for rhythms, combos, compositions, and the full prepared radio mix.
 - Left-handed display preference stored locally without changing the underlying
   rhythm notation.
 - English (Canada) and Portuguese (Brazil), with a first-visit language picker,
@@ -34,7 +35,7 @@ React rhythm grids, audio playback, and an Alfaia composer.
 - Offline rendering and native Web Audio buffer looping for rhythm-page playback.
 - [Tone.js](https://tonejs.github.io/) for the composer's editable preview.
 - [Mediabunny](https://mediabunny.dev/) and its MP3 encoder, powered by
-  [LAME](https://lame.sourceforge.io/), for browser radio recordings.
+  [LAME](https://lame.sourceforge.io/), for browser recordings and MP3 downloads.
 - Web Audio and HTML audio fallbacks for composer hit input.
 - [Playwright](https://playwright.dev/) for layout and interaction checks.
 
@@ -226,6 +227,30 @@ Stay, lock-screen pause/resume, app switching, Bluetooth, and interruptions. Lis
 for missing attacks, gaps, or clicks, and measure preparation time and memory on a
 lower-powered phone. Desktop and emulated mobile tests cannot establish this.
 See the [implementation and verification plan](specifications/radio-implementation-plan.md).
+
+## MP3 downloads
+
+Open **Download MP3** in any rhythm, combo, or composer player, choose 1, 4, 8,
+or 16 repetitions, then select **Prepare MP3** and **Save MP3**. Rhythms default
+to eight repetitions; combos and compositions default to one complete sequence.
+The file captures the current pattern, tempo, and unmuted tracks when preparation
+starts. It starts at the beginning and includes the final drum decay. Metronome,
+count-in, and left-handed display settings do not affect the file. Invalid or
+silent patterns and active composer recording cannot start an export.
+
+Radio's **Download mix MP3** saves the exact full prepared mix, including its
+shuffle order, even while Stay on this rhythm is active. Pending settings and
+cancelled or failed replacement mixes leave the current download available.
+Saving does not change playback. Browsers that support file sharing also offer
+**Share MP3** for their native save/share sheet.
+
+Encoding stays on the device and loads only when needed. Pattern exports use
+the same 44.1 kHz, stereo, 128 kbps encoder as radio, with bounded PCM chunks,
+progress, cancellation, and a 20-minute export limit including decay. Individual
+pattern cycles are limited to three minutes. Browser downloads and decoded file
+contents are covered by `tests/mp3-download.spec.ts` and
+`tests/mp3-export-engine.spec.ts`. Physical iPhone and Android saving and external
+player compatibility still require device checks.
 
 ## Background rhythm playback
 

@@ -2,6 +2,7 @@ import { errorMessage, translate, type Message } from "../i18n/messages";
 import { getLocale } from "../i18n/preference";
 import type { SampleMap } from "../sampleMap";
 import { generateMix } from "./generateMix";
+import { mp3Filename, type Mp3Download } from "../audio/downloadMp3";
 import {
   buildRadioTimeline,
   radioPosition,
@@ -12,6 +13,7 @@ import {
 } from "./timeline";
 
 type Recording = {
+  download: Mp3Download;
   url: string;
   timeline: RadioTimeline;
   bytes: number;
@@ -34,6 +36,7 @@ export type RadioSnapshot = {
   bytes: number;
   settingsKey: string | null;
   error: Message | null;
+  download: Mp3Download | null;
 };
 export const INITIAL_RADIO: RadioSnapshot = {
   ready: false,
@@ -52,6 +55,7 @@ export const INITIAL_RADIO: RadioSnapshot = {
   bytes: 0,
   settingsKey: null,
   error: null,
+  download: null,
 };
 
 export function radioSettingsKey(settings: RadioSettings) {
@@ -152,6 +156,11 @@ export class RadioPlayback {
       const oldMix = this.mix;
       const oldHold = this.hold;
       this.mix = {
+        download: {
+          blob,
+          filename: mp3Filename("baque-facil-radio", `${timeline.tempo}bpm-${new Date().toISOString().slice(0, 10)}`),
+          duration: timeline.totalFrames / RADIO_SAMPLE_RATE,
+        },
         url: URL.createObjectURL(blob),
         timeline,
         bytes: blob.size,
@@ -231,6 +240,7 @@ export class RadioPlayback {
       )
         return;
       this.hold = {
+        download: this.mix.download,
         url: URL.createObjectURL(blob),
         timeline,
         bytes: blob.size,
@@ -276,6 +286,7 @@ export class RadioPlayback {
       bytes: this.mix!.bytes,
       duration: this.mix!.timeline.totalFrames / RADIO_SAMPLE_RATE,
       settingsKey: radioSettingsKey(this.mix!.settings),
+      download: this.mix!.download,
       seconds,
     });
     this.refresh();

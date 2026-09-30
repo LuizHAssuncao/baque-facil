@@ -1626,6 +1626,10 @@ export default function RhythmComposer({
         onPatternChange={handlePreviewPatternChange}
         onPatternReset={resetCurrentPattern}
         onTempoChange={updateTempo}
+        exportRepetitions={1}
+        exportDisabledReason={isRecordLocked
+          ? "Stop recording before preparing an MP3."
+          : hasTranscriptionErrors ? "Fix the transcription errors before preparing an MP3." : undefined}
       />
 
       <div className="player-tip">

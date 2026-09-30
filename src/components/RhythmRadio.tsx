@@ -25,6 +25,8 @@ import {
   type RadioEntry,
 } from "../lib/radio/timeline";
 import { RadioRhythmGrid } from "./RadioRhythmGrid";
+import { Mp3SaveActions } from "./Mp3SaveActions";
+import { formatAudioDuration } from "../lib/audio/downloadMp3";
 
 function formatTime(seconds: number) {
   const rounded = Math.floor(seconds);
@@ -198,6 +200,18 @@ export default function RhythmRadio({
             <Shuffle size={18} aria-hidden="true" />{" "}
             {t(changed ? "Apply settings" : "Shuffle again")}
           </button>
+        </div>
+        <div className="radio-download">
+          {snapshot.download ? <>
+            <Mp3SaveActions download={snapshot.download} label="Download mix MP3" />
+            <p className="mp3-note">{t("Full prepared mix · {duration} · {size} MB", {
+              duration: formatAudioDuration(snapshot.download.duration),
+              size: sizeFormat.format(snapshot.download.blob.size / 1_000_000),
+            })}</p>
+          </> : <>
+            <button className="mp3-button" type="button" disabled aria-describedby="radio-download-reason">{t("Download mix MP3")}</button>
+            <p id="radio-download-reason" className="mp3-note">{t("Prepare a mix first.")}</p>
+          </>}
         </div>
         {snapshot.preparing ? (
           <div className="radio-preparation">
