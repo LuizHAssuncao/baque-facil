@@ -131,7 +131,9 @@ fetches the pool again for every round, so open sessions pick up a newly deploye
 library. As with the rest of this static Astro site, production content changes
 require the normal build and deployment. Invalid or silent patterns are excluded,
 and each round needs three distinct sounds. All options use the existing drum
-samples at 90 BPM, with anonymous media controls and no automatic playback.
+samples at 90 BPM, with anonymous media controls and no automatic playback. Each
+Play or Replay runs the complete sequence twice in succession, then stops after
+the final drum decay.
 
 ## Verification
 

@@ -5,6 +5,7 @@ import type { SampleMap } from "./sampleMap";
 import { validateRhythm } from "./validateRhythm";
 
 export const QUIZ_TEMPO = 90;
+export const QUIZ_PLAY_COUNT = 2;
 
 export type QuizLibrary = {
   rhythms: Rhythm[];
@@ -38,7 +39,7 @@ export function buildQuizRhythms(entries: LibraryEntry[]): Rhythm[] {
       };
       if (validateRhythm(rhythm).length > 0) return [];
       if (!rhythm.tracks.some((track) => track.steps.some((step) => step !== "."))) return [];
-      const duration = (60 / QUIZ_TEMPO) * (4 / rhythm.subdivision) * rhythm.tracks[0].steps.length;
+      const duration = (60 / QUIZ_TEMPO) * (4 / rhythm.subdivision) * rhythm.tracks[0].steps.length * QUIZ_PLAY_COUNT;
       if (duration > 180) return [];
       return [rhythm];
     } catch {

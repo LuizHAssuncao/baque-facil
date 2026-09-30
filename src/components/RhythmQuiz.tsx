@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Headphones, Play, RotateCcw, SkipForward, Square, X } from "lucide-react";
 import { useRenderedPlayback } from "../lib/audio/useRenderedPlayback";
 import type { RenderedPlayback } from "../lib/audio/renderedPlayback";
-import { createQuizRound, QUIZ_TEMPO, type QuizLibrary, type QuizRound } from "../lib/rhythmQuiz";
+import { createQuizRound, QUIZ_PLAY_COUNT, QUIZ_TEMPO, type QuizLibrary, type QuizRound } from "../lib/rhythmQuiz";
 import type { Rhythm } from "../lib/rhythmTypes";
 import type { SampleMap } from "../lib/sampleMap";
 
@@ -21,7 +21,15 @@ type OptionProps = {
 function AudioOption({ rhythm, samples, label, answered, result, onPlay, onChoose }: OptionProps) {
   const request = useMemo(() => ({
     // Media controls must not reveal the rhythm's name either.
-    rhythm: { ...rhythm, title: `Option ${label}` },
+    rhythm: {
+      ...rhythm,
+      title: `Option ${label}`,
+      // Render both passes together so drum tails overlap the repeat naturally.
+      tracks: rhythm.tracks.map((track) => ({
+        ...track,
+        steps: Array.from({ length: QUIZ_PLAY_COUNT }, () => track.steps).flat(),
+      })),
+    },
     samples,
     tempo: QUIZ_TEMPO,
     loop: false,
@@ -109,7 +117,7 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
         <p className="eyebrow">Which audio matches?</p>
         <h2 id="quiz-prompt" ref={prompt} tabIndex={-1}>{round.prompt.title}</h2>
       </div>
-      <p className="quiz-listen-hint">Listen as often as you like, then choose.</p>
+      <p className="quiz-listen-hint">Each option plays twice. Replay as often as you like.</p>
       <ol className="quiz-options" aria-label="Audio options">
         {round.options.map((rhythm, index) => (
           <AudioOption

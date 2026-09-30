@@ -33,6 +33,10 @@ test("quiz eligibility follows library additions and rejects unplayable patterns
   expect(buildQuizRhythms([entry])).toMatchObject([{ slug: entry.slug, title: entry.data.title }]);
   const invalid = ["No rhythm block", "```rhythm\nR L\n```", "```rhythm\nAlfaia:\nQ .\n```", "```rhythm\nAlfaia:\n. . . .\n```", "```rhythm\nAlfaia:\nR .\nCaixa:\nX\n```"];
   for (const body of invalid) expect(buildQuizRhythms([{ ...entry, body }])).toEqual([]);
+  // Both passes must fit the renderer's 180-second limit at the quiz tempo.
+  const longestPattern = ["R", ...Array<string>(539).fill(".")];
+  expect(buildQuizRhythms([{ ...entry, body: `\`\`\`rhythm\nAlfaia:\n${longestPattern.join(" ")}\n\`\`\`` }])).toHaveLength(1);
+  expect(buildQuizRhythms([{ ...entry, body: `\`\`\`rhythm\nAlfaia:\n${longestPattern.join(" ")} .\n\`\`\`` }])).toEqual([]);
 });
 
 test("rounds keep one correct answer, distinct sounds, and no consecutive prompt repeats", () => {
@@ -187,22 +191,42 @@ test("audio failures can be retried without starting playback automatically", as
   await expect(page.getByRole("button", { name: /Stop audio/ })).toHaveCount(0);
 });
 
-test("audio uses real samples, one source at a time, anonymous titles, and stops between rounds", async ({ page }) => {
+test("audio plays each sequence twice, uses one source at a time, and stops between rounds", async ({ page }) => {
   await mockLibrary(page);
   await page.addInitScript(() => {
-    const probe = { voices: [] as { stopped: boolean; loop: boolean; duration: number; hasSound: boolean }[], contexts: [] as AudioContext[] };
+    const probe = { voices: [] as { stopped: boolean; loop: boolean; duration: number; hasSound: boolean; onsets: number[] }[], contexts: [] as AudioContext[] };
     (window as unknown as { quizAudioProbe: typeof probe }).quizAudioProbe = probe;
+    const schedules = new WeakMap<AudioBuffer, number[]>();
+    const NativeOfflineContext = window.OfflineAudioContext;
+    window.OfflineAudioContext = class extends NativeOfflineContext {
+      private onsets: number[] = [];
+      createBufferSource() {
+        const source = super.createBufferSource();
+        const start = source.start.bind(source);
+        source.start = (when = 0, offset = 0) => {
+          this.onsets.push(when);
+          start(when, offset);
+        };
+        return source;
+      }
+      async startRendering() {
+        const buffer = await super.startRendering();
+        schedules.set(buffer, this.onsets.sort((a, b) => a - b));
+        return buffer;
+      }
+    };
     const NativeContext = window.AudioContext;
     window.AudioContext = class extends NativeContext {
       constructor(options?: AudioContextOptions) { super(options); probe.contexts.push(this); }
       createBufferSource() {
         const source = super.createBufferSource();
-        const voice = { stopped: false, loop: false, duration: 0, hasSound: false };
+        const voice = { stopped: false, loop: false, duration: 0, hasSound: false, onsets: [] as number[] };
         const start = source.start.bind(source);
         source.start = (when = 0, offset = 0) => {
           voice.loop = source.loop;
           voice.duration = source.buffer!.duration;
           voice.hasSound = source.buffer!.getChannelData(0).some((value) => Math.abs(value) > 0.001);
+          voice.onsets = schedules.get(source.buffer!) ?? [];
           probe.voices.push(voice);
           start(when, offset);
         };
@@ -213,7 +237,7 @@ test("audio uses real samples, one source at a time, anonymous titles, and stops
     };
   });
   const probe = () => page.evaluate(() => {
-    const value = (window as unknown as { quizAudioProbe: { voices: { stopped: boolean; loop: boolean; duration: number; hasSound: boolean }[]; contexts: AudioContext[] } }).quizAudioProbe;
+    const value = (window as unknown as { quizAudioProbe: { voices: { stopped: boolean; loop: boolean; duration: number; hasSound: boolean; onsets: number[] }[]; contexts: AudioContext[] } }).quizAudioProbe;
     return { voices: value.voices, contexts: value.contexts.map((context) => context.state) };
   });
   await page.goto("/quiz/");
@@ -232,13 +256,25 @@ test("audio uses real samples, one source at a time, anonymous titles, and stops
   const voices = (await probe()).voices;
   expect(voices).toHaveLength(3);
   expect(voices.every((voice) => !voice.loop && voice.hasSound)).toBe(true);
-  expect(voices.every((voice) => voice.duration >= (60 / QUIZ_TEMPO) * 4)).toBe(true);
+  // The fixed shuffle makes A Trovão and B Marcação. Verify actual note times,
+  // including Replay, rather than accepting a longer buffer with trailing silence.
+  for (const [index, rhythm] of [rhythms[2], rhythms[0], rhythms[0]].entries()) {
+    const stepDuration = (60 / QUIZ_TEMPO) * (4 / rhythm.subdivision);
+    const steps = rhythm.tracks[0].steps;
+    const expectedOnsets = [0, 1].flatMap((pass) => steps.flatMap((step, index) =>
+      step === "." ? [] : [(pass * steps.length + index) * stepDuration],
+    ));
+    expect(voices[index].onsets).toHaveLength(expectedOnsets.length);
+    expectedOnsets.forEach((onset, hit) => expect(voices[index].onsets[hit]).toBeCloseTo(onset, 4));
+    // The fixture's real drum samples last 1 2/3 seconds; retain the final tail.
+    expect(voices[index].duration).toBeCloseTo(expectedOnsets.at(-1)! + 5 / 3, 4);
+  }
   await page.getByRole("button", { name: "Skip", exact: true }).click();
   await waitForAudio(page);
   await expect.poll(async () => (await probe()).voices.every((voice) => voice.stopped)).toBe(true);
   await expect.poll(async () => (await probe()).contexts.every((state) => state === "closed")).toBe(true);
   await page.getByRole("button", { name: "Play audio A" }).click();
-  // A full cycle finishes naturally and the same button becomes Replay.
+  // Both passes and the final decay finish naturally, then the button becomes Replay.
   await expect(page.getByRole("button", { name: "Replay audio A" })).toBeVisible({ timeout: 10_000 });
   await page.getByRole("button", { name: "Replay audio A" }).click();
   await page.getByRole("button", { name: "Choose option A" }).click();
