@@ -61,10 +61,12 @@ test("rounds keep one correct answer, distinct sounds, and no consecutive prompt
   expect(prompts.size).toBe(3);
 });
 
-test("quiz is linked from home and provides retry, match, and next without notation", async ({ page }) => {
+test("quiz gives clear feedback and advances only after a correct answer", async ({ page }, testInfo) => {
   const errors: string[] = [];
+  let requests = 0;
   page.on("pageerror", (error) => errors.push(error.message));
-  await mockLibrary(page);
+  await mockLibrary(page, () => { requests += 1; return library; });
+  await page.clock.install({ time: new Date("2026-10-01T12:00:00Z") });
   await page.goto("/");
   await page.getByRole("link", { name: /Rhythm quiz/ }).click();
   await expect(page).toHaveURL("/quiz/");
@@ -74,21 +76,63 @@ test("quiz is linked from home and provides retry, match, and next without notat
   await expect(page.locator(".rhythm-grid, .step-cell, pre, textarea, audio, canvas, .content")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /transcription/i })).toHaveCount(0);
   await expect(page.locator(".quiz-options")).not.toContainText(/Marcação|Imalê|Trovão/);
+  await page.clock.pauseAt(new Date("2026-10-01T12:01:00Z"));
 
+  const feedback = page.getByRole("status", { name: "Answer feedback" });
   await page.getByRole("button", { name: "Choose option A" }).click();
-  await expect(page.getByRole("status")).toHaveText("Give it another listen.");
+  await expect(feedback).toContainText("Incorrect — try again");
+  await expect(feedback).toContainText("Option A doesn’t match this rhythm.");
+  await expect(feedback).toHaveAttribute("data-result", "incorrect");
+  await expect(feedback).toBeInViewport({ ratio: 1 });
+  await expect(page.locator(".quiz-option").first()).toContainText("Not a match");
   await expect(page.getByRole("button", { name: "Skip", exact: true })).toBeEnabled();
+  await page.clock.fastForward(4_000);
+  await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
+  expect(requests).toBe(1);
+  await page.screenshot({ path: testInfo.outputPath("quiz-incorrect.png"), fullPage: true });
+
   await page.getByRole("button", { name: "Choose option C" }).click();
-  await expect(page.getByRole("status")).toHaveText("That’s it!");
+  await expect(feedback).toContainText("Correct!");
+  await expect(feedback).toContainText("Option C matches Imalê. Moving to the next rhythm…");
+  await expect(feedback).toHaveAttribute("data-result", "correct");
+  await expect(feedback).toHaveAttribute("aria-atomic", "true");
+  await expect(feedback).toBeInViewport({ ratio: 1 });
   await expect(page.getByRole("button", { name: "Option C is correct" })).toBeDisabled();
   await expect(page.locator(".quiz-choose:enabled")).toHaveCount(0);
   await expect(page.locator(".rhythm-grid, .step-cell, pre, textarea")).toHaveCount(0);
-  await page.getByRole("button", { name: "Next rhythm" }).click();
-  await waitForAudio(page);
+  await page.screenshot({ path: testInfo.outputPath("quiz-correct.png"), fullPage: true });
+
+  await page.clock.fastForward(1_500);
+  await expect(page.locator("#quiz-prompt")).toHaveText("Imalê");
+  expect(requests).toBe(1);
+  await page.clock.fastForward(500);
   await expect(page.locator("#quiz-prompt")).not.toHaveText("Imalê");
+  await page.clock.resume();
+  await waitForAudio(page);
   await expect(page.locator("#quiz-prompt")).toBeFocused();
-  await expect(page.getByRole("status")).toHaveText("Take your time.");
+  await expect(page.locator("#quiz-prompt")).toBeInViewport();
+  await expect(feedback).toHaveText("Take your time.");
+  expect(requests).toBe(2);
   expect(errors).toEqual([]);
+});
+
+test("manual next cancels the automatic advance instead of skipping another rhythm", async ({ page }) => {
+  let requests = 0;
+  await mockLibrary(page, () => { requests += 1; return library; });
+  await page.clock.install({ time: new Date("2026-10-01T12:00:00Z") });
+  await page.goto("/quiz/");
+  await waitForAudio(page);
+  await page.clock.pauseAt(new Date("2026-10-01T12:01:00Z"));
+  await page.getByRole("button", { name: "Choose option C" }).click();
+  await expect(page.getByRole("status", { name: "Answer feedback" })).toContainText("Correct!");
+  await page.getByRole("button", { name: "Next rhythm" }).click();
+  await page.clock.resume();
+  await waitForAudio(page);
+  const nextPrompt = await page.locator("#quiz-prompt").textContent();
+  expect(requests).toBe(2);
+  await page.clock.fastForward(5_000);
+  await expect(page.locator("#quiz-prompt")).toHaveText(nextPrompt!);
+  expect(requests).toBe(2);
 });
 
 test("next round refreshes the library and supports an insufficient pool", async ({ page }) => {
