@@ -1,5 +1,5 @@
 ---
-title: "4 - Parada de Quatro"
+title: "4 - Baque de Parada"
 slug: "parada"
 tempo: 100
 subdivision: 16
