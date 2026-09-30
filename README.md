@@ -167,3 +167,22 @@ background playback reliability. Before releasing, test on a physical iPhone:
 To use an installed Chromium for local tests, set
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/path/to/chromium` when running
 `npm run check:layout`.
+
+### Isolated background-audio diagnostic
+
+Open `/diagnostics/background-audio/` to test a native looping Web Audio buffer
+without changing the rhythm player. It synthesizes four evenly spaced clicks
+(beat one is higher), loops a two-second buffer at 120 BPM, and requests
+`navigator.audioSession.type = "playback"` when available. No JavaScript timer,
+silent media element, or automatic visibility-resume keeps the sound going.
+The test's tempo slider changes the buffer playback rate, including click pitch;
+this is a diagnostic, not the production tempo implementation.
+
+On physical iPhone Safari, start the beat, listen while switching apps for at
+least one minute, then lock the screen for at least two minutes. Repeat after
+changing tempo. Record whether there were gaps or silence, then copy the report.
+State changes, visibility events, and wall/audio clock comparisons are logged
+locally in session storage so a browser reload is visible. Clock progress is
+only supporting evidence, not proof of audible playback. Navigation stops the
+test, and returning never automatically resumes it. Desktop automation cannot
+verify iOS lock-screen playback.

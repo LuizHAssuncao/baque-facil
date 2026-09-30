@@ -1638,3 +1638,103 @@ kbd {
     display: inline-flex;
   }
 }
+
+.diagnostic-page {
+  max-width: 720px;
+}
+
+.diagnostic-card {
+  margin: 1rem 0;
+  padding: 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.diagnostic-status {
+  margin-top: 0;
+  color: var(--teal-deep);
+  font-weight: 700;
+  min-height: 3rem;
+}
+
+.diagnostic-page .controls button {
+  min-height: 44px;
+}
+
+.diagnostic-tempo {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  margin-top: 1.2rem;
+  font-weight: 700;
+}
+
+.diagnostic-tempo input {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--teal);
+}
+
+.diagnostic-note {
+  color: var(--muted-strong);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.diagnostic-readings div {
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.diagnostic-readings dt {
+  color: var(--muted-strong);
+  font-size: 0.85rem;
+}
+
+.diagnostic-readings dd {
+  margin: 0.2rem 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.diagnostic-steps {
+  padding-left: 1.4rem;
+  line-height: 1.55;
+}
+
+.diagnostic-steps li + li {
+  margin-top: 0.7rem;
+}
+
+.diagnostic-page select,
+.diagnostic-page textarea {
+  width: 100%;
+  min-height: 44px;
+  margin: 0.6rem 0 1rem;
+  padding: 0.6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-soft);
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.diagnostic-page textarea {
+  resize: vertical;
+}
+
+.diagnostic-page summary {
+  padding: 0.75rem 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.diagnostic-page :is(input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
