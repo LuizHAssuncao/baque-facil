@@ -30,9 +30,7 @@ export type RadioTimeline = {
 
 export function defaultRadioSettings(entries: RadioEntry[]): RadioSettings {
   return {
-    slugs: entries
-      .filter((entry) => !entry.combo)
-      .map((entry) => entry.rhythm.slug),
+    slugs: entries.map((entry) => entry.rhythm.slug),
     tempo: 90,
     repetitions: 8,
     minutes: 20,
