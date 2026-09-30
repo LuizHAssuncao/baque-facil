@@ -1,8 +1,15 @@
+---
+interface Props {
+  compact?: boolean;
+}
+
+const { compact = false } = Astro.props;
+---
 <div class="language-choices">
-  <button type="button" data-set-language="pt-BR" lang="pt-BR" aria-pressed="false">
-    <span aria-hidden="true">🇧🇷</span> Português (Brasil)
+  <button type="button" data-set-language="pt-BR" lang="pt-BR" aria-pressed="false" aria-label="Português (Brasil)" title={compact ? "Português (Brasil)" : undefined}>
+    {compact ? "PT" : <Fragment><span aria-hidden="true">🇧🇷</span> Português (Brasil)</Fragment>}
   </button>
-  <button type="button" data-set-language="en-CA" lang="en-CA" aria-pressed="false">
-    <span aria-hidden="true">🇨🇦</span> English (Canada)
+  <button type="button" data-set-language="en-CA" lang="en-CA" aria-pressed="false" aria-label="English (Canada)" title={compact ? "English (Canada)" : undefined}>
+    {compact ? "EN" : <Fragment><span aria-hidden="true">🇨🇦</span> English (Canada)</Fragment>}
   </button>
 </div>

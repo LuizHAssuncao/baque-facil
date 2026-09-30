@@ -52,13 +52,9 @@ html[lang="pt-BR"] [data-rendered-locale="en-CA"] {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
 }
-
-.language-label { color: var(--muted-strong); }
 
 .language-choices {
   display: flex;
@@ -85,6 +81,32 @@ html[lang="pt-BR"] [data-rendered-locale="en-CA"] {
 .language-choices button:focus-visible {
   outline: 3px solid var(--teal);
   outline-offset: 3px;
+}
+
+.language-bar .language-choices {
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
+.language-bar button {
+  min-width: 44px;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted-strong);
+  font-weight: 600;
+}
+
+.language-bar button[aria-pressed="true"] {
+  background: transparent;
+  color: var(--teal-deep);
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
+.language-bar button:hover {
+  background: var(--paper-strong);
+  color: var(--teal-deep);
 }
 
 .language-dialog {
