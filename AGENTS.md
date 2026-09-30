@@ -11,9 +11,11 @@ Core user flows:
 
 - `/`: rhythm index, combo grouping, composer link, left-handed display setting.
 - `/rhythms/[slug]/`: generated from Markdown rhythm entries and rendered with
-  an editable `RhythmPlayer`.
+  a read-only `RhythmPlayer` and a Customize link.
 - `/compose/`: `RhythmComposer`, with recording, metronome, transcription
   editing, and an embedded preview player.
+- `/compose/[slug]/`: the same composer preloaded with an editable copy of a
+  built-in rhythm, including its tracks, tempo, subdivision, and transcription.
 - `/help/ios-audio/`: troubleshooting page linked from iOS audio prompts.
 
 ## Project Structure
@@ -147,7 +149,8 @@ For visible changes:
 
 - Home, compose, iOS help, and representative rhythm pages rendering without
   body overflow or console/page errors.
-- Editable note cycling/reset behavior on a predefined rhythm page.
+- Read-only built-in rhythm playback and customization into an editable copy.
+- Customized single-track and multi-track rhythms, note cycling, and reset.
 - Composer transcription edits, validation errors, preview edits, and reset
   behavior.
 

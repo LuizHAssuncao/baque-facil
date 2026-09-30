@@ -89,7 +89,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
             rhythm={rhythm}
             samples={sampleEntries}
             autoPlay
-            editableNotes
+            customizeHref={`/compose/${entry.slug}/`}
           />
         ) : null
       }

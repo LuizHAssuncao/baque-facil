@@ -24,6 +24,11 @@ import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import { validateRhythm } from "../lib/validateRhythm";
 import type { Rhythm, RhythmTrack, Subdivision } from "../lib/rhythmTypes";
 
+type RhythmComposerProps = {
+  initialRhythm?: Rhythm;
+  initialTranscription?: string;
+};
+
 type ComposerSymbol = "." | "L" | "R" | "B";
 type HitSymbol = "L" | "R";
 type HitInputSource = "touchstart" | "pointerdown" | "keyboard" | "click";
@@ -98,15 +103,20 @@ function escapeYamlString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function formatMarkdown(tracks: RhythmTrack[], tempo: number, subdivision: Subdivision) {
+function formatMarkdown(
+  tracks: RhythmTrack[],
+  tempo: number,
+  subdivision: Subdivision,
+  title = DEFAULT_TITLE,
+) {
   return [
     "---",
-    `title: "${escapeYamlString(DEFAULT_TITLE)}"`,
+    `title: "${escapeYamlString(title)}"`,
     `tempo: ${tempo}`,
     `subdivision: ${subdivision}`,
     `difficulty: "${DEFAULT_DIFFICULTY}"`,
     "instruments:",
-    '  - "Alfaia"',
+    ...tracks.map((track) => `  - "${escapeYamlString(track.name)}"`),
     "---",
     "",
     DEFAULT_DESCRIPTION,
@@ -338,15 +348,26 @@ function eventTimestampToPerformanceTime(timeStamp: number) {
   return now;
 }
 
-export default function RhythmComposer() {
-  const [tempo, setTempo] = useState(DEFAULT_TEMPO);
-  const [recordedTracks, setRecordedTracks] = useState<RhythmTrack[]>(defaultTracks);
-  const [currentTracks, setCurrentTracks] = useState<RhythmTrack[]>(defaultTracks);
+export default function RhythmComposer({
+  initialRhythm,
+  initialTranscription,
+}: RhythmComposerProps) {
+  const initialTempo = clampTempo(initialRhythm?.tempo ?? DEFAULT_TEMPO);
+  const subdivision = initialRhythm?.subdivision ?? DEFAULT_SUBDIVISION;
+  const displayTitle = initialRhythm?.title ?? DEFAULT_TITLE;
+  const [tempo, setTempo] = useState(initialTempo);
+  const [recordedTracks, setRecordedTracks] = useState<RhythmTrack[]>(() =>
+    cloneTracks(initialRhythm?.tracks ?? defaultTracks()),
+  );
+  const [currentTracks, setCurrentTracks] = useState<RhythmTrack[]>(() =>
+    cloneTracks(initialRhythm?.tracks ?? defaultTracks()),
+  );
   const [recordingSteps, setRecordingSteps] = useState<ComposerSymbol[]>(() =>
     emptySteps(1),
   );
   const [transcription, setTranscription] = useState(() =>
-    formatMarkdown(defaultTracks(), DEFAULT_TEMPO, DEFAULT_SUBDIVISION),
+    initialTranscription ??
+    formatMarkdown(initialRhythm?.tracks ?? defaultTracks(), initialTempo, subdivision, displayTitle),
   );
   const [transcriptionErrors, setTranscriptionErrors] = useState<string[]>([]);
   const [selectedStep, setSelectedStep] = useState(0);
@@ -399,9 +420,7 @@ export default function RhythmComposer() {
   const elapsedRecordingStepsRef = useRef(0);
   const recordingStartTimeRef = useRef<number | null>(null);
 
-  const subdivision = DEFAULT_SUBDIVISION;
   const beatStepCount = getStepsPerBeat(subdivision);
-  const displayTitle = DEFAULT_TITLE;
   const isRecordLocked = isRecording || countIn !== null;
   const recordedSteps = useMemo(
     () => composerStepsFromTracks(recordedTracks) ?? emptySteps(DEFAULT_STEP_COUNT),

@@ -702,7 +702,8 @@ button.step-cell:disabled {
   margin-top: 0.7rem;
 }
 
-.copy-transcription-button {
+.copy-transcription-button,
+.customize-rhythm-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -717,6 +718,7 @@ button.step-cell:disabled {
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 900;
+  text-decoration: none;
   transition:
     background 170ms ease,
     border-color 170ms ease,
@@ -725,7 +727,8 @@ button.step-cell:disabled {
     transform 170ms ease;
 }
 
-.copy-transcription-button:hover {
+.copy-transcription-button:hover,
+.customize-rhythm-button:hover {
   border-color: rgb(13 93 89 / 0.45);
   background: rgb(220 239 235 / 0.52);
   color: var(--teal-deep);
@@ -735,7 +738,8 @@ button.step-cell:disabled {
   transform: translateY(-1px);
 }
 
-.copy-transcription-button svg {
+.copy-transcription-button svg,
+.customize-rhythm-button svg {
   flex: none;
 }
 

@@ -1,0 +1,111 @@
+---
+import { getCollection } from "astro:content";
+import { ArrowLeft } from "lucide-react";
+import Disclaimer from "../../components/Disclaimer.astro";
+import RhythmComposer from "../../components/RhythmComposer";
+import { extractRhythmBlock } from "../../lib/extractRhythmBlock";
+import { parseRhythm } from "../../lib/parseRhythm";
+import { validateRhythm } from "../../lib/validateRhythm";
+import type { Rhythm } from "../../lib/rhythmTypes";
+import "../../styles/global.css";
+
+export async function getStaticPaths() {
+  const rhythms = await getCollection("rhythms");
+
+  return [
+    { params: { slug: undefined }, props: { entry: null } },
+    ...rhythms.map((entry) => ({
+      params: { slug: entry.slug },
+      props: { entry },
+    })),
+  ];
+}
+
+const { entry } = Astro.props;
+let initialRhythm: Rhythm | undefined;
+let initialTranscription: string | undefined;
+let errors: string[] = [];
+
+if (entry) {
+  const rhythmBlock = extractRhythmBlock(entry.body);
+
+  if (!rhythmBlock) {
+    errors = ["Rhythm block not found."];
+  } else {
+    try {
+      initialRhythm = {
+        title: entry.data.title,
+        slug: entry.slug,
+        tempo: entry.data.tempo,
+        subdivision: entry.data.subdivision,
+        tracks: parseRhythm(rhythmBlock),
+      };
+      errors = validateRhythm(initialRhythm);
+      initialTranscription = [
+        "---",
+        `title: ${JSON.stringify(entry.data.title)}`,
+        `tempo: ${entry.data.tempo}`,
+        `subdivision: ${entry.data.subdivision}`,
+        `difficulty: ${JSON.stringify(entry.data.difficulty)}`,
+        "instruments:",
+        ...entry.data.instruments.map((instrument) => `  - ${JSON.stringify(instrument)}`),
+        "---",
+        "",
+        entry.body.trim(),
+        "",
+      ].join("\n");
+    } catch (cause) {
+      errors = [cause instanceof Error ? cause.message : "Unable to load rhythm."];
+    }
+  }
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preload" href="/samples/alfaia/left-ghost.wav" as="audio" type="audio/wav" />
+    <link rel="preload" href="/samples/alfaia/right-accent.wav" as="audio" type="audio/wav" />
+    <title>{entry ? `Customize ${entry.data.title}` : "Compose"} | Baque Fácil</title>
+  </head>
+  <body>
+    <main class="page-shell">
+      <a class="back-link" href="/">
+        <ArrowLeft aria-hidden="true" size={18} />
+        All rhythms
+      </a>
+
+      <header class="page-header compact editorial-header">
+        <p class="eyebrow">Composer</p>
+        <h1>Alfaia Composer</h1>
+        {
+          entry ? (
+            <p>Customize {entry.data.title} in your own copy and export the transcription.</p>
+          ) : (
+            <p>Record an Alfaia rhythm on a beat-based grid and export the transcription.</p>
+          )
+        }
+      </header>
+
+      {
+        errors.length > 0 ? (
+          <section class="error-panel" aria-label="Rhythm validation errors">
+            <h2>Rhythm errors</h2>
+            <ul>
+              {errors.map((error) => <li>{error}</li>)}
+            </ul>
+          </section>
+        ) : (
+          <RhythmComposer
+            client:load
+            initialRhythm={initialRhythm}
+            initialTranscription={initialTranscription}
+          />
+        )
+      }
+      <Disclaimer />
+    </main>
+  </body>
+</html>
