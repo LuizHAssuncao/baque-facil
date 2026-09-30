@@ -88,7 +88,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
             client:load
             rhythm={rhythm}
             samples={sampleEntries}
-            autoPlay
+            playbackMode="rendered"
             customizeHref={`/compose/${entry.slug}/`}
           />
         ) : null

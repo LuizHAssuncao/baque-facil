@@ -6,6 +6,7 @@ const routes = [
   { name: "ios-audio-help", path: "/help/ios-audio/", heading: "Can't hear sound?" },
   { name: "rhythm-marcacao", path: "/rhythms/marcacao/", heading: "1 - Marcação" },
   { name: "rhythm-combo-entrada", path: "/rhythms/combo_entrada/", heading: "Entrada" },
+  { name: "rhythm-combo", path: "/rhythms/combo_parada_arrasto/", heading: "Parada + Arrasto" },
   { name: "customize-marcacao", path: "/compose/marcacao/", heading: "Alfaia Composer" },
   {
     name: "customize-multitrack",

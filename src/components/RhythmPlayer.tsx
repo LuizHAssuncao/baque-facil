@@ -37,6 +37,7 @@ import { formatRhythmBlock } from "../lib/formatRhythmBlock";
 import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm, RhythmTrack } from "../lib/rhythmTypes";
+import { useRenderedPlayback } from "../lib/audio/useRenderedPlayback";
 
 type ToneModule = typeof import("tone");
 
@@ -44,6 +45,7 @@ type RhythmPlayerProps = {
   rhythm: Rhythm;
   samples: Record<string, string>;
   autoPlay?: boolean;
+  playbackMode?: "live" | "rendered";
   editableNotes?: boolean;
   customizeHref?: string;
   enableKeyboardShortcuts?: boolean;
@@ -120,7 +122,7 @@ function hasEditableSymbol(trackName: string, symbol: string) {
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
-  let timeoutId: ReturnType<typeof window.setTimeout> | undefined;
+  let timeoutId: number | undefined;
 
   const timeout = new Promise<never>((_, reject) => {
     timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
@@ -207,6 +209,7 @@ function RhythmPlayer(
     rhythm,
     samples,
     autoPlay = false,
+    playbackMode = "live",
     editableNotes = false,
     customizeHref,
     enableKeyboardShortcuts = true,
@@ -225,10 +228,10 @@ function RhythmPlayer(
   const defaultMutedTrackNames = useMemo<string[]>(() => [], [trackNamesKey]);
   const [tempo, setTempo] = useState(() => clampTempo(rhythm.tempo));
   const [loop, setLoop] = useState(true);
-  const [activeStep, setActiveStep] = useState<number | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [status, setStatus] = useState("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [toneActiveStep, setActiveStep] = useState<number | null>(null);
+  const [toneIsPlaying, setIsPlaying] = useState(false);
+  const [toneStatus, setStatus] = useState("idle");
+  const [toneError, setError] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [mutedTracks, setMutedTracks] = useState<string[]>(() => defaultMutedTrackNames);
   const [isIos, setIsIos] = useState(false);
@@ -251,12 +254,26 @@ function RhythmPlayer(
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
   const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const currentTracksRef = useRef<RhythmTrack[]>(cloneTracks(currentTracks));
-  const copyFeedbackTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const copyFeedbackTimeoutRef = useRef<number | null>(null);
 
   const stepCount = currentTracks[0]?.steps.length ?? 0;
   const stepCountRef = useRef(stepCount);
   const beatStepCount = getStepsPerBeat(rhythm.subdivision);
   const stepDuration = `${rhythm.subdivision}n` as "8n" | "16n" | "32n";
+  const useRenderedAudio = playbackMode === "rendered";
+  const rendered = useRenderedPlayback(useRenderedAudio, {
+    rhythm,
+    samples,
+    tempo,
+    loop,
+    mutedTracks,
+  });
+  const activeStep = useRenderedAudio ? rendered.snapshot.activeStep : toneActiveStep;
+  const isPlaying = useRenderedAudio ? rendered.snapshot.playing : toneIsPlaying;
+  const status = useRenderedAudio
+    ? rendered.snapshot.ready ? "ready" : rendered.snapshot.preparing ? "loading" : "idle"
+    : toneStatus;
+  const error = useRenderedAudio ? rendered.snapshot.error : toneError;
   const labels = useMemo(
     () => countLabels(stepCount, rhythm.subdivision),
     [rhythm.subdivision, stepCount],
@@ -323,7 +340,7 @@ function RhythmPlayer(
     const deviceIsIos = isIosDevice();
     setIsIos(deviceIsIos);
 
-    if (deviceIsIos && !hasSeenIosSilentModeHelp()) {
+    if (!useRenderedAudio && deviceIsIos && !hasSeenIosSilentModeHelp()) {
       setShowIosSilentModeHelp(true);
     }
   }, []);
@@ -395,7 +412,7 @@ function RhythmPlayer(
   }, [activeStep, stepCount]);
 
   useEffect(() => {
-    if (!autoPlay || hasAutoPlayedRef.current) {
+    if (useRenderedAudio || !autoPlay || hasAutoPlayedRef.current) {
       return;
     }
 
@@ -660,6 +677,10 @@ function RhythmPlayer(
   }
 
   async function play(options: { isAutoPlay?: boolean } = {}) {
+    if (useRenderedAudio) {
+      rendered.controller.current?.play();
+      return;
+    }
     const attemptId = ++playAttemptRef.current;
 
     try {
@@ -729,6 +750,10 @@ function RhythmPlayer(
   }
 
   function stop() {
+    if (useRenderedAudio) {
+      rendered.controller.current?.stop();
+      return;
+    }
     playAttemptRef.current += 1;
 
     const Tone = toneRef.current;
@@ -762,6 +787,7 @@ function RhythmPlayer(
       aria-label={`${rhythm.title} player`}
       onClickCapture={(event) => blurPointerActivatedButton(event.target, event.detail)}
     >
+      {useRenderedAudio ? <audio ref={rendered.audioRef} data-rendered-player hidden /> : null}
       {showIosSilentModeHelp ? (
         <div className="audio-help-backdrop">
           <div
@@ -858,6 +884,20 @@ function RhythmPlayer(
           <output>{tempo} BPM</output>
         </label>
       </div>
+
+      {useRenderedAudio ? (
+        <p className="playback-message" role="status" aria-label="Playback status">
+          {rendered.snapshot.preparing
+            ? isPlaying
+              ? `Preparing ${tempo} BPM · playing ${rendered.snapshot.playingTempo} BPM.`
+              : "Preparing audio…"
+            : rendered.snapshot.pending
+              ? `Update ready · playing ${rendered.snapshot.playingTempo} BPM until the next repetition.`
+              : isPlaying
+                ? `Playing ${rendered.snapshot.playingTempo} BPM. You can switch apps or lock your screen.`
+                : "Tap Play to listen. Tempo and mute changes restart at the next repetition."}
+        </p>
+      ) : null}
 
       <div className="grid-scroll" aria-label="Parsed rhythm grid" ref={gridScrollRef}>
         <div className="rhythm-grid" style={gridShellStyle}>

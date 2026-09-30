@@ -8,6 +8,7 @@
     "dev:local": "ASTRO_TELEMETRY_DISABLED=1 astro dev --host 127.0.0.1 --port 4323",
     "build": "astro build",
     "preview": "astro preview",
+    "check:types": "tsc --noEmit",
     "check:layout": "playwright test --config=playwright.config.ts"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@types/node": "^24.19.0",
     "typescript": "^5.7.3"
   }
 }
