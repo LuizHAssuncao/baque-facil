@@ -1,6 +1,7 @@
 ---
 import T from "./TranslatedText.astro";
 import { translatedAttributes } from "../lib/i18n/messages";
+import { RefreshCw } from "lucide-react";
 ---
 <div class="offline-status" data-offline-status hidden>
   <span class="offline-dot" aria-hidden="true"></span>
@@ -12,6 +13,18 @@ import { translatedAttributes } from "../lib/i18n/messages";
     <summary><T message="Add to Home Screen" /></summary>
     <p><T message="In Safari, tap Share, then Add to Home Screen. Wait for offline access to finish preparing before disconnecting." /></p>
   </details>
+  <section class="offline-update-prompt" data-offline-update-prompt role="region" aria-labelledby="offline-update-title" aria-describedby="offline-update-description" hidden>
+    <div class="offline-update-heading">
+      <RefreshCw size={20} aria-hidden="true" />
+      <h2 id="offline-update-title"><T message="Update available" /></h2>
+    </div>
+    <p id="offline-update-description"><T message="There’s a new version of the app. Refresh to update when you’re ready." /></p>
+    <div class="offline-update-actions">
+      <button type="button" data-offline-update-accept><T message="Refresh to update" /></button>
+      <button type="button" data-offline-update-later><T message="Later" /></button>
+    </div>
+    <p class="offline-update-error" data-offline-update-error role="status" aria-live="polite" aria-atomic="true" hidden></p>
+  </section>
 </div>
 
 <script>

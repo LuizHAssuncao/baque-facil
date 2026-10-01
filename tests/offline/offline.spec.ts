@@ -9,6 +9,7 @@ import { join, resolve } from "node:path";
 const origin = "http://127.0.0.1:4335";
 const project = resolve(".");
 const footer = "footer [data-offline-status]";
+const updatePrompt = "[data-offline-update-prompt]";
 const sample = "/samples/alfaia/right-accent.wav";
 let fixtures: string;
 let releaseB: string;
@@ -31,6 +32,7 @@ async function prepared(page: Page) {
   await page.reload();
   await expect(page.locator(footer)).toHaveAttribute("data-ready", "true");
   await expect(page.locator(footer)).toHaveAttribute("data-release", (await report()).release);
+  await expect(page.locator(updatePrompt)).toBeHidden();
 }
 
 async function workerStatus(page: Page, action = "status") {
@@ -47,6 +49,12 @@ async function workerStatus(page: Page, action = "status") {
 
 async function update(page: Page) {
   await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())!.update(); });
+}
+
+async function pauseClock(page: Page) {
+  const time = new Date();
+  await page.clock.install({ time });
+  await page.clock.pauseAt(new Date(time.getTime() + 1000));
 }
 
 async function newSession(context: BrowserContext, path = "/") {
@@ -495,7 +503,48 @@ test("Settings refresh can recover after the replacement download fails", async 
 });
 
 for (const offline of [false, true]) {
+  test(`a foreground app discovers an update and applies it only after accepting the pop-up ${offline ? "offline" : "online"}`, async ({ page, context, request }) => {
+    await pauseClock(page);
+    await prepared(page);
+    await page.evaluate(async () => {
+      localStorage.setItem("baque-facil-radio-v1", "keep-radio-preferences");
+      await (await caches.open("unrelated-app-cache")).put("/unrelated", new Response("keep"));
+      history.replaceState(null, "", "/?from=old-tab#rhythms-heading");
+    });
+    let navigations = 0;
+    page.on("framenavigated", (frame) => { if (frame === page.mainFrame()) navigations++; });
+    await server(request, { directory: releaseB, reset: true });
+    // No reload, focus event, or manual registration.update(): the foreground
+    // timer must discover the deployment on its own.
+    await page.clock.fastForward(60_000);
+    await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+    await expect(page.getByRole("region", { name: "Update available", exact: true })).toBeVisible();
+    await expect(page.locator("[data-test-layout]")).toHaveCount(0);
+    if (offline) await context.setOffline(true);
+    await page.clock.fastForward(120_000);
+    expect((await workerStatus(page)).release).toBe((await report()).release);
+    expect(navigations).toBe(0);
+    await page.locator(updatePrompt).getByRole("button", { name: "Refresh to update", exact: true }).click();
+    await expect(page.locator(footer)).toHaveAttribute("data-release", (await report(releaseB)).release);
+    await expect(page.locator(footer)).toHaveAttribute("data-ready", "true");
+    await expect(page.locator("[data-test-layout=updated]")).toHaveCSS("border-top-width", "3px");
+    await expect(page.locator(updatePrompt)).toBeHidden();
+    expect(page.url()).toBe(`${origin}/?from=old-tab#rhythms-heading`);
+    expect(await page.evaluate(async () => ({
+      radio: localStorage.getItem("baque-facil-radio-v1"),
+      language: localStorage.getItem("baque-facil-language"),
+      unrelated: await (await (await caches.open("unrelated-app-cache")).match("/unrelated"))!.text(),
+      waiting: Boolean((await navigator.serviceWorker.getRegistration())?.waiting),
+    }))).toEqual({ radio: "keep-radio-preferences", language: "en-CA", unrelated: "keep", waiting: false });
+    await page.clock.fastForward(120_000);
+    await expect(page.locator(footer)).toHaveAttribute("data-state", "ready");
+    expect(navigations).toBe(1);
+    const counts = (await (await request.get(`${origin}/__offline_test__`)).json()).counts;
+    expect(Object.keys(counts).filter((url) => url.startsWith("/samples/"))).toEqual([]);
+  });
+
   test(`Reload to update replaces a stale layout ${offline ? "offline" : "online"} without resetting saved data`, async ({ page, context, request }) => {
+    await pauseClock(page);
     await prepared(page);
     await expect(page.locator("[data-offline-update]")).toBeHidden();
     await page.locator("#settings summary").click();
@@ -519,11 +568,21 @@ for (const offline of [false, true]) {
       await page.locator(".language-bar").getByRole("button", { name, exact: true }).click();
       await expect(page.locator(footer).getByRole("button", { name: label, exact: true })).toBeEnabled();
       await expect(page.locator("[data-offline-message]")).toHaveText(message);
+      const portuguese = name === "Português (Brasil)";
+      await expect(page.getByRole("region", { name: portuguese ? "Atualização disponível" : "Update available", exact: true })).toBeVisible();
+      await expect(page.locator(updatePrompt).getByRole("button", { name: portuguese ? "Recarregar e atualizar" : "Refresh to update", exact: true })).toBeEnabled();
+      await expect(page.locator(updatePrompt).getByRole("button", { name: portuguese ? "Mais tarde" : "Later", exact: true })).toBeVisible();
       for (const width of [1280, 500, 390]) {
         await page.setViewportSize({ width, height: 850 });
         expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+        const box = await page.locator(updatePrompt).boundingBox();
+        expect(box!.x).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+        expect(box!.y + box!.height).toBeLessThanOrEqual(850);
       }
     }
+    await page.locator(updatePrompt).getByRole("button", { name: "Later", exact: true }).click();
+    await expect(page.locator(updatePrompt)).toBeHidden();
     await server(request, { reset: true });
     if (offline) {
       await context.setOffline(true);
@@ -548,6 +607,69 @@ for (const offline of [false, true]) {
     expect(Object.keys(counts).filter((url) => url.startsWith("/samples/"))).toEqual([]);
   });
 }
+
+test("Later remembers a release across navigation and a newer release shows a new prompt", async ({ page, request }) => {
+  await pauseClock(page);
+  await prepared(page);
+  const oldRelease = (await report()).release;
+  await server(request, { directory: releaseB });
+  await page.clock.fastForward(60_000);
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+  await page.locator(updatePrompt).getByRole("button", { name: "Later", exact: true }).click();
+  await page.clock.fastForward(120_000);
+  await expect(page.locator(updatePrompt)).toBeHidden();
+  expect((await workerStatus(page)).release).toBe(oldRelease);
+  await page.goto("/help/ios-audio/");
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+  await expect(page.locator(updatePrompt)).toBeHidden();
+  await expect(page.getByRole("button", { name: "Reload to update", exact: true })).toBeEnabled();
+  await page.reload();
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+  await expect(page.locator(updatePrompt)).toBeHidden();
+  await server(request, { directory: releaseC });
+  await update(page);
+  await expect(page.locator(updatePrompt)).toBeVisible();
+  expect((await workerStatus(page)).release).toBe(oldRelease);
+  await page.locator(updatePrompt).getByRole("button", { name: "Refresh to update", exact: true }).click();
+  await expect(page.locator(footer)).toHaveAttribute("data-release", (await report(releaseC)).release);
+});
+
+test("the update prompt explains when another app window must close", async ({ page, context, request }) => {
+  await pauseClock(page);
+  await prepared(page);
+  const composer = await context.newPage();
+  await composer.goto("/compose/");
+  await openTranscription(composer);
+  const draft = "Alfaia:\nB R L .";
+  await composer.getByRole("textbox", { name: "Transcription", exact: true }).fill(draft);
+  await page.bringToFront();
+  await server(request, { directory: releaseB });
+  await page.clock.fastForward(60_000);
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+  await page.locator(updatePrompt).getByRole("button", { name: "Refresh to update", exact: true }).click();
+  await expect(page.locator("[data-offline-update-error]")).toHaveText("Close other Baque Fácil tabs or windows, then try again.");
+  expect((await workerStatus(page)).release).toBe((await report()).release);
+  await expect(composer.getByRole("textbox", { name: "Transcription", exact: true })).toHaveValue(draft);
+  await composer.close();
+  await page.locator(updatePrompt).getByRole("button", { name: "Refresh to update", exact: true }).click();
+  await expect(page.locator(footer)).toHaveAttribute("data-release", (await report(releaseB)).release);
+});
+
+test("the prompt can be dismissed when session storage is unavailable", async ({ page, request }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "sessionStorage", { configurable: true, get() { throw new Error("Storage unavailable"); } });
+  });
+  await pauseClock(page);
+  await prepared(page);
+  await server(request, { directory: releaseB });
+  await page.clock.fastForward(60_000);
+  await expect(page.locator(updatePrompt)).toBeVisible();
+  await page.locator(updatePrompt).getByRole("button", { name: "Later", exact: true }).click();
+  await page.clock.fastForward(120_000);
+  await expect(page.locator(updatePrompt)).toBeHidden();
+  expect((await workerStatus(page)).release).toBe((await report()).release);
+  await expect(page.getByRole("button", { name: "Reload to update", exact: true })).toBeEnabled();
+});
 
 test("Reload to update protects another tab's unsaved composition and ongoing playback", async ({ page, context, request }) => {
   await prepared(page);
@@ -576,6 +698,7 @@ test("Reload to update protects another tab's unsaved composition and ongoing pl
 });
 
 test("a restored page checks for updates without reloading its unsaved work", async ({ page, request }) => {
+  await pauseClock(page);
   await prepared(page);
   await page.goto("/compose/");
   await openTranscription(page);
@@ -586,8 +709,21 @@ test("a restored page checks for updates without reloading its unsaved work", as
   await server(request, { directory: releaseB });
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })));
   await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+  await expect(page.locator(updatePrompt)).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Transcription", exact: true })).toBeFocused();
+  await page.clock.fastForward(120_000);
   await expect(page.getByRole("textbox", { name: "Transcription", exact: true })).toHaveValue(draft);
   expect((await workerStatus(page)).release).toBe((await report()).release);
+  await page.getByRole("link", { name: "All rhythms", exact: true }).click();
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+  await page.locator(updatePrompt).getByRole("button", { name: "Later", exact: true }).focus();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(updatePrompt)).toBeHidden();
+  await page.getByRole("button", { name: "Reload to update", exact: true }).click();
+  await expect(page.locator(footer)).toHaveAttribute("data-release", (await report(releaseB)).release);
+  await page.goto("/compose/");
+  await openTranscription(page);
+  await expect(page.getByRole("textbox", { name: "Transcription", exact: true })).toHaveValue(draft);
 });
 
 test("a changed sequence waits for every old tab, then updates all surfaces offline", async ({ page, context, request }) => {
@@ -645,6 +781,7 @@ test("a failed update preserves the saved app; changed inventory activates toget
   await server(request, { directory: releaseC, blocked: "/samples/alfaia/new-hit.wav" });
   await update(page);
   await expect(page.locator(footer)).toHaveAttribute("data-state", "update-failed");
+  await expect(page.locator(updatePrompt)).toBeHidden();
   await context.setOffline(true);
   let next = await newSession(context, "/rhythms/afoxe/");
   await expect(next.locator("h1")).toHaveText("Afoxé");

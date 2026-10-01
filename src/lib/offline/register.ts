@@ -2,6 +2,9 @@ import { OFFLINE_CACHE_PREFIX, OFFLINE_MESSAGE, type OfflineStatus } from "./pro
 import { translate, TranslatableError, type Message } from "../i18n/messages";
 import { getLocale, subscribeLocale } from "../i18n/preference";
 
+const UPDATE_CHECK_INTERVAL = 60_000;
+const DISMISSED_UPDATE_KEY = "baque-facil-dismissed-update";
+
 type InstallPrompt = Event & {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -69,6 +72,10 @@ async function checkDownloadServer() {
 export function initOfflineStatus(root: HTMLElement) {
   const message = root.querySelector<HTMLElement>("[data-offline-message]")!;
   const updateButton = root.querySelector<HTMLButtonElement>("[data-offline-update]")!;
+  const updatePrompt = root.querySelector<HTMLElement>("[data-offline-update-prompt]")!;
+  const acceptUpdate = root.querySelector<HTMLButtonElement>("[data-offline-update-accept]")!;
+  const laterUpdate = root.querySelector<HTMLButtonElement>("[data-offline-update-later]")!;
+  const promptError = root.querySelector<HTMLElement>("[data-offline-update-error]")!;
   const retry = root.querySelector<HTMLButtonElement>("[data-offline-retry]")!;
   const install = root.querySelector<HTMLButtonElement>("[data-offline-install]")!;
   const ios = root.querySelector<HTMLElement>("[data-offline-ios]")!;
@@ -86,6 +93,10 @@ export function initOfflineStatus(root: HTMLElement) {
   let footerMessage: Message = "Preparing offline access…";
   let refreshId = 0;
   let lastCheck = 0;
+  let pendingRelease: string | undefined;
+  let dismissedRelease: string | undefined;
+  let focusBeforePrompt: HTMLElement | null = null;
+  try { dismissedRelease = sessionStorage.getItem(DISMISSED_UPDATE_KEY) ?? undefined; } catch { /* Dismissal still works for this page when storage is unavailable. */ }
   let installPrompt: InstallPrompt | undefined;
   const observed = new WeakSet<ServiceWorker>();
   root.hidden = false;
@@ -94,6 +105,11 @@ export function initOfflineStatus(root: HTMLElement) {
     const text = translate(getLocale(), updateError ?? footerMessage);
     if (message.textContent !== text) message.textContent = text;
     updateButton.disabled = refreshing || busy || Boolean(registration?.installing);
+    acceptUpdate.disabled = updateButton.disabled;
+    acceptUpdate.textContent = translate(getLocale(), refreshing ? "Updating…" : "Refresh to update");
+    laterUpdate.disabled = refreshing;
+    promptError.hidden = !updateError;
+    promptError.textContent = updateError ? translate(getLocale(), updateError) : "";
     if (refreshButton) {
       refreshButton.disabled = refreshing || busy || Boolean(registration?.installing) || !navigator.onLine || !supported;
       refreshButton.textContent = translate(getLocale(), refreshing ? "Refreshing…" : "Refresh offline app");
@@ -111,6 +127,12 @@ export function initOfflineStatus(root: HTMLElement) {
     retry.hidden = !canRetry;
     retry.disabled = busy;
     updateButton.hidden = state !== "update-ready";
+    const promptVisible = (state === "update-ready" || state === "updating") && Boolean(pendingRelease) && pendingRelease !== dismissedRelease;
+    if (promptVisible && updatePrompt.hidden) {
+      focusBeforePrompt = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    // A non-modal prompt leaves focus and ongoing playback/editing alone.
+    updatePrompt.hidden = !promptVisible;
   }
 
   if (settings) settings.hidden = false;
@@ -147,6 +169,7 @@ export function initOfflineStatus(root: HTMLElement) {
     root.dataset.release = current?.release ?? "";
     root.dataset.ready = String(Boolean(controller && current?.ready));
     if (next?.ready) {
+      pendingRelease = next.release;
       show("update-ready", navigator.onLine ? "Update saved · reload to use the latest version" : "Offline · update saved · ready to reload");
     } else if (current?.ready && controller) {
       const text = navigator.onLine ? "Ready for offline use" : "Offline · using saved rhythms";
@@ -172,7 +195,7 @@ export function initOfflineStatus(root: HTMLElement) {
 
   async function check(force = false) {
     if (!registration || busy || refreshing || resetIncomplete) return;
-    if (!navigator.onLine || (!force && Date.now() - lastCheck < 60_000)) {
+    if (!navigator.onLine || (!force && Date.now() - lastCheck < UPDATE_CHECK_INTERVAL)) {
       await refresh();
       return;
     }
@@ -220,7 +243,7 @@ export function initOfflineStatus(root: HTMLElement) {
     return registration?.active || registration?.waiting || registration?.installing;
   }
 
-  updateButton.addEventListener("click", async () => {
+  async function applyUpdate() {
     if (refreshing || busy || registration?.installing) return;
     const waiting = registration?.waiting;
     updateError = undefined;
@@ -250,6 +273,24 @@ export function initOfflineStatus(root: HTMLElement) {
         refreshing = false;
         await refresh();
       }
+    }
+  }
+  updateButton.addEventListener("click", () => { void applyUpdate(); });
+  acceptUpdate.addEventListener("click", () => { void applyUpdate(); });
+  function dismissUpdate() {
+    if (refreshing || !pendingRelease) return;
+    dismissedRelease = pendingRelease;
+    try { sessionStorage.setItem(DISMISSED_UPDATE_KEY, dismissedRelease); } catch { /* Keep the in-memory dismissal. */ }
+    const restoreFocus = updatePrompt.contains(document.activeElement);
+    updatePrompt.hidden = true;
+    if (restoreFocus) (focusBeforePrompt?.isConnected ? focusBeforePrompt : updateButton).focus({ preventScroll: true });
+  }
+  laterUpdate.addEventListener("click", dismissUpdate);
+  updatePrompt.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      dismissUpdate();
     }
   });
 
@@ -321,6 +362,8 @@ export function initOfflineStatus(root: HTMLElement) {
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) void check(true);
   });
+  // An app left open in the foreground must discover deployments too.
+  setInterval(() => { if (!document.hidden) void check(); }, UPDATE_CHECK_INTERVAL);
   navigator.serviceWorker.addEventListener("controllerchange", () => { void refresh(); });
   navigator.serviceWorker.addEventListener("message", ({ data }) => {
     if (data?.type === OFFLINE_MESSAGE) void refresh();

@@ -195,11 +195,17 @@ mute/unmute, tempo changes, iOS help links when relevant, composer hit buttons,
 keyboard shortcuts, and transcription parsing.
 
 For offline changes, also run `npm run check:offline`. Keep workers disabled in
-development. Automatic updates must never force waiting-worker activation or
-reload open clients: players and unsaved compositions must survive update downloads.
-The explicit footer Reload to update action may activate a fully saved waiting
-worker and reload its own page, including offline, after checking that it is the
-only app window. It must reuse the downloaded release and preserve preferences.
+development. Background updates must never activate a waiting worker or reload
+an open page without the user choosing to update. Show the non-modal Update
+available prompt only for a fully downloaded release, without moving focus or
+interrupting playback/editing. Later dismisses that release for the current tab,
+including across navigation; a newer release can show a new prompt. Keep the
+footer action available after dismissal. Check for releases every minute while
+visible as well as on open, reconnect, and foreground return.
+The prompt's Refresh to update and footer's Reload to update actions may activate
+a fully saved waiting worker and reload their own page, including offline, after
+checking that it is the only app window. They must reuse the downloaded release
+and preserve preferences.
 The explicit Settings refresh may activate its fresh worker and reload its own
 page after a complete download; it must first require other app windows to close,
 check connectivity, and preserve preferences and unrelated caches. Keep the offline

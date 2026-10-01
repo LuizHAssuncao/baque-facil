@@ -192,7 +192,7 @@ A small line in the footer shows download progress, readiness, and waiting
 updates. The first visit says “Offline files saved · ready on your next visit”
 after the download completes. Follow a normal link or reopen the app to finish
 setup; “Ready for offline use” confirms the page is controlled and all files are
-present. Automatic setup and updates never reload an open page.
+present. Initial offline setup does not reload the page.
 Use Retry in the footer if a download fails. Browser storage can be cleared or
 evicted; reconnect to restore missing files.
 
@@ -211,17 +211,30 @@ still starts through the normal Play controls. The existing preference storage
 continues to work. Composer drafts are saved locally on this device, separately
 for each composer route. Generated MP3 recordings are not saved across page restarts.
 
-Updates are checked when the app opens, reconnects, or returns to the foreground.
+Updates are checked when the app opens, reconnects, or returns to the foreground,
+and every minute while it remains visible.
 Changed files download with integrity checks, while unchanged samples are reused.
+Once the complete update is saved, a small **Update available** pop-up offers
+**Refresh to update** and **Later**. It appears on every page with the offline
+footer, without stealing focus, pausing playback, or interrupting composition.
+The app does not refresh until the user chooses to update. **Later** dismisses
+that version for the current tab, including across navigation; a newer version
+can show a new prompt. If session storage is unavailable, dismissal lasts for
+the current page. The prompt follows the selected English or Portuguese language.
+
 The footer offers **Reload to update** once the complete new version is saved.
 Save any composition or recording first, and close other Baque Fácil tabs/windows.
-The action activates the saved update and reloads just this page, including while
-offline, without clearing preferences or downloading unchanged files again.
+Either update button activates the saved update and reloads just this page,
+including while offline, without clearing preferences or downloading unchanged
+files again.
 Otherwise, the new version waits until all tabs/windows using the old version
 have closed; reopening then uses it. A normal browser refresh can still use the
-old saved version while an update is waiting. A failed update keeps the last
-complete version available. A sequence edit updates the rhythm player, Customize
-page, radio, and quiz as one release.
+old saved version while an update is waiting.
+Browsers running a version from before the update prompt was added need one
+manual **Reload to update**, or all app windows closed and reopened, to receive
+this behavior. A failed update keeps the last complete version available.
+A sequence edit updates the rhythm player, Customize page, radio, and quiz as one
+release.
 
 Home-screen installation is optional. Supported browsers offer a small Install
 app action in the footer. On iOS, the footer's Add to Home Screen disclosure
