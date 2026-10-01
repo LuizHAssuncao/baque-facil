@@ -36,6 +36,10 @@ export function addGaplessMetadata(
   bytes.set(original.subarray(oldHeaderSize), headerSize);
   bytes[1] |= 1; // No MPEG CRC is stored in this metadata frame.
   bytes[2] = 0x90; // MPEG-1 Layer III, 128 kbps, 44.1 kHz, no frame padding.
+  // This encoder is constant-bitrate. Mark it as Info so native players seek
+  // by bitrate instead of Xing's coarse, 8-bit table of byte offsets. With a
+  // Xing marker, currentTime can match a seek while the audio is seconds off.
+  bytes.set(new TextEncoder().encode("Info"), xing);
   view.setUint32(xing + 12, result.byteLength);
   for (let index = 0; index < 100; index += 1) {
     const oldOffset = (original[xing + 16 + index] / 256) * buffer.byteLength;

@@ -246,6 +246,109 @@ test("MP3 encoding preserves duration and attacks with gapless metadata", async 
   expect(result.progress).toBe(1);
 });
 
+test("native MP3 seeks keep the audible signal aligned with the radio timeline", async ({
+  page,
+}) => {
+  await page.goto("/radio/");
+  const measurements = await page.evaluate(async () => {
+    const encoderPath = "/src/lib/audio/encodeMp3.ts";
+    const timelinePath = "/src/lib/radio/timeline.ts";
+    const { encodeMp3 } = await import(/* @vite-ignore */ encoderPath);
+    const { buildRadioTimeline, RADIO_SAMPLE_RATE: rate } = await import(
+      /* @vite-ignore */ timelinePath
+    );
+    const rhythms = [16, 32].map((steps) => ({
+      title: `Test ${steps}`,
+      slug: `test-${steps}`,
+      tempo: 90,
+      subdivision: 16,
+      tracks: [{ name: "Test", steps: Array(steps).fill("X") }],
+    }));
+    const timeline = buildRadioTimeline(rhythms, 90, 4, 120, () => 0.9);
+    // A continuous frequency sweep gives every instant a distinct audible
+    // position. Reading currentTime alone cannot detect inaccurate MP3 seeks.
+    const startHz = 400;
+    const sweepHzPerSecond = 30;
+    const pcm = Float32Array.from(
+      { length: timeline.totalFrames },
+      (_, frame) => {
+        const seconds = frame / rate;
+        return 0.5 * Math.sin(
+          2 * Math.PI *
+            (startHz * seconds + sweepHzPerSecond * seconds * seconds / 2),
+        );
+      },
+    );
+    const blob = await encodeMp3({
+      hits: [{ frame: 0, sample: "sweep" }],
+      samples: { sweep: { left: pcm, right: pcm } },
+      totalFrames: timeline.totalFrames,
+      boundary: "finite",
+    }, () => {}, new AbortController().signal);
+    const context = new AudioContext({ sampleRate: rate });
+    const audio = new Audio(URL.createObjectURL(blob));
+    const analyser = context.createAnalyser();
+    analyser.fftSize = 8192;
+    const muted = context.createGain();
+    muted.gain.value = 0;
+    context.createMediaElementSource(audio)
+      .connect(analyser).connect(muted).connect(context.destination);
+    const data = new Float32Array(analyser.fftSize);
+    const results: { target: number; clock: number; signal: number }[] = [];
+    try {
+      await context.resume();
+      await audio.play();
+      // Forward skips, a seek while paused, a backward skip, and a skip to start.
+      for (const [turn, index] of [0, 1, 3, 5, 7, 2, 0].entries()) {
+        const target = timeline.segments[index].startFrame / rate;
+        if (turn === 4) audio.pause();
+        if (audio.currentTime !== target) {
+          await new Promise<void>((resolve) => {
+            audio.addEventListener("seeked", () => resolve(), { once: true });
+            audio.currentTime = target;
+          });
+        }
+        if (audio.paused) await audio.play();
+        // Replace the analyser's pre-seek samples with the resumed audio.
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if (audio.currentTime >= target + 0.4) resolve();
+            else requestAnimationFrame(check);
+          };
+          check();
+        });
+        analyser.getFloatTimeDomainData(data);
+        const clock = audio.currentTime;
+        const crossings: number[] = [];
+        for (let frame = 1; frame < data.length; frame += 1) {
+          if (data[frame - 1] < 0 && data[frame] >= 0) {
+            crossings.push(frame - data[frame] / (data[frame] - data[frame - 1]));
+          }
+        }
+        const first = crossings[0];
+        const last = crossings.at(-1)!;
+        const frequency = (crossings.length - 1) * rate / (last - first);
+        // The average frequency describes the middle of the sampled window;
+        // advance to its end to compare with the native player's media clock.
+        const signal = (frequency - startHz) / sweepHzPerSecond +
+          (data.length - (first + last) / 2) / rate;
+        results.push({ target, clock, signal });
+      }
+      return results;
+    } finally {
+      audio.pause();
+      await context.close();
+      URL.revokeObjectURL(audio.src);
+    }
+  });
+  for (const { target, clock, signal } of measurements) {
+    // Allow MP3 frame rounding (~26 ms) and native audio output buffering,
+    // but not the hundreds of milliseconds introduced by a coarse seek table.
+    expect(Math.abs(signal - clock), `audible offset after seeking to ${target}s`)
+      .toBeLessThan(0.08);
+  }
+});
+
 test("MP3 encoding releases its worker when cancelled during encoding", async ({
   page,
 }) => {
