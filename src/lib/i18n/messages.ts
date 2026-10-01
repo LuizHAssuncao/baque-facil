@@ -1,6 +1,7 @@
 // English source messages are the keys. Keep placeholders identical in both languages.
 export const portuguese = {
   "Language": "Idioma",
+  "Main navigation": "Navegação principal",
   "Settings": "Configurações",
   "Offline access": "Acesso offline",
   "Refresh offline app": "Atualizar app offline",
@@ -35,6 +36,7 @@ export const portuguese = {
   "Learn, listen and compose alfaia patterns.": "Aprenda, ouça e crie ritmos de alfaia.",
   "Rhythms": "Ritmos",
   "Combos": "Combos",
+  "Jump to combos": "Ir para combos",
   "All rhythms": "Todos os ritmos",
   "Listening practice": "Prática de escuta",
   "Quiz": "Quiz",
@@ -45,6 +47,7 @@ export const portuguese = {
   "Get to know Maracatu rhythms by ear. Read a rhythm name, listen, and find its sound.": "Conheça os ritmos de maracatu de ouvido. Leia o nome de um ritmo, ouça e encontre o som correspondente.",
   "Enable JavaScript to listen to the options and practice.": "Ative o JavaScript para ouvir as opções e praticar.",
   "Composer": "Compositor",
+  "Compose": "Compor",
   "Alfaia Composer": "Compositor de alfaia",
   "Compose | Baque Fácil": "Compor | Baque Fácil",
   "Customize {title} | Baque Fácil": "Personalizar {title} | Baque Fácil",

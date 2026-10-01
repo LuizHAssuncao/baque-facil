@@ -4,7 +4,7 @@ import LanguagePicker from "../components/LanguagePicker.astro";
 import T from "../components/TranslatedText.astro";
 import { translatedAttributes, type Message } from "../lib/i18n/messages";
 import { getCollection } from "astro:content";
-import { ChevronRight, Headphones, PencilLine, Radio } from "lucide-react";
+import { ArrowDown, ChevronRight, Drum, Headphones, PencilLine, Radio, Settings } from "lucide-react";
 import LanguageChoices from "../components/LanguageChoices.astro";
 import Disclaimer from "../components/Disclaimer.astro";
 import PwaHead from "../components/PwaHead.astro";
@@ -56,8 +56,14 @@ const homeTools = [
     <title>Baque Fácil</title>
   </head>
   <body>
-    <main class="page-shell">
-      <LanguagePicker />
+    <main class="page-shell home-page">
+      <div class="home-utilities">
+        <LanguagePicker />
+        <a class="home-settings-link" href="#settings">
+          <Settings size={16} aria-hidden="true" />
+          <T message="Settings" />
+        </a>
+      </div>
       <header class="page-header home-hero">
         <div class="home-hero-copy">
           <p class="eyebrow"><T message="Maracatu rhythm studio" /></p>
@@ -76,14 +82,40 @@ const homeTools = [
         </div>
       </header>
 
+      <nav class="home-navigation" {...translatedAttributes({ "aria-label": "Main navigation" })}>
+        <a href="#rhythms-heading" aria-current="page">
+          <Drum size={20} aria-hidden="true" />
+          <T message="Rhythms" />
+        </a>
+        <a href="/radio/">
+          <Radio size={20} aria-hidden="true" />
+          <T message="Radio" />
+        </a>
+        <a href="/quiz/">
+          <Headphones size={20} aria-hidden="true" />
+          <T message="Quiz" />
+        </a>
+        <a href="/compose/">
+          <PencilLine size={20} aria-hidden="true" />
+          <T message="Compose" />
+        </a>
+      </nav>
+
       <section class="home-section" aria-labelledby="rhythms-heading">
-        <h2 id="rhythms-heading"><T message="Rhythms" /></h2>
+        <div class="home-section-heading">
+          <h2 id="rhythms-heading" tabindex="-1"><T message="Rhythms" /></h2>
+          <a class="home-section-jump" href="#combos-heading">
+            <T message="Jump to combos" />
+            <ArrowDown size={16} aria-hidden="true" />
+          </a>
+        </div>
         <div class="rhythm-list">
           {
             practiceRhythms.map((rhythm) => (
               <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
                 <strong>{rhythm.data.title}</strong>
                 <span><T message={rhythm.data.difficulty as Message} /></span>
+                <ChevronRight size={16} aria-hidden="true" />
               </a>
             ))
           }
@@ -91,13 +123,14 @@ const homeTools = [
       </section>
 
       <section class="home-section" aria-labelledby="combos-heading">
-        <h2 id="combos-heading"><T message="Combos" /></h2>
+        <h2 id="combos-heading" tabindex="-1"><T message="Combos" /></h2>
         <div class="rhythm-list">
           {
             comboRhythms.map((rhythm) => (
               <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
                 <strong>{rhythm.data.title}</strong>
                 <span><T message={rhythm.data.difficulty as Message} /></span>
+                <ChevronRight size={16} aria-hidden="true" />
               </a>
             ))
           }
@@ -155,6 +188,37 @@ const homeTools = [
         readHandSymbolReversePreference,
         writeHandSymbolReversePreference,
       } from "../lib/handPreference";
+
+      const homePage = document.querySelector<HTMLElement>(".home-page");
+      const navigation = document.querySelector<HTMLElement>(".home-navigation");
+      if (homePage && navigation) {
+        const updateNavigationHeight = () => {
+          homePage.style.setProperty("--home-navigation-height", `${navigation.getBoundingClientRect().height}px`);
+        };
+        updateNavigationHeight();
+        new ResizeObserver(updateNavigationHeight).observe(navigation);
+      }
+
+      const settings = document.querySelector<HTMLDetailsElement>("#settings");
+      const settingsLink = document.querySelector<HTMLAnchorElement>(".home-settings-link");
+      const openSettings = () => {
+        if (!settings) return;
+        settings.open = true;
+        settings.querySelector("summary")?.focus({ preventScroll: true });
+      };
+      const followSettingsHash = () => {
+        if (window.location.hash !== "#settings") return;
+        openSettings();
+        settings?.scrollIntoView({ block: "start" });
+      };
+      settingsLink?.addEventListener("click", (event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        window.location.hash = "settings";
+        followSettingsHash();
+      });
+      window.addEventListener("hashchange", followSettingsHash);
+      followSettingsHash();
 
       const leftHandedMode = document.querySelector<HTMLInputElement>("#left-handed-mode");
 

@@ -97,7 +97,7 @@ for (const locale of ["pt-BR", "en-CA"] as const) {
 test("settings and open tabs share the latest language without changing hand preference", async ({ page, context }) => {
   await page.goto("/");
   await chooseLanguage(page, portugueseLabel);
-  await page.getByText("Configurações", { exact: true }).click();
+  await page.locator("#settings summary").click();
   await page.getByRole("checkbox", { name: /Modo para canhotos/ }).check();
   const second = await context.newPage();
   await second.goto("/rhythms/marcacao/");
@@ -135,6 +135,7 @@ test("composer keeps edits and translates existing validation errors when langua
 test("switching language preserves active rhythm playback and tempo", async ({ page }) => {
   await page.goto("/rhythms/marcacao/");
   await chooseLanguage(page, english);
+  await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
   await page.getByRole("slider", { name: "Tempo" }).fill("75");
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
