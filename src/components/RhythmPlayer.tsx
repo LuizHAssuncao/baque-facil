@@ -3,6 +3,7 @@ import { errorMessage, TranslatableError, type Message } from "../lib/i18n/messa
 import {
   forwardRef,
   useEffect,
+  useId,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -12,6 +13,7 @@ import {
 } from "react";
 import {
   ClipboardCopy,
+  Download,
   Keyboard,
   Pencil,
   Play,
@@ -246,6 +248,8 @@ function RhythmPlayer(
   const [isIos, setIsIos] = useState(false);
   const [showIosSilentModeHelp, setShowIosSilentModeHelp] = useState(false);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [showMp3Export, setShowMp3Export] = useState(false);
+  const exportPanelId = useId();
   const [reverseHandSymbols, setReverseHandSymbols] = useState(false);
 
   const toneRef = useRef<ToneModule | null>(null);
@@ -883,15 +887,6 @@ function RhythmPlayer(
         </label>
       </div>
 
-      <Mp3ExportControl
-        rhythm={exportRhythm}
-        samples={samples}
-        tempo={tempo}
-        mutedTracks={mutedTracks}
-        defaultRepetitions={exportRepetitions}
-        disabledReason={exportDisabledReason}
-      />
-
       <div className="grid-scroll" aria-label={t("Parsed rhythm grid")} ref={gridScrollRef}>
         <div className="rhythm-grid" style={gridShellStyle}>
           <div className="grid-row count-row" style={gridStyle}>
@@ -982,6 +977,15 @@ function RhythmPlayer(
           title={t("Copy transcription")}
         >
           <ClipboardCopy aria-hidden="true" size={14} />{t("Copy")}</button>
+        <button
+          type="button"
+          className="download-mp3-button"
+          aria-expanded={showMp3Export}
+          aria-controls={exportPanelId}
+          onClick={() => setShowMp3Export((open) => !open)}
+        >
+          <Download aria-hidden="true" size={14} />{t("Download MP3")}
+        </button>
         <div
           className="player-status"
           data-tone={error ? "error" : copyFeedback ? "success" : "idle"}
@@ -990,6 +994,17 @@ function RhythmPlayer(
           {copyFeedback ? t(copyFeedback) : error ? t(error) : null}
         </div>
       </div>
+
+      <Mp3ExportControl
+        rhythm={exportRhythm}
+        samples={samples}
+        tempo={tempo}
+        mutedTracks={mutedTracks}
+        defaultRepetitions={exportRepetitions}
+        disabledReason={exportDisabledReason}
+        open={showMp3Export}
+        panelId={exportPanelId}
+      />
 
       {isIos ? (
         <p className="ios-audio-help-link">

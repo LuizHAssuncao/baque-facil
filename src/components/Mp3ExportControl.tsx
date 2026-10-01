@@ -1,5 +1,4 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Download } from "lucide-react";
 import { errorMessage, type Message } from "../lib/i18n/messages";
 import { useTranslation } from "../lib/i18n/useTranslation";
 import { EXPORT_REPETITIONS, mp3ExportKey, planMp3Export, type Mp3ExportRequest } from "../lib/audio/exportMp3";
@@ -8,9 +7,11 @@ import { formatAudioDuration } from "../lib/audio/downloadMp3";
 import { useMp3Export } from "../lib/audio/useMp3Export";
 import { Mp3SaveActions } from "./Mp3SaveActions";
 
-export function Mp3ExportControl({ rhythm, samples, tempo, mutedTracks, defaultRepetitions, disabledReason }: Omit<Mp3ExportRequest, "repetitions"> & {
+export function Mp3ExportControl({ rhythm, samples, tempo, mutedTracks, defaultRepetitions, disabledReason, open, panelId }: Omit<Mp3ExportRequest, "repetitions"> & {
   defaultRepetitions: number;
   disabledReason?: Message;
+  open: boolean;
+  panelId: string;
 }) {
   const { t, locale } = useTranslation();
   const id = useId();
@@ -33,8 +34,7 @@ export function Mp3ExportControl({ rhythm, samples, tempo, mutedTracks, defaultR
   const stale = exporting.result && (exporting.result.key !== mp3ExportKey(request) || Boolean(disabledReason));
 
   return (
-    <details className="mp3-export">
-      <summary><Download size={17} aria-hidden="true" />{t("Download MP3")}</summary>
+    <div className="mp3-export" id={panelId} hidden={!open}>
       <div className="mp3-panel">
         <div className="mp3-repetitions">
           <label htmlFor={`${id}-repetitions`}>{t("Repetitions")}</label>
@@ -74,6 +74,6 @@ export function Mp3ExportControl({ rhythm, samples, tempo, mutedTracks, defaultR
           <Mp3SaveActions download={exporting.result} />
         </div> : null}
       </div>
-    </details>
+    </div>
   );
 }

@@ -1119,6 +1119,7 @@ button.step-cell:disabled {
 }
 
 .copy-transcription-button,
+.download-mp3-button,
 .customize-rhythm-button {
   display: inline-flex;
   align-items: center;
@@ -1144,6 +1145,7 @@ button.step-cell:disabled {
 }
 
 .copy-transcription-button:hover,
+.download-mp3-button:hover,
 .customize-rhythm-button:hover {
   border-color: rgb(13 93 89 / 0.45);
   background: rgb(220 239 235 / 0.52);
@@ -1155,6 +1157,7 @@ button.step-cell:disabled {
 }
 
 .copy-transcription-button svg,
+.download-mp3-button svg,
 .customize-rhythm-button svg {
   flex: none;
 }
@@ -1515,6 +1518,7 @@ button.step-cell:focus-visible,
 .composer-actions button:focus-visible,
 .controls button:focus-visible,
 .copy-transcription-button:focus-visible,
+.download-mp3-button:focus-visible,
 .hand-key:focus-visible,
 .player-tip-trigger:focus-visible,
 .track-mute-button:focus-visible,
@@ -2217,28 +2221,13 @@ kbd {
   margin: 1.15rem 0 1.5rem;
 }
 .mp3-export {
-  margin: 0 0 1rem;
+  margin: 0.7rem 0 0;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--paper-soft);
 }
-.mp3-export summary {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 2.75rem;
-  padding: 0.65rem 0.85rem;
-  color: var(--teal-deep);
-  cursor: pointer;
-  font-weight: 650;
-  list-style: none;
-}
-.mp3-export summary::-webkit-details-marker { display: none; }
-.mp3-export summary::after { content: "+"; margin-left: auto; }
-.mp3-export[open] summary::after { content: "−"; }
 .mp3-panel {
   padding: 0.85rem;
-  border-top: 1px solid var(--line-strong);
 }
 .mp3-panel p, .radio-download p { margin: 0.65rem 0; line-height: 1.5; }
 .mp3-panel p:empty { display: none; }
@@ -2274,7 +2263,7 @@ kbd {
 .mp3-button:hover:not(:disabled) { background: var(--teal-soft); }
 .mp3-button:disabled { opacity: 0.55; cursor: not-allowed; }
 .mp3-button[hidden] { display: none; }
-.mp3-button:focus-visible, .mp3-export summary:focus-visible, .mp3-repetitions select:focus-visible {
+.mp3-button:focus-visible, .mp3-repetitions select:focus-visible {
   outline: 2px solid var(--teal);
   outline-offset: 3px;
 }

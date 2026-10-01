@@ -2,6 +2,7 @@ import { useTranslation } from "../lib/i18n/useTranslation";
 import type { MessageKey } from "../lib/i18n/messages";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Download,
   Headphones,
   Pause,
   Play,
@@ -209,7 +210,9 @@ export default function RhythmRadio({
               size: sizeFormat.format(snapshot.download.blob.size / 1_000_000),
             })}</p>
           </> : <>
-            <button className="mp3-button" type="button" disabled aria-describedby="radio-download-reason">{t("Download mix MP3")}</button>
+            <button className="mp3-button" type="button" disabled aria-describedby="radio-download-reason">
+              <Download size={17} aria-hidden="true" />{t("Download mix MP3")}
+            </button>
             <p id="radio-download-reason" className="mp3-note">{t("Prepare a mix first.")}</p>
           </>}
         </div>

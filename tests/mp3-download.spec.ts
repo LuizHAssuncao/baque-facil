@@ -9,7 +9,9 @@ test.beforeEach(async ({ page }) => {
 async function openExport(page: Page, route: string) {
   await page.goto(route);
   await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
-  await page.locator(".mp3-export summary").click();
+  await expect(page.locator(".player-secondary-actions .copy-transcription-button + .download-mp3-button")).toBeVisible();
+  await expect(page.locator(".mp3-export")).toBeHidden();
+  await page.getByRole("button", { name: "Download MP3", exact: true }).click();
 }
 
 async function save(page: Page, label = "Save MP3") {
@@ -57,7 +59,7 @@ for (const scenario of [
   });
 }
 
-test("composer guards invalid, silent and recording states, and summary keyboard activation does not play", async ({ page }) => {
+test("composer guards invalid, silent and recording states, and download button keyboard activation does not play", async ({ page }) => {
   await openExport(page, "/compose/");
   const prepare = page.getByRole("button", { name: "Prepare MP3", exact: true });
   await expect(prepare).toBeDisabled();
@@ -72,12 +74,14 @@ test("composer guards invalid, silent and recording states, and summary keyboard
   await page.getByRole("button", { name: "Mute Alfaia", exact: true }).click();
   await expect(prepare).toBeDisabled();
   await page.getByRole("button", { name: "Unmute Alfaia", exact: true }).click();
-  const summary = page.locator(".mp3-export summary");
-  await summary.focus();
+  const toggle = page.getByRole("button", { name: "Download MP3", exact: true });
+  await toggle.focus();
   await page.keyboard.press("Space");
-  await expect(page.locator(".mp3-export")).not.toHaveAttribute("open");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator(".mp3-export")).toBeHidden();
   await page.keyboard.press("Enter");
-  await expect(page.locator(".mp3-export")).toHaveAttribute("open", "");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator(".mp3-export")).toBeVisible();
   await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Record", exact: true }).click();
   await expect(prepare).toBeDisabled();
@@ -122,6 +126,7 @@ test("radio saves the exact full mix while held and with pending or cancelled se
   await page.goto("/radio/");
   const download = page.getByRole("button", { name: "Download mix MP3", exact: true });
   await expect(download).toBeDisabled();
+  await expect(download.locator("svg")).toBeVisible();
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(download).toBeEnabled({ timeout: 25000 });
   await page.getByRole("button", { name: "Pause", exact: true }).click();
@@ -166,8 +171,7 @@ test("radio saves the exact full mix while held and with pending or cancelled se
 test("export controls and availability messages are translated into Portuguese", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("baque-facil-language", "pt-BR"));
   await page.goto("/compose/");
-  await expect(page.locator(".mp3-export summary")).toHaveText("Baixar MP3");
-  await page.locator(".mp3-export summary").click();
+  await page.getByRole("button", { name: "Baixar MP3", exact: true }).click();
   await expect(page.getByLabel("Repetições", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preparar MP3", exact: true })).toBeDisabled();
   await expect(page.getByText("Adicione uma nota ou ative o som de um instrumento para preparar um MP3.")).toBeVisible();

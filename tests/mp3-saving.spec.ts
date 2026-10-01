@@ -14,7 +14,7 @@ test("native sharing receives the prepared MP3 during the user gesture and failu
   });
   await page.goto("/rhythms/marcacao/");
   await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
-  await page.locator(".mp3-export summary").click();
+  await page.getByRole("button", { name: "Download MP3", exact: true }).click();
   await page.getByRole("button", { name: "Prepare MP3", exact: true }).click();
   await page.getByRole("button", { name: "Share MP3", exact: true }).click();
   const shared = await page.evaluate(() => JSON.parse(sessionStorage.getItem("shared-mp3")!));
