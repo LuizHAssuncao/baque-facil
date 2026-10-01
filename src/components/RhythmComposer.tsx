@@ -29,6 +29,7 @@ import type { Rhythm, RhythmTrack, Subdivision } from "../lib/rhythmTypes";
 type RhythmComposerProps = {
   initialRhythm?: Rhythm;
   initialTranscription?: string;
+  exampleRhythm: Rhythm;
 };
 
 type ComposerSymbol = "." | "L" | "R" | "B";
@@ -307,10 +308,11 @@ function eventTimestampToPerformanceTime(timeStamp: number) {
 export default function RhythmComposer({
   initialRhythm,
   initialTranscription,
+  exampleRhythm,
 }: RhythmComposerProps) {
   const { t, locale } = useTranslation();
   const initialTempo = clampTempo(initialRhythm?.tempo ?? DEFAULT_TEMPO);
-  const subdivision = initialRhythm?.subdivision ?? DEFAULT_SUBDIVISION;
+  const subdivision = initialRhythm?.subdivision ?? exampleRhythm.subdivision;
   const [customTitle, setCustomTitle] = useState(initialRhythm?.title ?? "");
   const displayTitle = customTitle || t(DEFAULT_TITLE);
   const titleRef = useRef(customTitle);
@@ -627,7 +629,20 @@ export default function RhythmComposer({
 
   function useExample() {
     if (isRecordLocked) return;
-    applyCurrentTracks([{ name: "Alfaia", steps: ["L", ".", "R", ".", "L", ".", "B", ".", "R", ".", "R", ".", "L", "B", "R", "."] }]);
+    rememberChange();
+    restoreSnapshot({
+      ...snapshot(),
+      title: exampleRhythm.title,
+      tempo: exampleRhythm.tempo,
+      tracks: exampleRhythm.tracks,
+      transcription: formatMarkdown(
+        exampleRhythm.tracks,
+        exampleRhythm.tempo,
+        exampleRhythm.subdivision,
+        exampleRhythm.title,
+        "",
+      ),
+    });
   }
 
   function getComposerAudioContext() {

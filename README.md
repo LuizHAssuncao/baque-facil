@@ -314,7 +314,8 @@ See the [implementation and verification plan](specifications/radio-implementati
 
 Select a cell to choose a hit or rest. Alfaia supports Left (`L`), Right (`R`),
 Border (`B`) and Rest (`.`). The same grid shows editing, playback and recording.
-**Use an example** starts a short editable pattern. Add beat extends every track.
+**Use an example** loads Marcação from the rhythm library with its name, notes
+and tempo. Add beat extends every track.
 
 Record with pads opens three Alfaia pads. Try them without changing the pattern,
 then press Record. Recording starts after three counts; gaps become rests.

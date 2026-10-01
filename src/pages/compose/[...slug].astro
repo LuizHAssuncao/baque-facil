@@ -16,17 +16,35 @@ import "../../styles/global.css";
 
 export async function getStaticPaths() {
   const rhythms = await getCollection("rhythms");
+  const exampleEntry = rhythms.find((entry) => entry.slug === "marcacao");
+  const exampleBlock = exampleEntry && extractRhythmBlock(exampleEntry.body);
+
+  if (!exampleEntry || !exampleBlock) {
+    throw new Error("The Marcação composer example is missing.");
+  }
+
+  const exampleRhythm: Rhythm = {
+    title: exampleEntry.data.title,
+    slug: exampleEntry.slug,
+    tempo: exampleEntry.data.tempo,
+    subdivision: exampleEntry.data.subdivision,
+    tracks: parseRhythm(exampleBlock),
+  };
+
+  if (validateRhythmIssues(exampleRhythm).length > 0) {
+    throw new Error("The Marcação composer example is invalid.");
+  }
 
   return [
-    { params: { slug: undefined }, props: { entry: null } },
+    { params: { slug: undefined }, props: { entry: null, exampleRhythm } },
     ...rhythms.map((entry) => ({
       params: { slug: entry.slug },
-      props: { entry },
+      props: { entry, exampleRhythm },
     })),
   ];
 }
 
-const { entry } = Astro.props;
+const { entry, exampleRhythm } = Astro.props;
 let initialRhythm: Rhythm | undefined;
 let initialTranscription: string | undefined;
 let errors: Message[] = [];
@@ -98,6 +116,7 @@ if (entry) {
             client:load
             initialRhythm={initialRhythm}
             initialTranscription={initialTranscription}
+            exampleRhythm={exampleRhythm}
           />
         )
       }

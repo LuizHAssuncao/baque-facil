@@ -36,9 +36,20 @@ test("one grid supports explicit notes, undo, redo, example, tempo and draft rec
   await expect(transcription).toHaveValue(/title: "My border groove"/);
   await expect(transcription).toHaveValue(/tempo: 110/);
   await page.getByRole("button", { name: "Use an example", exact: true }).click();
-  await expect(notes(page)).toHaveCount(16);
+  await expect(page.getByRole("heading", { name: "1 - Marcação", exact: true })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Tempo", exact: true })).toHaveValue("90");
+  await expect(transcription).toHaveValue(/Alfaia:\nR \. \. \. \| \. \. \. \. \| L R \. \. \| L R \. \./);
+  await expect(notes(page)).toHaveText(["R", "·", "·", "·", "·", "·", "·", "·", "L", "R", "·", "·", "L", "R", "·", "·"]);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(transcription).toHaveValue(/Alfaia:\nB \. \. \./);
+  await expect(page.getByRole("heading", { name: "My border groove", exact: true })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Tempo", exact: true })).toHaveValue("110");
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "1 - Marcação", exact: true })).toBeVisible();
+  await expect(page.getByText("Saved on this device", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "1 - Marcação", exact: true })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Tempo", exact: true })).toHaveValue("90");
 });
 
 test("recording captures Left, Right, Border and gaps; the previous composition is undoable", async ({ page, isMobile }) => {
