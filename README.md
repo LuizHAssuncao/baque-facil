@@ -228,14 +228,17 @@ Service workers are disabled in `astro dev`. To check them manually, run a fresh
 or port from development. `npm run check:offline` runs real production builds,
 first-use offline audio and MP3 exports, browser restart, range requests,
 interrupted downloads, storage failures, Settings refresh, and updates across
-multiple tabs. Its temporary build fixtures
-do not modify committed rhythm content.
+multiple tabs. The test origin reproduces Cloudflare Pages' analytics injection,
+including verification that changed HTML is rejected. Its temporary build
+fixtures do not modify committed rhythm content.
 
 Deploy the complete `dist/` atomically at the origin root over HTTPS. Serve
 `/sw.js` with `Cache-Control: no-cache` (or equivalent revalidation) and the proper
 JavaScript MIME type; it must not receive an immutable CDN lifetime. Hashed
-`/_astro/` assets can remain immutable. Disable transformations that change the
-bytes of built files, since downloads are checked against their build integrity.
+`/_astro/` assets can remain immutable. The worker removes Cloudflare Pages' known
+analytics snippet from downloaded HTML, then verifies the original build hash
+before saving it. Other transformations that change built bytes must stay
+disabled; HTML from another release and corrupted assets are still rejected.
 Confirm directory routes and deep links on the target host. Roll back by
 publishing a complete prior app build with its service worker; deleting `sw.js`
 does not remove workers already installed on learners' devices.

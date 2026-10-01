@@ -2,20 +2,23 @@
 import { PrecacheController } from "workbox-precaching";
 import { createPartialResponse } from "workbox-range-requests";
 import { OFFLINE_CACHE_PREFIX, OFFLINE_MESSAGE, type OfflineStatus } from "./lib/offline/protocol";
+import { verifyOfflineHtml } from "./lib/offline/html";
 
 declare const self: ServiceWorkerGlobalScope;
 
 type Entry = { url: string; revision: string | null; integrity: string };
 const entries = self.__WB_MANIFEST as Entry[];
+const byPath = new Map(entries.map((entry) => [entry.url, entry]));
 const cacheName = `${OFFLINE_CACHE_PREFIX}precache-v1`;
 const precache = new PrecacheController({
   cacheName,
   fallbackToNetwork: false,
-  // A manual reset must also bypass the HTTP cache, including hashed assets.
-  plugins: [{ requestWillFetch: async ({ request }) => new Request(request, { cache: "reload" }) }],
+  plugins: [{
+    requestWillFetch: async ({ request }) => downloadRequest(request),
+    fetchDidSucceed: async ({ request, response }) => verifyDownload(response, entryFor(new URL(request.url))),
+  }],
 });
 precache.addToCacheList(entries);
-const byPath = new Map(entries.map((entry) => [entry.url, entry]));
 const fingerprint = JSON.stringify(entries.map(({ url, revision, integrity }) => [url, revision, integrity]).sort());
 const release = crypto.subtle.digest("SHA-256", new TextEncoder().encode(fingerprint))
   .then((bytes) => Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("").slice(0, 16));
@@ -35,6 +38,17 @@ function entryFor(url: URL): Entry | undefined {
   return byPath.get(path) ?? byPath.get(`${path}/`);
 }
 
+function downloadRequest(request: Request): Request {
+  const entry = entryFor(new URL(request.url));
+  // HTML is verified after removing the host's known analytics addition. Assets
+  // still use native SRI. Reload also bypasses HTTP caches during manual reset.
+  return new Request(request, { cache: "reload", integrity: entry?.url.endsWith("/") ? "" : request.integrity });
+}
+
+function verifyDownload(response: Response, entry?: Entry): Promise<Response> {
+  return entry?.url.endsWith("/") ? verifyOfflineHtml(response, entry.integrity) : Promise.resolve(response);
+}
+
 async function status(): Promise<OfflineStatus> {
   const cache = await caches.open(cacheName);
   const present = await Promise.all(entries.map((entry) => cache.match(precache.getCacheKeyForURL(entry.url)!)));
@@ -51,12 +65,12 @@ async function restore(entry: Entry): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20_000);
   try {
-    const response = await fetch(new Request(entry.url, {
-      cache: "reload",
+    const request = downloadRequest(new Request(entry.url, {
       credentials: "same-origin",
       integrity: entry.integrity,
       signal: controller.signal,
     }));
+    const response = await verifyDownload(await fetch(request), entry);
     if (response.status !== 200) throw new Error("Offline resource unavailable");
     const cache = await caches.open(cacheName);
     await cache.put(precache.getCacheKeyForURL(entry.url)!, response.clone());

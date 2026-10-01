@@ -10,6 +10,9 @@ let corrupt = "";
 let hold = "";
 const held = [];
 const counts = {};
+// Reproduce Pages' post-build injection: native SRI cannot validate these HTML
+// bytes until the offline worker removes this exact hosting addition.
+const analytics = `<!-- Cloudflare Pages Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "offline-test"}'></script><!-- Cloudflare Pages Analytics -->`;
 const mime = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
   ".json": "application/json", ".webmanifest": "application/manifest+json",
@@ -42,16 +45,21 @@ createServer(async (request, response) => {
   if (blocked && url.pathname.includes(blocked)) {
     response.writeHead(503); response.end("Intentionally unavailable"); return;
   }
-  if (corrupt && url.pathname.includes(corrupt)) {
-    response.writeHead(200, { "Content-Type": "application/javascript" }); response.end("wrong deployment bytes"); return;
-  }
   let path = resolve(directory, `.${decodeURIComponent(url.pathname)}`);
   if (path !== directory && !path.startsWith(`${directory}${sep}`)) {
     response.writeHead(403); response.end(); return;
   }
   try {
     if ((await stat(path)).isDirectory()) path = resolve(path, "index.html");
-    const bytes = await readFile(path);
+    let original = await readFile(path);
+    if (corrupt && url.pathname.includes(corrupt)) {
+      original = Buffer.from(extname(path) === ".html"
+        ? original.toString("utf8").replace("</title>", " (different deployment)</title>")
+        : "wrong deployment bytes");
+    }
+    const bytes = extname(path) === ".html"
+      ? Buffer.from(original.toString("utf8").replace("</body>", `${analytics}</body>`))
+      : original;
     response.writeHead(200, {
       "Content-Type": mime[extname(path)] ?? "application/octet-stream",
       "Content-Length": bytes.length,

@@ -1,6 +1,7 @@
 import { expect, test, chromium, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
 import { cp, copyFile, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -124,10 +125,46 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { if (fixtures) await rm(fixtures, { recursive: true, force: true }); });
 test.beforeEach(async ({ request, context }) => {
+  await context.route("https://static.cloudflareinsights.com/**", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
   await context.addInitScript(() => {
     if (!localStorage.getItem("baque-facil-language")) localStorage.setItem("baque-facil-language", "en-CA");
   });
   await server(request, { directory: join(project, "dist"), blocked: "", corrupt: "", hold: "", reset: true });
+});
+
+test("Cloudflare HTML is verified against the build and missing pages repair on reconnect", async ({ page, context, request }) => {
+  const entry = (await report()).files.find((entry) => entry.url === "/quiz/")!;
+  expect(await (await request.get("/quiz/")).text()).toContain("<!-- Cloudflare Pages Analytics -->");
+  await prepared(page);
+  const cachedHtml = () => page.evaluate(async () => {
+    const cache = await caches.open("baque-facil-precache-v1");
+    const key = (await cache.keys()).find((key) => new URL(key.url).pathname === "/quiz/")!;
+    return (await cache.match(key))!.text();
+  });
+  expect(`sha256-${createHash("sha256").update(await cachedHtml()).digest("base64")}`).toBe(entry.integrity);
+  await page.evaluate(async () => {
+    const cache = await caches.open("baque-facil-precache-v1");
+    for (const key of await cache.keys()) if (new URL(key.url).pathname === "/quiz/") await cache.delete(key);
+  });
+  await context.setOffline(true);
+  await expect(page.locator(footer)).toHaveAttribute("data-ready", "false");
+  await context.setOffline(false);
+  await expect(page.locator(footer)).toHaveAttribute("data-ready", "true");
+  expect(`sha256-${createHash("sha256").update(await cachedHtml()).digest("base64")}`).toBe(entry.integrity);
+  await context.setOffline(true);
+  await page.goto("/quiz/");
+  await expect(page.getByRole("button", { name: "Play audio A", exact: true })).toBeEnabled();
+});
+
+test("Cloudflare analytics does not hide changed HTML from integrity checks", async ({ page, request }) => {
+  await server(request, { corrupt: "/rhythms/marcacao/" });
+  await page.goto("/");
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "incomplete");
+  const cached = await page.evaluate(async () => (await (await caches.open("baque-facil-precache-v1")).keys()).map((key) => new URL(key.url).pathname));
+  expect(cached).not.toContain("/rhythms/marcacao/");
+  await server(request, { corrupt: "" });
+  await page.locator(footer).getByRole("button", { name: "Retry" }).click();
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "saved");
 });
 
 test("home-only setup saves all routes and lazy assets, with a discreet responsive footer", async ({ page, context }) => {
