@@ -37,6 +37,13 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
       const combos = page.getByRole("region", { name: "Combos", exact: true }).locator(".rhythm-link");
       expect(await combos.count()).toBeGreaterThan(0);
       for (const combo of await combos.all()) await expect(combo).toBeVisible();
+      await expect(combos.locator("strong")).toHaveText([
+        "Entrada",
+        "Parada + Arrasto",
+        "Flying four",
+        "Martelo break",
+        "Three Crossed Break",
+      ]);
       await page.screenshot({ path: testInfo.outputPath(`home-${locale}.png`) });
 
       await page.locator("#settings summary").scrollIntoViewIfNeeded();

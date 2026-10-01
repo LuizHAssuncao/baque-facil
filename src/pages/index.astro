@@ -11,7 +11,14 @@ import PwaHead from "../components/PwaHead.astro";
 import OfflineRefresh from "../components/OfflineRefresh.astro";
 import "../styles/global.css";
 
+const difficultyOrder = new Map([
+  ["beginner", 0],
+  ["intermediate", 1],
+  ["advanced", 2],
+]);
 const rhythms = (await getCollection("rhythms")).sort((a, b) =>
+  (difficultyOrder.get(a.data.difficulty) ?? 3) -
+    (difficultyOrder.get(b.data.difficulty) ?? 3) ||
   a.data.title.localeCompare(b.data.title),
 );
 const isCombo = (rhythm: (typeof rhythms)[number]) =>
