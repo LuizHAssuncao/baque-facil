@@ -192,7 +192,8 @@ export default function RhythmQuiz() {
     setLoading(true);
     setError(false);
     try {
-      // Re-read the library each round so an open quiz picks up library deployments.
+      // A controlling service worker supplies one saved library for this session.
+      // Without a worker, each round still reads the current online library.
       const response = await fetch("/quiz/rhythms.json", { cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error("Unable to load rhythms.");
       const library: QuizLibrary = await response.json();

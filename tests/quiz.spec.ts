@@ -152,7 +152,7 @@ test("manual next cancels the automatic advance instead of skipping another rhyt
   expect(requests).toBe(2);
 });
 
-test("next round refreshes the library and supports an insufficient pool", async ({ page }) => {
+test("without a service worker, next round refreshes the library and supports an insufficient pool", async ({ page }) => {
   let currentLibrary = library;
   let requests = 0;
   await mockLibrary(page, () => { requests += 1; return currentLibrary; });

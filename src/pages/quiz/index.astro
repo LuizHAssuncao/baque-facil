@@ -5,6 +5,7 @@ import T from "../../components/TranslatedText.astro";
 import { translatedAttributes } from "../../lib/i18n/messages";
 import { ArrowLeft } from "lucide-react";
 import Disclaimer from "../../components/Disclaimer.astro";
+import PwaHead from "../../components/PwaHead.astro";
 import RhythmQuiz from "../../components/RhythmQuiz";
 import "../../styles/global.css";
 ---
@@ -12,6 +13,7 @@ import "../../styles/global.css";
 <!doctype html>
 <html lang="en-CA">
   <head>
+    <PwaHead />
     <meta charset="UTF-8" />
     <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

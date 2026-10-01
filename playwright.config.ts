@@ -4,6 +4,7 @@ const port = 4323;
 
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: "offline/**",
   outputDir: "test-results/layout",
   timeout: 30_000,
   fullyParallel: false,

@@ -598,6 +598,106 @@ p {
   margin-top: 0.85rem;
 }
 
+.offline-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.65rem;
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--muted-strong);
+}
+
+.offline-status[hidden],
+.offline-status [hidden],
+.offline-settings[hidden] {
+  display: none;
+}
+
+.offline-dot {
+  flex: 0 0 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.offline-status[data-ready="true"] .offline-dot {
+  color: var(--teal);
+}
+
+.offline-action,
+.offline-ios summary {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.offline-action:hover {
+  background: none;
+  color: var(--teal);
+}
+
+.offline-ios p {
+  margin-top: 0.4rem;
+}
+
+.offline-settings {
+  max-width: 32rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.offline-settings strong {
+  color: var(--ink);
+}
+
+.offline-settings p {
+  margin: 0.4rem 0 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.offline-settings p:empty {
+  display: none;
+}
+
+.offline-settings button {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-strong);
+  color: var(--teal-deep);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.offline-settings button:hover:not(:disabled) {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.offline-settings button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.offline-settings button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
 .rhythm-nav {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

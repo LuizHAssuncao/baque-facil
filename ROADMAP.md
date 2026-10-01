@@ -39,6 +39,7 @@ additional requested v1 items.
 ### Your Items
 - switch mute icons
 - [Radio](specifications/radio-implementation-plan.md): implemented; physical locked-phone verification pending.
+- [Offline mode](specifications/offline-implementation-plan.md): implemented with a discreet footer status, optional home-screen installation, updates between sessions, and a Settings refresh action; physical phone verification pending.
 - quiz
 - keep screen awake during practice
 - Create the first `.baque.json` collection schema.

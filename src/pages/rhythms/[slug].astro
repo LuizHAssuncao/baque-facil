@@ -6,6 +6,7 @@ import { translatedAttributes, errorMessage, type Message } from "../../lib/i18n
 import { getCollection } from "astro:content";
 import { ArrowLeft } from "lucide-react";
 import Disclaimer from "../../components/Disclaimer.astro";
+import PwaHead from "../../components/PwaHead.astro";
 import RhythmPlayer from "../../components/RhythmPlayer";
 import { extractRhythmBlock } from "../../lib/extractRhythmBlock";
 import { parseRhythm } from "../../lib/parseRhythm";
@@ -61,6 +62,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
 <!doctype html>
 <html lang="en-CA">
   <head>
+    <PwaHead />
     <meta charset="UTF-8" />
     <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

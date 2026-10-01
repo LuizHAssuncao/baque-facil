@@ -26,6 +26,8 @@ React rhythm grids, audio playback, and an Alfaia composer.
   rhythm notation.
 - English (Canada) and Portuguese (Brazil), with a first-visit language picker,
   controls on every page, and a saved browser preference.
+- Offline practice after downloading the complete app, sequences, and samples,
+  with a discreet footer status and optional home-screen installation.
 
 ## Tech Stack
 
@@ -40,6 +42,8 @@ React rhythm grids, audio playback, and an Alfaia composer.
 - [Playwright](https://playwright.dev/) for layout and interaction checks.
 
 ## Getting Started
+
+Use Node.js 22 or newer; Node.js 20.3+ is also supported by the build tooling.
 
 Install dependencies:
 
@@ -70,6 +74,7 @@ npm run build        # Build the production site
 npm run preview      # Preview the production build
 npm run check:layout # Run Playwright layout and interaction checks
 npm run check:types  # Check TypeScript
+npm run check:offline # Build and test offline storage, playback, and updates
 ```
 
 ## Project Structure
@@ -163,13 +168,82 @@ update `src/lib/sampleMap.ts` and verify a rhythm page that uses it.
 The quiz pool comes directly from the rhythm collection via `/quiz/rhythms.json`.
 Adding a valid, audible rhythm to `src/content/rhythms/` includes it automatically
 in the next site build; there is no separate quiz list or opt-in flag. The quiz
-fetches the pool again for every round, so open sessions pick up a newly deployed
-library. As with the rest of this static Astro site, production content changes
+requests the pool for every round. In a production session controlled by the
+service worker, those requests use the saved library for that release; a newer
+library takes effect after the downloaded update activates between sessions.
+Development and browsers without service workers fetch the online library each
+round. As with the rest of this static Astro site, production content changes
 require the normal build and deployment. Invalid or silent patterns are excluded,
 and each round needs three distinct sounds. All options use the existing drum
 samples at 90 BPM, with anonymous media controls and no automatic playback. Each
 Play or Replay runs the complete sequence twice in succession, then stops after
 the final drum decay.
+
+## Offline practice
+
+The production site automatically saves all built-in rhythm and Customize pages,
+quiz data, application code (including Tone.js and the radio encoder), drum
+samples, images, and help pages. Visiting the home page is enough to start the
+download; individual features do not need to be opened first. The build prints
+the exact file count and size and writes `dist/offline-build.json`. The initial
+implementation saves about 6.88 MB before transfer compression.
+
+A small line in the footer shows download progress, readiness, and waiting
+updates. The first visit says “Offline files saved · ready on your next visit”
+after the download completes. Follow a normal link or reopen the app to finish
+setup; “Ready for offline use” confirms the page is controlled and all files are
+present. Automatic setup and updates never reload an open page.
+Use Retry in the footer if a download fails. Browser storage can be cleared or
+evicted; reconnect to restore missing files.
+
+For a clean download, open **Settings → Refresh offline app** on the home page.
+This checks the download server before clearing this app's saved files and
+worker, downloads every file again, then reloads this page. It preserves language,
+hand-display and radio preferences, along with unrelated browser storage. Close
+other Baque Fácil tabs/windows first; the action waits for you to do so rather
+than interrupting a player or unsaved composition. If the replacement download
+fails, stay online and use the same button to retry. The footer and recovery
+messages follow the selected English or Portuguese language.
+
+Once ready, reopen the app in airplane mode to browse and play rhythms, record
+and edit a composition, answer quiz rounds, or generate a new radio mix. Audio
+still starts through the normal Play controls. The existing preference storage
+continues to work. Composer drafts and generated MP3 recordings are not saved
+across page restarts by this feature.
+
+Updates are checked when the app opens, reconnects, or returns to the foreground.
+Changed files download with integrity checks, while unchanged samples are reused.
+The new version waits until all tabs/windows using the old version have closed.
+Reopening then uses the new version, including offline. A failed update keeps the
+last complete version available. A sequence edit updates the rhythm player,
+Customize page, radio, and quiz as one release.
+
+Home-screen installation is optional. Supported browsers offer a small Install
+app action in the footer. On iOS, the footer's Add to Home Screen disclosure
+explains Safari's Share menu. Installing and completing the offline download are
+separate actions; each browser/storage context needs its own saved copy.
+
+Service workers are disabled in `astro dev`. To check them manually, run a fresh
+`npm run build` followed by `npm run preview` and use a separate browser profile
+or port from development. `npm run check:offline` runs real production builds,
+first-use offline audio and MP3 exports, browser restart, range requests,
+interrupted downloads, storage failures, Settings refresh, and updates across
+multiple tabs. Its temporary build fixtures
+do not modify committed rhythm content.
+
+Deploy the complete `dist/` atomically at the origin root over HTTPS. Serve
+`/sw.js` with `Cache-Control: no-cache` (or equivalent revalidation) and the proper
+JavaScript MIME type; it must not receive an immutable CDN lifetime. Hashed
+`/_astro/` assets can remain immutable. Disable transformations that change the
+bytes of built files, since downloads are checked against their build integrity.
+Confirm directory routes and deep links on the target host. Roll back by
+publishing a complete prior app build with its service worker; deleting `sw.js`
+does not remove workers already installed on learners' devices.
+
+See the [offline implementation plan](specifications/offline-implementation-plan.md)
+for the cache lifecycle and acceptance criteria. Physical iPhone and Android
+airplane-mode, installation, and background-audio checks remain required before
+claiming verified behavior on those devices.
 
 ## Verification
 

@@ -1,0 +1,32 @@
+---
+import PwaHead from "../components/PwaHead.astro";
+import Disclaimer from "../components/Disclaimer.astro";
+import LanguageHead from "../components/LanguageHead.astro";
+import LanguagePicker from "../components/LanguagePicker.astro";
+import T from "../components/TranslatedText.astro";
+import { translatedAttributes } from "../lib/i18n/messages";
+import "../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="UTF-8" />
+    <LanguageHead />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <PwaHead />
+    <title {...translatedAttributes({ text: "Offline | Baque Fácil" })}>Offline | Baque Fácil</title>
+  </head>
+  <body>
+    <main class="page-shell">
+      <LanguagePicker />
+      <a class="back-link" href="/"><T message="All rhythms" /></a>
+      <header class="page-header compact">
+        <h1><T message="This page isn’t saved on your device" /></h1>
+        <p><T message="Return to your saved rhythms, or connect to the internet to open this page." /></p>
+      </header>
+      <Disclaimer />
+    </main>
+  </body>
+</html>

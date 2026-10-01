@@ -46,6 +46,10 @@ Core user flows:
 - `tests/layout.spec.ts`: Playwright smoke and interaction tests.
 - `tests/radio*.spec.ts`: radio timeline/mixer, real encoding, controls, and
   generation benchmark. Emulated mobile tests do not verify physical phone locking.
+- `src/sw.ts`, `src/lib/offline/`, and `scripts/offline-manifest.mjs`: versioned
+  production precaching, integrity checks, cache repair, and footer status.
+- `tests/offline/`: production-only browser tests, including persistent storage
+  and updates between complete builds on one test origin.
 
 ## Commands
 
@@ -59,6 +63,9 @@ Core user flows:
 - `npm run check:layout`: run Playwright tests across desktop, narrow, and
   mobile Chrome projects. Screenshots and traces go under `test-results/layout`
   and `playwright-report`.
+- `npm run check:types`: check TypeScript, including the worker and browser tests.
+- `npm run check:offline`: build the production site and run offline tests on
+  port 4335. This suite is excluded from the development-server layout run.
 
 There is no committed lint or unit-test script. Use `npm run build` as the
 minimum verification step. Run `npm run check:layout` for visible UI,
@@ -185,6 +192,15 @@ setup if the behavior is non-trivial, because no unit-test runner exists yet.
 Manual checks matter for audio changes. Exercise playback, restart, loop,
 mute/unmute, tempo changes, iOS help links when relevant, composer hit buttons,
 keyboard shortcuts, and transcription parsing.
+
+For offline changes, also run `npm run check:offline`. Keep workers disabled in
+development. Automatic updates must never force waiting-worker activation or
+reload open clients: players and unsaved compositions must survive update downloads.
+The explicit Settings refresh may activate its fresh worker and reload its own
+page after a complete download; it must first require other app windows to close,
+check connectivity, and preserve preferences and unrelated caches. Keep the offline
+indicator discreet in the shared footer. The quiz uses the active worker's saved
+library until the next release activates; development still fetches each round.
 
 ## Pull Request Notes
 

@@ -1,0 +1,9 @@
+---
+import T from "./TranslatedText.astro";
+---
+<div class="offline-settings" data-offline-settings hidden>
+  <strong><T message="Offline access" /></strong>
+  <p id="offline-refresh-help"><T message="If something isn’t working, download a fresh copy of the app, rhythms, and sounds. Close other app tabs first. You’ll need an internet connection; your settings will be kept." /></p>
+  <button type="button" data-offline-refresh aria-describedby="offline-refresh-help"><T message="Refresh offline app" /></button>
+  <p data-offline-refresh-message role="status" aria-live="polite" aria-atomic="true"></p>
+</div>

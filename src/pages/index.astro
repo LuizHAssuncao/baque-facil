@@ -7,6 +7,8 @@ import { getCollection } from "astro:content";
 import { ChevronRight, Headphones, PencilLine, Radio } from "lucide-react";
 import LanguageChoices from "../components/LanguageChoices.astro";
 import Disclaimer from "../components/Disclaimer.astro";
+import PwaHead from "../components/PwaHead.astro";
+import OfflineRefresh from "../components/OfflineRefresh.astro";
 import "../styles/global.css";
 
 const rhythms = (await getCollection("rhythms")).sort((a, b) =>
@@ -47,6 +49,7 @@ const homeTools = [
 <!doctype html>
 <html lang="en-CA">
   <head>
+    <PwaHead />
     <meta charset="UTF-8" />
     <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -128,7 +131,7 @@ const homeTools = [
         }
       </div>
 
-      <details class="preference-disclosure">
+      <details class="preference-disclosure" id="settings">
         <summary><T message="Settings" /></summary>
         <div class="language-settings" role="group" {...translatedAttributes({ "aria-label": "Language" })}>
           <strong><T message="Language" /></strong>
@@ -141,6 +144,7 @@ const homeTools = [
             <small><T message="Reverse R (right) and L (left) in rhythm grids." /></small>
           </span>
         </label>
+        <OfflineRefresh />
       </details>
 
       <Disclaimer />

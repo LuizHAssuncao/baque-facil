@@ -4,12 +4,15 @@ import LanguagePicker from "../../components/LanguagePicker.astro";
 import T from "../../components/TranslatedText.astro";
 import { translatedAttributes } from "../../lib/i18n/messages";
 import { ArrowLeft } from "lucide-react";
+import PwaHead from "../../components/PwaHead.astro";
+import OfflineStatus from "../../components/OfflineStatus.astro";
 import "../../styles/global.css";
 ---
 
 <!doctype html>
 <html lang="en-CA">
   <head>
+    <PwaHead />
     <meta charset="UTF-8" />
     <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -82,6 +85,7 @@ import "../../styles/global.css";
         </details>
       </section>
       <p class="diagnostic-note"><T message="This page tests a looping Web Audio buffer with the playback audio-session setting. It is separate from the rhythm player and Markdown lessons." /></p>
+      <footer class="home-disclaimer"><OfflineStatus /></footer>
     </main>
     <script>
       import { initBackgroundAudioDiagnostic } from "../../lib/audio/backgroundAudioDiagnostic";

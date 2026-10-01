@@ -1,0 +1,23 @@
+---
+import T from "./TranslatedText.astro";
+import { translatedAttributes } from "../lib/i18n/messages";
+---
+<div class="offline-status" data-offline-status hidden>
+  <span class="offline-dot" aria-hidden="true"></span>
+  <span data-offline-message role="status" {...translatedAttributes({ "aria-label": "Offline access" })} aria-live="polite" aria-atomic="true"></span>
+  <button type="button" class="offline-action" data-offline-retry hidden><T message="Retry" /></button>
+  <button type="button" class="offline-action" data-offline-install hidden><T message="Install app" /></button>
+  <details class="offline-ios" data-offline-ios hidden>
+    <summary><T message="Add to Home Screen" /></summary>
+    <p><T message="In Safari, tap Share, then Add to Home Screen. Wait for offline access to finish preparing before disconnecting." /></p>
+  </details>
+</div>
+
+<script>
+  import { initOfflineStatus } from "../lib/offline/register";
+
+  if (import.meta.env.PROD) {
+    const root = document.querySelector<HTMLElement>("[data-offline-status]");
+    if (root) initOfflineStatus(root);
+  }
+</script>
