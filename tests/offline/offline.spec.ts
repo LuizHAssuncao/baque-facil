@@ -137,6 +137,39 @@ test.beforeEach(async ({ request, context }) => {
   await server(request, { directory: join(project, "dist"), blocked: "", corrupt: "", hold: "", reset: true });
 });
 
+test("shared snapshots open, play and reload offline after the app is saved", async ({ page, context }) => {
+  await prepared(page);
+  await page.goto("/compose/marcacao/");
+  await page.getByRole("button", { name: "Rename rhythm", exact: true }).click();
+  const name = page.getByRole("textbox", { name: "Rhythm name", exact: true });
+  await name.fill("Offline shared rhythm");
+  await name.press("Enter");
+  await page.getByRole("slider", { name: "Tempo", exact: true }).fill("104");
+  await page.getByRole("button", { name: "Share rhythm", exact: true }).click();
+  const link = page.getByRole("textbox", { name: "Rhythm link", exact: true });
+  await expect(link).toBeVisible();
+  const url = await link.inputValue();
+  const transcription = await (await openTranscription(page)).inputValue();
+  // Start a new page so this proves the cached route and its lazy assets suffice.
+  await context.setOffline(true);
+  const recipient = await context.newPage();
+  await audioProbe(recipient);
+  const response = await recipient.goto(url);
+  expect(response!.fromServiceWorker()).toBe(true);
+  await expect(recipient.getByRole("heading", { name: "Offline shared rhythm", exact: true })).toBeVisible();
+  await expect(recipient.getByRole("slider", { name: "Tempo", exact: true })).toHaveValue("104");
+  const imported = await openTranscription(recipient);
+  // Sharing carries music and metadata; lesson prose is intentionally not shared.
+  expect((await imported.inputValue()).split("```rhythm")[1]).toBe(transcription.split("```rhythm")[1]);
+  await recipient.getByRole("button", { name: "Play", exact: true }).click();
+  await expect(recipient.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
+  await expect.poll(() => recipient.evaluate(() => (window as unknown as { offlineVoices: { hasSound: boolean }[] }).offlineVoices.some((voice) => voice.hasSound))).toBe(true);
+  await recipient.getByRole("button", { name: "Stop", exact: true }).click();
+  await recipient.reload();
+  await expect(recipient.getByRole("heading", { name: "Offline shared rhythm", exact: true })).toBeVisible();
+  await expect(recipient.locator(footer)).toHaveAttribute("data-ready", "true");
+});
+
 test("Cloudflare HTML is verified against the build and missing pages repair on reconnect", async ({ page, context, request }) => {
   const entry = (await report()).files.find((entry) => entry.url === "/quiz/")!;
   expect(await (await request.get("/quiz/")).text()).toContain("<!-- Cloudflare Pages Analytics -->");

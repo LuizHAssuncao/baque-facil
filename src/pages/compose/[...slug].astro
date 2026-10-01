@@ -7,7 +7,7 @@ import { getCollection } from "astro:content";
 import { ArrowLeft } from "lucide-react";
 import Disclaimer from "../../components/Disclaimer.astro";
 import PwaHead from "../../components/PwaHead.astro";
-import RhythmComposer from "../../components/RhythmComposer";
+import ComposerEntry from "../../components/ComposerEntry";
 import { extractRhythmBlock } from "../../lib/extractRhythmBlock";
 import { parseRhythm } from "../../lib/parseRhythm";
 import { validateRhythmIssues } from "../../lib/validateRhythm";
@@ -112,7 +112,7 @@ if (entry) {
             </ul>
           </section>
         ) : (
-          <RhythmComposer
+          <ComposerEntry
             client:load
             initialRhythm={initialRhythm}
             initialTranscription={initialTranscription}

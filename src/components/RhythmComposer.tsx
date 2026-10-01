@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Check, CircleDot, Keyboard, Pencil, Redo2, SquareStop, Undo2, X } from "lucide-react";
 import ComposerGrid, { type ComposerSelection } from "./ComposerGrid";
+import ShareRhythmControl from "./ShareRhythmControl";
 import { readComposerDraft, type ComposerSnapshot } from "../lib/composerDraft";
 import RhythmPlayer, { type RhythmPlayerHandle } from "./RhythmPlayer";
 import { stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
@@ -30,6 +31,7 @@ type RhythmComposerProps = {
   initialRhythm?: Rhythm;
   initialTranscription?: string;
   exampleRhythm: Rhythm;
+  sharedSnapshot?: boolean;
 };
 
 type ComposerSymbol = "." | "L" | "R" | "B";
@@ -309,6 +311,7 @@ export default function RhythmComposer({
   initialRhythm,
   initialTranscription,
   exampleRhythm,
+  sharedSnapshot = false,
 }: RhythmComposerProps) {
   const { t, locale } = useTranslation();
   const initialTempo = clampTempo(initialRhythm?.tempo ?? DEFAULT_TEMPO);
@@ -572,15 +575,23 @@ export default function RhythmComposer({
   }
 
   useEffect(() => {
+    if (sharedSnapshot) return;
     try {
       const value = readComposerDraft(localStorage.getItem(draftKey), subdivision);
       if (value) restoreSnapshot(value);
     } catch { /* Storage can be unavailable; saving below reports the failure. */ }
     setDraftReady(true);
-  }, [draftKey]);
+    return () => {
+      // A same-page shared link unmounts this editor without pagehide. Flush the
+      // latest edit before the debounced save is canceled, preserving the draft.
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({ ...snapshot(), version: 1, subdivision }));
+      } catch { /* The save indicator already reports unavailable storage. */ }
+    };
+  }, [draftKey, sharedSnapshot]);
 
   useEffect(() => {
-    if (!draftReady) return;
+    if (!draftReady || sharedSnapshot) return;
     setDraftStatus("Saving…");
     const save = () => {
       try {
@@ -591,7 +602,7 @@ export default function RhythmComposer({
     const timer = window.setTimeout(save, 250);
     window.addEventListener("pagehide", save);
     return () => { window.clearTimeout(timer); window.removeEventListener("pagehide", save); };
-  }, [draftReady, draftKey, transcription, tempo, customTitle, recordedTracks, subdivision]);
+  }, [draftReady, draftKey, transcription, tempo, customTitle, recordedTracks, subdivision, sharedSnapshot]);
 
   function renameTitle(value: string) {
     if (value === titleRef.current || isRecordLocked) return;
@@ -1579,7 +1590,7 @@ export default function RhythmComposer({
               <h1 aria-label={displayTitle}><button type="button" disabled={isRecordLocked} onClick={() => setRenaming(true)} aria-label={t("Rename rhythm")}>{displayTitle}<Pencil size={18} /></button></h1>}
             {!initialRhythm ? <button type="button" className="composer-example" disabled={isRecordLocked} onClick={useExample}>{t("Use an example")}</button> : null}
           </div>
-          <p className="composer-save-status" role="status">{draftStatus === "Saved on this device" ? <Check size={16} /> : null}{t(draftStatus)}</p>
+          <p className="composer-save-status" role="status">{!sharedSnapshot && draftStatus === "Saved on this device" ? <Check size={16} /> : null}{t(sharedSnapshot ? "Shared snapshot. Share again to keep your changes." : draftStatus)}</p>
         </div>}
         toolbarExtra={<div className="composer-actions">
           <button type="button" className={isRecordLocked ? "record-button recording" : "record-button"}
@@ -1626,6 +1637,9 @@ export default function RhythmComposer({
         </>}
       />
       <div className="composer-bottom-row">
+        <ShareRhythmControl rhythm={rhythm} disabledReason={isRecordLocked
+          ? "Stop recording before sharing a rhythm."
+          : hasTranscriptionErrors ? "Fix the transcription errors before sharing a rhythm." : undefined} />
         <details className="composer-transcription">
           <summary>{t("Transcription")}</summary>
           <label className="markdown-output"><span className="sr-only">{t("Transcription")}</span><textarea value={transcription} rows={12} aria-invalid={hasTranscriptionErrors}

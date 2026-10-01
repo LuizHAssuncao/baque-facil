@@ -331,6 +331,20 @@ transcription keeps its text and the last valid grid. Transcription opens the ra
 editor, and Export offers copying and MP3 preparation. These features also work
 offline after the app is downloaded.
 
+**Share rhythm** copies a link containing the current name, tempo, subdivision
+and every track. Notes use compact strings (for example, `L.R.`) in versioned
+UTF-8 JSON encoded as Base64url in `/compose/#rhythm=…`. No account, database or
+audio upload is needed. The full link is limited to 2,000 characters for sharing
+compatibility; longer compositions remain editable. Clipboard failure leaves a
+selectable link. Recording and invalid transcriptions must be resolved first.
+
+Opening a link loads an editable snapshot and waits for Play. It never restores
+or overwrites the recipient's ordinary local drafts. Changes to a shared snapshot
+stay in that tab; share again to keep a new version. Reloading the original link
+restores its original snapshot. Shared links also open offline once the app and
+samples have been saved. Links include musical data and metadata, not lesson prose,
+mute settings or hand-display preferences. They are encoded, not encrypted.
+
 Keyboard editing uses F for Left, J for Right, B for Border, arrows to move and
 Backspace to clear a cell. R starts recording, M toggles the recording metronome,
 Space plays/stops. Ctrl/Cmd+Z undoes changes (Shift adds redo). Shortcuts do
