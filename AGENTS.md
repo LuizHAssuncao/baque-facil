@@ -196,6 +196,9 @@ keyboard shortcuts, and transcription parsing.
 For offline changes, also run `npm run check:offline`. Keep workers disabled in
 development. Automatic updates must never force waiting-worker activation or
 reload open clients: players and unsaved compositions must survive update downloads.
+The explicit footer Reload to update action may activate a fully saved waiting
+worker and reload its own page, including offline, after checking that it is the
+only app window. It must reuse the downloaded release and preserve preferences.
 The explicit Settings refresh may activate its fresh worker and reload its own
 page after a complete download; it must first require other app windows to close,
 check connectivity, and preserve preferences and unrelated caches. Keep the offline

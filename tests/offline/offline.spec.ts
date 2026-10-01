@@ -107,6 +107,10 @@ test.beforeAll(async () => {
   await symlink(join(project, "node_modules"), join(fixtures, "node_modules"), "dir");
   const rhythm = join(fixtures, "src/content/rhythms/marcacao.md");
   await writeFile(rhythm, (await readFile(rhythm, "utf8")).replace("R . . . |", ". . . . |"));
+  const home = join(fixtures, "src/pages/index.astro");
+  await writeFile(home, (await readFile(home, "utf8")).replace('class="home-hero-copy"', 'class="home-hero-copy" data-test-layout="updated"'));
+  const styles = join(fixtures, "src/styles/global.css");
+  await writeFile(styles, `${await readFile(styles, "utf8")}\n.home-hero-copy[data-test-layout="updated"] { border-top: 3px solid rgb(12, 34, 56); }\n`);
   const build = () => execFileSync(process.execPath, [join(project, "node_modules/astro/astro.js"), "build"], {
     cwd: fixtures, env: { ...process.env, ASTRO_TELEMETRY_DISABLED: "1" }, stdio: "pipe", maxBuffer: 5_000_000,
   });
@@ -450,6 +454,100 @@ test("Settings refresh can recover after the replacement download fails", async 
   await page.getByRole("button", { name: "Refresh offline app", exact: true }).click();
   await expect(page.locator("[data-offline-refresh-message]")).toHaveText("Offline app refreshed.");
   await expect(page.locator(footer)).toHaveAttribute("data-ready", "true");
+});
+
+for (const offline of [false, true]) {
+  test(`Reload to update replaces a stale layout ${offline ? "offline" : "online"} without resetting saved data`, async ({ page, context, request }) => {
+    await prepared(page);
+    await expect(page.locator("[data-offline-update]")).toBeHidden();
+    await page.locator("#settings summary").click();
+    await page.getByRole("checkbox", { name: /Left-handed mode/ }).check();
+    await page.evaluate(async () => {
+      localStorage.setItem("baque-facil-radio-v1", "keep-radio-preferences");
+      await (await caches.open("unrelated-app-cache")).put("/unrelated", new Response("keep"));
+      history.replaceState(null, "", "/?from=old-tab#rhythms-heading");
+    });
+    const workerUrl = await page.evaluate(() => navigator.serviceWorker.controller!.scriptURL);
+    await server(request, { directory: releaseB });
+    // A normal refresh discovers the update but still renders the active release.
+    await page.reload();
+    await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+    await expect(page.locator(footer)).toHaveAttribute("data-release", (await report()).release);
+    await expect(page.locator("[data-test-layout]")).toHaveCount(0);
+    for (const [name, label, message] of [
+      ["Português (Brasil)", "Recarregar para atualizar", "Atualização salva · recarregue para usar a versão mais recente"],
+      ["English (Canada)", "Reload to update", "Update saved · reload to use the latest version"],
+    ]) {
+      await page.locator(".language-bar").getByRole("button", { name, exact: true }).click();
+      await expect(page.locator(footer).getByRole("button", { name: label, exact: true })).toBeEnabled();
+      await expect(page.locator("[data-offline-message]")).toHaveText(message);
+      for (const width of [1280, 500, 390]) {
+        await page.setViewportSize({ width, height: 850 });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      }
+    }
+    await server(request, { reset: true });
+    if (offline) {
+      await context.setOffline(true);
+      await expect(page.locator("[data-offline-message]")).toHaveText("Offline · update saved · ready to reload");
+    }
+    await page.getByRole("button", { name: "Reload to update", exact: true }).click();
+    await expect(page.locator(footer)).toHaveAttribute("data-release", (await report(releaseB)).release);
+    await expect(page.locator(footer)).toHaveAttribute("data-ready", "true");
+    await expect(page.locator("[data-test-layout=updated]")).toHaveCSS("border-top-width", "3px");
+    await expect(page.locator("[data-offline-update]")).toBeHidden();
+    expect(page.url()).toBe(`${origin}/?from=old-tab#rhythms-heading`);
+    await page.locator("#settings summary").click();
+    await expect(page.getByRole("checkbox", { name: /Left-handed mode/ })).toBeChecked();
+    expect(await page.evaluate(async () => ({
+      radio: localStorage.getItem("baque-facil-radio-v1"),
+      language: localStorage.getItem("baque-facil-language"),
+      unrelated: await (await (await caches.open("unrelated-app-cache")).match("/unrelated"))!.text(),
+      workerUrl: navigator.serviceWorker.controller!.scriptURL,
+      waiting: Boolean((await navigator.serviceWorker.getRegistration())?.waiting),
+    }))).toEqual({ radio: "keep-radio-preferences", language: "en-CA", unrelated: "keep", workerUrl, waiting: false });
+    const counts = (await (await request.get(`${origin}/__offline_test__`)).json()).counts;
+    expect(Object.keys(counts).filter((url) => url.startsWith("/samples/"))).toEqual([]);
+  });
+}
+
+test("Reload to update protects another tab's unsaved composition and ongoing playback", async ({ page, context, request }) => {
+  await prepared(page);
+  await page.goto("/rhythms/marcacao/");
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  const composer = await context.newPage();
+  await composer.goto("/compose/");
+  const draft = "Alfaia:\nB R L .";
+  await composer.getByRole("textbox", { name: "Transcription", exact: true }).fill(draft);
+  await server(request, { directory: releaseB });
+  await update(page);
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+  await page.getByRole("button", { name: "Reload to update", exact: true }).click();
+  await expect(page.locator("[data-offline-message]")).toHaveText("Close other Baque Fácil tabs or windows, then try again.");
+  await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
+  await expect(composer.getByRole("textbox", { name: "Transcription", exact: true })).toHaveValue(draft);
+  expect((await workerStatus(page)).release).toBe((await report()).release);
+  await page.locator(".language-bar").getByRole("button", { name: "Português (Brasil)", exact: true }).click();
+  await expect(page.locator("[data-offline-message]")).toHaveText("Feche as outras abas ou janelas do Baque Fácil e tente novamente.");
+  await composer.close();
+  await page.getByRole("button", { name: "Recarregar para atualizar", exact: true }).click();
+  await expect(page.locator(footer)).toHaveAttribute("data-release", (await report(releaseB)).release);
+  expect(page.url()).toBe(`${origin}/rhythms/marcacao/`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
+});
+
+test("a restored page checks for updates without reloading its unsaved work", async ({ page, request }) => {
+  await prepared(page);
+  await page.goto("/compose/");
+  const draft = "Alfaia:\nB R L .";
+  await page.getByRole("textbox", { name: "Transcription", exact: true }).fill(draft);
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "ready");
+  await expect(page.getByRole("button", { name: "Refresh offline app", exact: true })).toHaveCount(0);
+  await server(request, { directory: releaseB });
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })));
+  await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+  await expect(page.getByRole("textbox", { name: "Transcription", exact: true })).toHaveValue(draft);
+  expect((await workerStatus(page)).release).toBe((await report()).release);
 });
 
 test("a changed sequence waits for every old tab, then updates all surfaces offline", async ({ page, context, request }) => {

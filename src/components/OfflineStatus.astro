@@ -5,6 +5,7 @@ import { translatedAttributes } from "../lib/i18n/messages";
 <div class="offline-status" data-offline-status hidden>
   <span class="offline-dot" aria-hidden="true"></span>
   <span data-offline-message role="status" {...translatedAttributes({ "aria-label": "Offline access" })} aria-live="polite" aria-atomic="true"></span>
+  <button type="button" class="offline-action" data-offline-update hidden><T message="Reload to update" /></button>
   <button type="button" class="offline-action" data-offline-retry hidden><T message="Retry" /></button>
   <button type="button" class="offline-action" data-offline-install hidden><T message="Install app" /></button>
   <details class="offline-ios" data-offline-ios hidden>

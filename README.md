@@ -213,10 +213,15 @@ across page restarts by this feature.
 
 Updates are checked when the app opens, reconnects, or returns to the foreground.
 Changed files download with integrity checks, while unchanged samples are reused.
-The new version waits until all tabs/windows using the old version have closed.
-Reopening then uses the new version, including offline. A failed update keeps the
-last complete version available. A sequence edit updates the rhythm player,
-Customize page, radio, and quiz as one release.
+The footer offers **Reload to update** once the complete new version is saved.
+Save any composition or recording first, and close other Baque Fácil tabs/windows.
+The action activates the saved update and reloads just this page, including while
+offline, without clearing preferences or downloading unchanged files again.
+Otherwise, the new version waits until all tabs/windows using the old version
+have closed; reopening then uses it. A normal browser refresh can still use the
+old saved version while an update is waiting. A failed update keeps the last
+complete version available. A sequence edit updates the rhythm player, Customize
+page, radio, and quiz as one release.
 
 Home-screen installation is optional. Supported browsers offer a small Install
 app action in the footer. On iOS, the footer's Add to Home Screen disclosure

@@ -7,7 +7,7 @@ type InstallPrompt = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-function ask(worker: ServiceWorker, action: "status" | "repair" | "refresh-check" | "activate-refresh" = "status"): Promise<OfflineStatus> {
+function ask(worker: ServiceWorker, action: "status" | "repair" | "refresh-check" | "activate-refresh" | "activate-update" = "status"): Promise<OfflineStatus> {
   return new Promise((resolve, reject) => {
     const channel = new MessageChannel();
     const timeout = setTimeout(() => finish(new Error("Offline check timed out")), action === "repair" ? 60_000 : 8_000);
@@ -68,6 +68,7 @@ async function checkDownloadServer() {
 
 export function initOfflineStatus(root: HTMLElement) {
   const message = root.querySelector<HTMLElement>("[data-offline-message]")!;
+  const updateButton = root.querySelector<HTMLButtonElement>("[data-offline-update]")!;
   const retry = root.querySelector<HTMLButtonElement>("[data-offline-retry]")!;
   const install = root.querySelector<HTMLButtonElement>("[data-offline-install]")!;
   const ios = root.querySelector<HTMLElement>("[data-offline-ios]")!;
@@ -81,6 +82,7 @@ export function initOfflineStatus(root: HTMLElement) {
   let refreshing = false;
   let resetIncomplete = false;
   let recoveryMessage: Message | undefined;
+  let updateError: Message | undefined;
   let footerMessage: Message = "Preparing offline access…";
   let refreshId = 0;
   let lastCheck = 0;
@@ -89,8 +91,9 @@ export function initOfflineStatus(root: HTMLElement) {
   root.hidden = false;
 
   function renderMessages() {
-    const text = translate(getLocale(), footerMessage);
+    const text = translate(getLocale(), updateError ?? footerMessage);
     if (message.textContent !== text) message.textContent = text;
+    updateButton.disabled = refreshing || busy || Boolean(registration?.installing);
     if (refreshButton) {
       refreshButton.disabled = refreshing || busy || Boolean(registration?.installing) || !navigator.onLine || !supported;
       refreshButton.textContent = translate(getLocale(), refreshing ? "Refreshing…" : "Refresh offline app");
@@ -107,6 +110,7 @@ export function initOfflineStatus(root: HTMLElement) {
     renderMessages();
     retry.hidden = !canRetry;
     retry.disabled = busy;
+    updateButton.hidden = state !== "update-ready";
   }
 
   if (settings) settings.hidden = false;
@@ -143,7 +147,7 @@ export function initOfflineStatus(root: HTMLElement) {
     root.dataset.release = current?.release ?? "";
     root.dataset.ready = String(Boolean(controller && current?.ready));
     if (next?.ready) {
-      show("update-ready", navigator.onLine ? "Update saved · close all app tabs and reopen to use it" : "Offline · update saved · close all app tabs and reopen to use it");
+      show("update-ready", navigator.onLine ? "Update saved · reload to use the latest version" : "Offline · update saved · ready to reload");
     } else if (current?.ready && controller) {
       const text = navigator.onLine ? "Ready for offline use" : "Offline · using saved rhythms";
       show(failed ? "update-failed" : "ready", failed ? { key: "{status} · update couldn’t download", values: { status: translate(getLocale(), text) } } : text, failed && navigator.onLine);
@@ -216,6 +220,39 @@ export function initOfflineStatus(root: HTMLElement) {
     return registration?.active || registration?.waiting || registration?.installing;
   }
 
+  updateButton.addEventListener("click", async () => {
+    if (refreshing || busy || registration?.installing) return;
+    const waiting = registration?.waiting;
+    updateError = undefined;
+    if (!waiting) {
+      await refresh();
+      return;
+    }
+    refreshing = true;
+    ++refreshId;
+    show("updating", "Updating…");
+    let reloading = false;
+    try {
+      const state = await ask(waiting, "refresh-check");
+      if (state.windows !== 1) throw new TranslatableError("Close other Baque Fácil tabs or windows, then try again.");
+      if (!state.ready) throw new Error("Offline update incomplete");
+      // Recheck completeness and open windows inside the waiting worker before
+      // activation. Use the already saved release, even without a connection.
+      await ask(waiting, "activate-update");
+      await waitForWorker(waiting, true);
+      reloading = true;
+      location.reload();
+    } catch (error) {
+      updateError = error instanceof TranslatableError ? error.translation
+        : "Couldn’t apply the update. Try again, or close all app tabs and reopen.";
+    } finally {
+      if (!reloading) {
+        refreshing = false;
+        await refresh();
+      }
+    }
+  });
+
   refreshButton?.addEventListener("click", async () => {
     if (refreshing || !navigator.onLine) return;
     if (busy || registration?.installing) {
@@ -225,6 +262,7 @@ export function initOfflineStatus(root: HTMLElement) {
     }
     refreshing = true;
     ++refreshId;
+    updateError = undefined;
     recoveryMessage = "Checking the connection…";
     show("downloading", "Refreshing offline app…");
     let reloading = false;
@@ -278,6 +316,10 @@ export function initOfflineStatus(root: HTMLElement) {
   window.addEventListener("offline", () => { renderMessages(); void refresh(); });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) void check();
+  });
+  window.addEventListener("focus", () => { void check(); });
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) void check(true);
   });
   navigator.serviceWorker.addEventListener("controllerchange", () => { void refresh(); });
   navigator.serviceWorker.addEventListener("message", ({ data }) => {

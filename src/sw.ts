@@ -24,7 +24,7 @@ const release = crypto.subtle.digest("SHA-256", new TextEncoder().encode(fingerp
   .then((bytes) => Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("").slice(0, 16));
 
 // Normal worker waiting/activation protects all open players and compositions.
-// Only the explicit, single-window recovery action below can skip the wait.
+// Only explicit, single-window update/recovery actions below can skip the wait.
 self.addEventListener("install", (event) => {
   event.waitUntil(precache.install(event));
 });
@@ -100,10 +100,11 @@ self.addEventListener("message", (event) => {
     try {
       if (event.data.action === "repair") await repair();
       const result = await status();
-      if (event.data.action === "refresh-check" || event.data.action === "activate-refresh") {
+      const activate = event.data.action === "activate-refresh" || event.data.action === "activate-update";
+      if (event.data.action === "refresh-check" || activate) {
         const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
         result.windows = windows.length;
-        if (event.data.action === "activate-refresh") {
+        if (activate) {
           if (!result.ready || windows.length !== 1 || !event.source || !("id" in event.source) || windows[0].id !== event.source.id) throw new Error("Offline refresh unavailable");
           await self.skipWaiting();
         }

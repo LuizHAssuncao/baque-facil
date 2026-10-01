@@ -107,8 +107,8 @@ it must not silently render the home page as though it were that route.
 3. Download changed files into revisioned cache entries. Reuse unchanged entries,
    including unchanged drum sounds. Keep the active version available throughout.
 4. A complete new worker waits while any tabs or installed windows still use the
-   old version. Show “Update downloaded. Close all Baque Fácil windows and reopen
-   to use it.” Pausing audio or hiding a tab does not end the session.
+   old version. Offer **Reload to update** in the footer once the download is
+   complete. Pausing audio or hiding a tab does not end the session.
 5. Let the browser activate the waiting version once those clients have closed.
    The next opening uses the new version, even without a connection. Only then
    remove obsolete cache entries.
@@ -117,6 +117,13 @@ Do not call `skipWaiting()` for automatic updates, automatically reload clients,
 because audio happens to be paused. Closing one tab while another stays open
 must preserve the old version. A failed or interrupted update leaves the last
 complete version usable and retries on a later connection or explicit Retry.
+
+The explicit **Reload to update** action may activate the saved waiting worker
+after checking that the requesting page is the sole app window. The worker must
+recheck completeness and the requesting window before calling `skipWaiting()`.
+Reload only that page after activation completes. This action works offline and
+preserves preferences and the saved files; it does not run the Settings reset.
+The user should save compositions or recordings before choosing to reload.
 
 ### Manual recovery from Settings
 
