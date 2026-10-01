@@ -34,6 +34,7 @@
   color: var(--ink);
 }
 
+
 * {
   box-sizing: border-box;
 }
@@ -2840,4 +2841,146 @@ kbd {
     padding-inline: 0.75rem;
     font-size: 0.9rem;
   }
+}
+
+/* The composer keeps one shared timeline for editing, playback and recording. */
+.composer-page .composer-panel {
+  display: block;
+  margin-top: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.composer-page .composer-player {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.composer-heading-row, .composer-title-row, .composer-edit-toolbar, .composer-history,
+.composer-picker-title, .composer-grid-navigation, .composer-grid-navigation > div,
+.composer-record-heading, .composer-save-status { display: flex; align-items: center; }
+.composer-heading-row { justify-content: space-between; gap: 1rem; margin: 1.5rem 0 1.75rem; }
+.composer-heading { min-width: 0; }
+.composer-heading .eyebrow { margin: 0 0 0.5rem; }
+.composer-title-row { flex-wrap: wrap; gap: 1rem; }
+.composer-title-row h1 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.8rem); line-height: 1.15; }
+.composer-title-row h1 button { display: flex; align-items: center; gap: 0.7rem; padding: 0; text-align: left; overflow-wrap: anywhere; font: inherit; letter-spacing: inherit; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.composer-title-row h1 svg { flex: none; color: var(--muted); }
+.composer-title-input { width: min(100%, 28rem); min-width: 0; font-family: Georgia, serif; font-size: 1.8rem; border: 1px solid var(--teal); border-radius: 6px; background: var(--paper-strong); padding: 0.4rem; }
+.composer-save-status { gap: 0.4rem; font-size: 0.8rem; color: var(--muted-strong); margin: 0.75rem 0 0; }
+.composer-save-status svg { color: var(--teal); }
+.composer-panel button:focus-visible, .composer-panel summary:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+.composer-export-button, .composer-example { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 44px; padding: 0.6rem 0.85rem; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper-strong); color: var(--ink); cursor: pointer; font-size: 0.85rem; }
+.composer-export-button { flex: none; color: var(--teal-deep); border-color: var(--teal); }
+.composer-page .composer-player .controls { display: flex; flex-wrap: wrap; padding: 0.75rem; gap: 0.65rem; background: var(--paper-strong); border: 1px solid var(--line); box-shadow: none; }
+.composer-page .composer-player .controls button { min-height: 44px; box-shadow: none; font-weight: 600; }
+.composer-page .composer-player .controls > button:first-child { background: var(--teal); border-color: var(--teal); min-width: 112px; }
+.composer-page .composer-player .controls .loop-toggle { background: var(--paper-soft); color: var(--muted-strong); border-color: var(--line); }
+.composer-page .composer-player .controls .loop-toggle[aria-pressed="true"] { background: var(--teal-soft); color: var(--teal-deep); border-color: #a9ccc5; }
+.composer-page .composer-actions { display: flex; }
+.composer-page .composer-actions .record-button { background: var(--paper-strong); color: var(--ink); border-color: var(--line-strong); }
+.composer-actions .record-button svg { color: var(--danger); }
+.composer-page .composer-actions .record-button.recording { background: var(--danger); color: white; border-color: var(--danger); }
+.composer-actions .record-button.recording svg { color: white; }
+.composer-page .composer-player .tempo-control { margin-left: auto; display: flex; gap: 0.6rem; font-size: 0.85rem; }
+.composer-page .composer-player .tempo-control input { width: clamp(90px, 12vw, 180px); }
+.composer-edit-toolbar { justify-content: space-between; gap: 0.6rem; margin-top: 1rem; padding: 0.4rem 0.75rem; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--paper-strong); }
+.composer-record-status, .recording-status { font-size: 0.85rem; font-weight: 600; }
+.recording-status { color: var(--danger); }
+.recording-status::before { content: ""; display: inline-block; width: 9px; height: 9px; background: currentColor; border-radius: 50%; margin-right: 0.5rem; }
+.composer-history { gap: 0.2rem; }
+.composer-history button, .composer-more summary, .composer-grid-navigation button, .composer-record-heading button,
+.composer-picker-title button { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; min-height: 44px; min-width: 44px; padding: 0.4rem 0.55rem; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); cursor: pointer; font-size: 0.82rem; }
+.composer-panel button:disabled { cursor: default; opacity: 0.45; }
+.composer-more { position: relative; }
+.composer-more > div { position: absolute; right: 0; top: 100%; z-index: 5; display: grid; min-width: 12rem; padding: 0.35rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-strong); box-shadow: var(--shadow-md); }
+.composer-more button { justify-content: flex-start; text-align: left; }
+.composer-editor { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: var(--paper-strong); padding: 0.5rem 0.75rem 0.25rem; }
+.composer-empty-hint { margin: 0 0 0.75rem; font-size: 0.9rem; color: var(--muted-strong); }
+.composer-page .composer-grid-scroll { position: relative; padding-bottom: 0.4rem; scrollbar-color: var(--line-strong) var(--paper-soft); }
+.composer-unified-grid { min-width: calc(72px + var(--composer-steps) * 52px); }
+.composer-page .composer-unified-grid { background: transparent; border: 0; border-radius: 0; }
+.composer-unified-grid .grid-row, .composer-beat-row { display: grid; grid-template-columns: 72px repeat(var(--composer-steps), minmax(52px, 1fr)); gap: 0; }
+.composer-unified-grid .track-name { min-width: 0; padding: 0.4rem 0.2rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; background: var(--paper-strong); z-index: 2; font-size: 0.85rem; }
+.composer-unified-grid .count-row .track-name { font-size: 0.7rem; font-weight: 400; color: var(--muted); }
+.composer-unified-grid .step-cell { min-width: 0; margin: 3px; height: 52px; padding: 0; border-radius: 6px; font-size: 1.25rem; border: 1px solid var(--line); position: relative; }
+.composer-unified-grid .count-cell { border: 0; background: transparent; color: var(--muted-strong); font-size: 0.8rem; height: 25px; box-shadow: none; }
+.composer-beat-label { padding: 0.5rem 0; text-align: center; color: var(--muted-strong); font-size: 0.75rem; border-left: 1px solid var(--line); }
+.composer-unified-grid button.step-cell:hover { filter: brightness(0.95); transform: none; }
+.composer-unified-grid button.step-cell:disabled { opacity: 1; }
+.composer-panel [data-symbol="L"], .composer-note-dialog [data-symbol="L"] { color: var(--teal-deep); background: var(--teal-soft); border-color: #b8d9d2; }
+.composer-panel [data-symbol="R"], .composer-note-dialog [data-symbol="R"] { color: var(--terracotta-deep); background: var(--terracotta-soft); border-color: #e6b59d; }
+.composer-panel [data-symbol="B"], .composer-note-dialog [data-symbol="B"] { color: #725218; background: var(--gold-soft); border-color: #dbc18b; }
+.composer-panel [data-symbol="."], .composer-note-dialog [data-symbol="."] { color: var(--muted-strong); background: #f0ebe3; border-color: var(--line); }
+.composer-panel [data-symbol="X"], .composer-panel [data-symbol="x"], .composer-note-dialog [data-symbol="X"], .composer-note-dialog [data-symbol="x"] { color: var(--teal-deep); background: var(--teal-soft); }
+.composer-unified-grid .selected-note { outline: 2px solid var(--teal); outline-offset: 1px; }
+.composer-unified-grid .playhead { box-shadow: inset 0 -4px 0 var(--teal); }
+.composer-unified-grid .recording-playhead::before { position: absolute; top: -14px; bottom: -6px; left: -3px; width: 2px; background: var(--danger); content: ""; }
+.composer-grid-navigation { justify-content: space-between; margin-top: 0.3rem; }
+.composer-grid-navigation > div { gap: 0.25rem; color: var(--muted-strong); font-size: 0.75rem; }
+.composer-beat-total { color: var(--muted-strong); font-size: 0.75rem; padding: 0.5rem; }
+.composer-note-dialog { position: fixed; inset: auto; margin: 0; width: 340px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); padding: 0.65rem; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper-strong); color: var(--ink); box-shadow: var(--shadow-lg); }
+.composer-note-dialog::backdrop { background: rgb(29 33 31 / 0.06); }
+.composer-picker-title { justify-content: space-between; padding: 0 0.2rem; font-size: 0.9rem; }
+.composer-note-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.45rem; }
+.composer-note-choices button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 0.7rem 0.2rem; min-height: 76px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.composer-note-choices strong { font-size: 1.35rem; }
+.composer-note-choices span { font-size: 0.75rem; }
+.composer-note-choices button[aria-pressed="true"] { outline: 2px solid var(--teal); outline-offset: 0; }
+.note-choice-check { position: absolute; top: 4px; right: 4px; }
+.composer-note-dialog button:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.composer-record-panel { margin-top: 1rem; border: 1px solid var(--line); border-radius: 8px; padding: 0.6rem 0.75rem; background: var(--paper-strong); }
+.composer-record-heading { gap: 0.5rem; font-size: 0.9rem; }
+.composer-record-heading strong { margin-right: auto; }
+.composer-page .hand-keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem; padding: 0; margin: 0.5rem 0 0; border: 0; background: transparent; }
+.composer-page .hand-key { position: relative; min-width: 0; min-height: 95px; border-radius: 6px; box-shadow: none; }
+.composer-page .hand-key span { color: inherit; text-transform: none; font-weight: 500; font-size: 0.9rem; }
+.composer-page .hand-key kbd { position: absolute; right: 8px; top: 6px; font-size: 0.65rem; opacity: 0.6; }
+.composer-page .hand-key[data-pressed="true"] { filter: brightness(0.85); transform: translateY(2px); }
+.composer-record-panel p { text-align: center; margin: 0.7rem 0 0.2rem; font-size: 0.78rem; color: var(--muted-strong); }
+.composer-page .count-in { margin: 0; padding: 0.6rem; display: flex; justify-content: center; gap: 1rem; min-height: 70px; border-radius: 0; }
+.composer-page .count-in span { font: 500 0.85rem Inter, sans-serif; }
+.composer-page .count-in strong { font-size: 2rem; }
+.composer-bottom-row { margin-top: 0.75rem; }
+.composer-transcription { background: var(--paper-strong); border: 1px solid var(--line); border-radius: 8px; }
+.composer-transcription summary { padding: 0.9rem; cursor: pointer; min-height: 44px; font-size: 0.85rem; }
+.composer-transcription .markdown-output { margin: 0 0.75rem 0.75rem; }
+.composer-transcription .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.composer-page .shortcut-help-trigger { position: static; display: inline-flex; margin-top: 0.75rem; box-shadow: none; }
+.composer-player .player-secondary-actions[hidden], .composer-record-panel[hidden] { display: none; }
+
+@media (max-width: 760px) {
+  .composer-page { width: calc(100% - 1.5rem); }
+  .composer-heading-row { align-items: flex-end; margin: 1rem 0 1.25rem; gap: 0.5rem; }
+  .composer-heading .eyebrow { font-size: 0.7rem; }
+  .composer-export-button { padding: 0.5rem; }
+  .composer-export-button > svg:first-child { display: none; }
+  .composer-title-row { gap: 0.75rem; }
+  .composer-example { font-size: 0.75rem; padding: 0.45rem 0.55rem; }
+  .composer-page .composer-player .controls { position: sticky; top: 0.5rem; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 0.5rem; padding: 0.6rem; }
+  .composer-page .composer-player .controls > .loop-toggle { grid-row: 2; }
+  .composer-page .composer-actions { grid-column: 2; grid-row: 1; }
+  .composer-page .composer-actions button { width: 100%; white-space: normal; padding: 0.4rem; }
+  .composer-page .composer-player .tempo-control { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 0.4rem; grid-column: 2; grid-row: 2; width: 100%; font-size: 0.75rem; margin: 0; }
+  .composer-page .composer-player .tempo-control span { grid-column: 1; }
+  .composer-page .composer-player .tempo-control output { grid-column: 2; grid-row: 1; }
+  .composer-page .composer-player .tempo-control input { grid-column: 1 / -1; grid-row: 2; width: 100%; height: 18px; }
+  .composer-editor { padding: 0.4rem; }
+  .composer-edit-toolbar { padding: 0.25rem 0.35rem; }
+  .composer-history { gap: 0; }
+  .composer-history button, .composer-more summary { padding: 0.3rem; font-size: 0.73rem; }
+  .composer-record-status, .recording-status { font-size: 0.75rem; }
+  .composer-unified-grid { min-width: calc(60px + var(--composer-steps) * 52px); }
+  .composer-unified-grid .grid-row, .composer-beat-row { grid-template-columns: 60px repeat(var(--composer-steps), minmax(52px, 1fr)); }
+  .composer-unified-grid .track-name { font-size: 0.75rem; }
+  .composer-note-dialog { top: auto !important; left: 0 !important; bottom: 0; width: 100%; max-width: 100%; padding: 0.75rem 1rem max(1rem, env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; }
+  .composer-note-dialog::backdrop { background: rgb(29 33 31 / 0.2); }
+  .composer-note-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .composer-note-choices button { min-height: 90px; }
+  .composer-note-choices strong { font-size: 1.6rem; }
+  .composer-note-choices span { font-size: 0.9rem; }
+  .composer-page .hand-key kbd { display: none; }
 }

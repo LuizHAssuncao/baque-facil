@@ -78,24 +78,12 @@ if (entry) {
     <title data-i18n-text={JSON.stringify(entry ? { key: "Customize {title} | Baque Fácil", values: { title: entry.data.title } } : "Compose | Baque Fácil")}>{entry ? `Customize ${entry.data.title}` : "Compose"} | Baque Fácil</title>
   </head>
   <body>
-    <main class="page-shell">
+    <main class="page-shell composer-page">
       <LanguagePicker />
       <a class="back-link" href="/">
         <ArrowLeft aria-hidden="true" size={18} />
         <T message="All rhythms" />
       </a>
-
-      <header class="page-header compact editorial-header">
-        <p class="eyebrow"><T message="Composer" /></p>
-        <h1><T message="Alfaia Composer" /></h1>
-        {
-          entry ? (
-            <p><T message="Customize {title} in your own copy and export the transcription." values={{ title: entry.data.title }} /></p>
-          ) : (
-            <p><T message="Record an Alfaia rhythm on a beat-based grid and export the transcription." /></p>
-          )
-        }
-      </header>
 
       {
         errors.length > 0 ? (

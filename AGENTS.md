@@ -144,10 +144,11 @@ the new key.
 - Built-in rhythm playback starts with a user Play tap after rendering finishes.
   The component's live mode handles blocked autoplay silently when requested.
 - `RhythmComposer` records only an Alfaia track by default. It syncs a Markdown
-  transcription textarea with parsed preview tracks, embeds `RhythmPlayer` for
-  preview, and has separate keyboard/pointer/touch paths for low-latency hit
-  input.
-- Composer keyboard defaults include `F` for left hit, `J` for right hit,
+  transcription textarea with parsed tracks. `ComposerGrid` supplies one timeline
+  through the `RhythmPlayer` editor slot; built-in players keep their original UI.
+  It has separate keyboard/pointer/touch paths for low-latency hit input. Recording
+  preserves non-Alfaia tracks. Versioned drafts are validated by `composerDraft.ts`.
+- Composer keyboard defaults include `F` for left hit, `J` for right hit, `B` for border hit,
   `R` record, `M` metronome, `Space` preview play/stop, `L` loop, `C` clear,
   arrow keys for selection, and `Backspace` to clear the selected step.
 - Use `shouldIgnoreKeyboardShortcut` when adding global shortcuts so typing in

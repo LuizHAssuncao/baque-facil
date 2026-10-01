@@ -55,7 +55,7 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
       for (const [name, path, heading] of [
         [labels.radio, "/radio/", locale === "pt-BR" ? "Rádio Baque" : "Baque Radio"],
         ["Quiz", "/quiz/", "Quiz"],
-        [labels.compose, "/compose/", locale === "pt-BR" ? "Compositor de alfaia" : "Alfaia Composer"],
+        [labels.compose, "/compose/", locale === "pt-BR" ? "Meu ritmo" : "My rhythm"],
       ]) {
         await navigation.getByRole("link", { name, exact: true }).click();
         expect(new URL(page.url()).pathname).toBe(path);

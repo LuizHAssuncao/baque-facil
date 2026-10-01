@@ -1,3 +1,4 @@
+import { openTranscription, openPads } from "../composer-helpers";
 import { expect, test, chromium, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
 import { cp, copyFile, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
@@ -212,22 +213,25 @@ test("player, composer, quiz, and fresh radio encoding work on first use offline
   await saveOfflineMp3(page);
 
   await page.goto("/compose/");
+  await openTranscription(page);
   await page.getByRole("textbox", { name: "Transcription" }).fill("Alfaia:\nL R . . | R . L .");
   await expect(page.getByRole("button", { name: "Alfaia step 1: L", exact: true })).toBeVisible();
   await page.locator(".player-panel").getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.locator(".player-panel").getByRole("button", { name: "Stop", exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as unknown as { offlineVoices: { hasSound: boolean }[] }).offlineVoices.some((voice) => voice.hasSound))).toBe(true);
   await page.locator(".player-panel").getByRole("button", { name: "Stop", exact: true }).click();
-  await page.getByTitle("Left hand", { exact: true }).click();
+  await openPads(page);
+  await page.getByRole("button", { name: "Left hit", exact: true }).click();
   await page.getByRole("button", { name: "Turn metronome on", exact: true }).click();
   await page.getByRole("button", { name: "Record", exact: true }).click();
-  await expect(page.locator(".composer-actions [aria-live]")).toHaveText("Recording");
-  await page.getByTitle("Left hand", { exact: true }).click();
-  await page.getByTitle("Right hand", { exact: true }).click();
+  await expect(page.locator(".recording-status")).toContainText("Recording");
+  await openPads(page);
+  await page.getByRole("button", { name: "Left hit", exact: true }).click();
+  await page.getByRole("button", { name: "Right hit", exact: true }).click();
   await page.getByRole("button", { name: "Stop recording", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Transcription" })).toHaveValue(/[LR]/);
   await page.getByRole("button", { name: "Turn metronome off", exact: true }).click();
-  await page.getByRole("button", { name: "Download MP3", exact: true }).click();
+  await page.getByRole("button", { name: "Export", exact: true }).click();
   await page.getByRole("button", { name: "Prepare MP3", exact: true }).click();
   await saveOfflineMp3(page);
 
@@ -429,6 +433,7 @@ test("Settings refresh protects another tab's unsaved composition", async ({ pag
   await prepared(page);
   const composer = await context.newPage();
   await composer.goto("/compose/");
+  await openTranscription(composer);
   const draft = "Alfaia:\nB R L .";
   await composer.getByRole("textbox", { name: "Transcription", exact: true }).fill(draft);
   await page.locator("#settings summary").click();
@@ -517,6 +522,7 @@ test("Reload to update protects another tab's unsaved composition and ongoing pl
   await page.getByRole("button", { name: "Play", exact: true }).click();
   const composer = await context.newPage();
   await composer.goto("/compose/");
+  await openTranscription(composer);
   const draft = "Alfaia:\nB R L .";
   await composer.getByRole("textbox", { name: "Transcription", exact: true }).fill(draft);
   await server(request, { directory: releaseB });
@@ -539,6 +545,7 @@ test("Reload to update protects another tab's unsaved composition and ongoing pl
 test("a restored page checks for updates without reloading its unsaved work", async ({ page, request }) => {
   await prepared(page);
   await page.goto("/compose/");
+  await openTranscription(page);
   const draft = "Alfaia:\nB R L .";
   await page.getByRole("textbox", { name: "Transcription", exact: true }).fill(draft);
   await expect(page.locator(footer)).toHaveAttribute("data-state", "ready");
@@ -559,6 +566,7 @@ test("a changed sequence waits for every old tab, then updates all surfaces offl
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
   const composer = await context.newPage();
   await composer.goto("/compose/marcacao/");
+  await openTranscription(composer);
   const draft = "Alfaia:\nB R L .";
   await composer.getByRole("textbox", { name: "Transcription" }).fill(draft);
   await server(request, { directory: releaseB, reset: true });
@@ -583,6 +591,10 @@ test("a changed sequence waits for every old tab, then updates all surfaces offl
   await next.getByRole("button", { name: "Play", exact: true }).click();
   await expect.poll(() => leadingEnergy(next)).toBe(0);
   await next.goto("/compose/marcacao/");
+  await openTranscription(next);
+  await expect(next.getByRole("textbox", { name: "Transcription" })).toHaveValue(draft);
+  await next.locator(".composer-more summary").click();
+  await next.getByRole("button", { name: "Restore original", exact: true }).click();
   await expect(next.getByRole("textbox", { name: "Transcription" })).toHaveValue(/Alfaia:\n\. \. \. \./);
   await next.evaluate(() => localStorage.setItem("baque-facil-radio-v1", JSON.stringify({ slugs: ["marcacao"], tempo: 90, repetitions: 4, minutes: 2 })));
   await next.goto("/radio/");

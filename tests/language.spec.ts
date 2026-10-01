@@ -1,3 +1,4 @@
+import { openTranscription } from "./composer-helpers";
 import { expect, test, type Page } from "@playwright/test";
 import { sampleMap } from "../src/lib/sampleMap";
 import { portuguese, translate } from "../src/lib/i18n/messages";
@@ -87,7 +88,7 @@ for (const locale of ["pt-BR", "en-CA"] as const) {
       await nextPage.goto(new URL("/compose/", page.url()).href);
       await expect(nextPage.locator("html")).toHaveAttribute("lang", locale);
       await expect(nextPage.getByRole("dialog")).not.toBeVisible();
-      await expect(nextPage.getByRole("heading", { name: locale === "pt-BR" ? "Compositor de alfaia" : "Alfaia Composer" })).toBeVisible();
+      await expect(nextPage.getByRole("heading", { name: locale === "pt-BR" ? "Meu ritmo" : "My rhythm" })).toBeVisible();
     } finally {
       await reopened.close();
     }
@@ -115,12 +116,12 @@ test("settings and open tabs share the latest language without changing hand pre
 test("composer keeps edits and translates existing validation errors when language changes", async ({ page }) => {
   await page.goto("/compose/");
   await chooseLanguage(page, portugueseLabel);
-  const transcription = page.getByRole("textbox", { name: "Transcrição", exact: true });
-  await expect(transcription).toHaveValue(/Ritmo de alfaia sem título/);
+  const transcription = await openTranscription(page);
+  await expect(transcription).toHaveValue(/Meu ritmo/);
   await transcription.fill("Alfaia:\nR Q . .");
   await expect(page.getByRole("alert")).toContainText('Símbolo desconhecido "Q"');
   await switchLanguage(page, english);
-  await expect(transcription).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Transcrição", exact: true })).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: "Transcription", exact: true })).toHaveValue("Alfaia:\nR Q . .");
   await expect(page.getByRole("alert")).toContainText('Unknown symbol "Q"');
   await page.getByRole("textbox", { name: "Transcription", exact: true }).fill("Alfaia:\nL R . B");
@@ -244,8 +245,8 @@ test("all main pages render Portuguese without errors or horizontal overflow", a
     ["/", "Baque Fácil"],
     ["/quiz/", "Quiz"],
     ["/radio/", "Rádio Baque"],
-    ["/compose/", "Compositor de alfaia"],
-    ["/compose/marcacao/", "Compositor de alfaia"],
+    ["/compose/", "Meu ritmo"],
+    ["/compose/marcacao/", "1 - Marcação"],
     ["/rhythms/combo_parada_arrasto/", "Parada + Arrasto"],
     ["/help/ios-audio/", "Não está ouvindo o som?"],
     ["/diagnostics/background-audio/", "Teste de áudio em segundo plano"],

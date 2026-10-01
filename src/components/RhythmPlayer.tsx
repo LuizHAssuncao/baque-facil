@@ -10,6 +10,7 @@ import {
   useState,
   type CSSProperties,
   type ForwardedRef,
+  type ReactNode,
 } from "react";
 import {
   ClipboardCopy,
@@ -24,6 +25,7 @@ import {
   Volume2,
   VolumeX,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import {
@@ -61,11 +63,22 @@ type RhythmPlayerProps = {
   onTempoChange?: (tempo: number) => void;
   exportRepetitions?: number;
   exportDisabledReason?: Message;
+  composerHeading?: ReactNode;
+  toolbarExtra?: ReactNode;
+  controlsLocked?: boolean;
+  renderEditor?: (state: {
+    activeStep: number | null;
+    reversed: boolean;
+    mutedTracks: string[];
+    toggleMute: (track: string) => void;
+  }) => ReactNode;
 };
 
 export type RhythmPlayerHandle = {
   toggleLoop: () => void;
   togglePlayback: () => void;
+  stop: () => void;
+  previewNote: (track: string, symbol: string) => void;
 };
 
 const AUTOPLAY_START_TIMEOUT_MS = 400;
@@ -227,6 +240,10 @@ function RhythmPlayer(
     onTempoChange,
     exportRepetitions = 8,
     exportDisabledReason,
+    composerHeading,
+    toolbarExtra,
+    controlsLocked = false,
+    renderEditor,
   }: RhythmPlayerProps,
   ref: ForwardedRef<RhythmPlayerHandle>,
 ) {
@@ -250,6 +267,7 @@ function RhythmPlayer(
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [showMp3Export, setShowMp3Export] = useState(false);
   const exportPanelId = useId();
+  const isComposer = Boolean(renderEditor);
   const [reverseHandSymbols, setReverseHandSymbols] = useState(false);
 
   const toneRef = useRef<ToneModule | null>(null);
@@ -268,6 +286,12 @@ function RhythmPlayer(
   const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const currentTracksRef = useRef<RhythmTrack[]>(cloneTracks(currentTracks));
   const copyFeedbackTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isComposer && showMp3Export) {
+      document.getElementById(exportPanelId)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [isComposer, showMp3Export, exportPanelId]);
 
   const stepCount = currentTracks[0]?.steps.length ?? 0;
   const stepCountRef = useRef(stepCount);
@@ -399,9 +423,14 @@ function RhythmPlayer(
   }, [stepCount]);
 
   useImperativeHandle(ref, () => ({
+    stop,
+    previewNote: (track, symbol) => {
+      if (symbol === ".") return;
+      void ensureAudio().then(() => playersRef.current[`${track}.${symbol}`]?.start()).catch((cause) => setError(errorMessage(cause, "Playback failed.")));
+    },
     toggleLoop: () => setLoop((currentLoop) => !currentLoop),
     togglePlayback: () => {
-      if (status === "loading") {
+      if (status === "loading" || controlsLocked) {
         return;
       }
 
@@ -796,7 +825,7 @@ function RhythmPlayer(
 
   return (
     <section
-      className="player-panel"
+      className={renderEditor ? "player-panel composer-player" : "player-panel"}
       data-rendered-locale={locale}
       aria-label={t("{title} player", { title: rhythm.title })}
       onClickCapture={(event) => blurPointerActivatedButton(event.target, event.detail)}
@@ -825,11 +854,12 @@ function RhythmPlayer(
         </div>
       ) : null}
 
+      {composerHeading ? <div className="composer-heading-row">{composerHeading}<button type="button" className="composer-export-button" aria-expanded={showMp3Export} aria-controls={exportPanelId} onClick={() => setShowMp3Export((open) => !open)}><Download size={16} />{t("Export")}<ChevronDown size={14} /></button></div> : null}
       <div className="controls">
         <button
           type="button"
           onClick={togglePlayback}
-          disabled={status === "loading"}
+          disabled={status === "loading" || controlsLocked}
           aria-label={t(isPlaying ? "Stop" : "Play")}
           title={t(isPlaying ? "Stop" : "Play")}
         >
@@ -840,15 +870,15 @@ function RhythmPlayer(
           )}
           {t(isPlaying ? "Stop" : "Play")}
         </button>
-        <button
+        {!renderEditor ? <button
           type="button"
           onClick={restart}
           disabled={status === "loading"}
           aria-label={t("Restart")}
           title={t("Restart")}
         >
-          <RotateCcw aria-hidden="true" size={18} />{t("Restart")}</button>
-        {isPatternDirty ? (
+          <RotateCcw aria-hidden="true" size={18} />{t("Restart")}</button> : null}
+        {isPatternDirty && !renderEditor ? (
           <button
             type="button"
             className="reset-pattern-button"
@@ -861,6 +891,7 @@ function RhythmPlayer(
         <button
           type="button"
           className="loop-toggle"
+          disabled={controlsLocked}
           aria-pressed={loop}
           aria-label={t(loop ? "Disable loop" : "Enable loop")}
           title={t(loop ? "Loop on" : "Loop off")}
@@ -871,8 +902,9 @@ function RhythmPlayer(
           ) : (
             <RepeatOff aria-hidden="true" size={18} />
           )}
-          {t("Loop")}
+          {t(renderEditor ? loop ? "Loop on" : "Loop off" : "Loop")}
         </button>
+        {toolbarExtra}
         <label className="tempo-control">
           <span>{t("Tempo")}</span>
           <input
@@ -880,6 +912,7 @@ function RhythmPlayer(
             min={MIN_TEMPO}
             max={MAX_TEMPO}
             value={tempo}
+            disabled={controlsLocked}
             suppressHydrationWarning
             onChange={(event) => changeTempo(Number(event.target.value))}
           />
@@ -887,7 +920,7 @@ function RhythmPlayer(
         </label>
       </div>
 
-      <div className="grid-scroll" aria-label={t("Parsed rhythm grid")} ref={gridScrollRef}>
+      {renderEditor ? renderEditor({ activeStep, reversed: reverseHandSymbols, mutedTracks, toggleMute: toggleTrackMute }) : <div className="grid-scroll" aria-label={t("Parsed rhythm grid")} ref={gridScrollRef}>
         <div className="rhythm-grid" style={gridShellStyle}>
           <div className="grid-row count-row" style={gridStyle}>
             <div className="track-name">{t("Count")}</div>
@@ -962,22 +995,22 @@ function RhythmPlayer(
             );
           })}
         </div>
-      </div>
+      </div>}
 
-      <div className="player-secondary-actions">
+      <div className="player-secondary-actions" hidden={Boolean(renderEditor) && !showMp3Export && !error && !copyFeedback}>
         {customizeHref ? (
           <a className="customize-rhythm-button" href={customizeHref}>
             <Pencil aria-hidden="true" size={14} />{t("Customize")}</a>
         ) : null}
-        <button
+        {!renderEditor || showMp3Export ? <button
           type="button"
           className="copy-transcription-button"
           onClick={copyTranscription}
           aria-label={t("Copy transcription")}
           title={t("Copy transcription")}
         >
-          <ClipboardCopy aria-hidden="true" size={14} />{t("Copy")}</button>
-        <button
+          <ClipboardCopy aria-hidden="true" size={14} />{t(renderEditor ? "Copy transcription" : "Copy")}</button> : null}
+        {!renderEditor ? <button
           type="button"
           className="download-mp3-button"
           aria-expanded={showMp3Export}
@@ -985,7 +1018,7 @@ function RhythmPlayer(
           onClick={() => setShowMp3Export((open) => !open)}
         >
           <Download aria-hidden="true" size={14} />{t("Download MP3")}
-        </button>
+        </button> : null}
         <div
           className="player-status"
           data-tone={error ? "error" : copyFeedback ? "success" : "idle"}

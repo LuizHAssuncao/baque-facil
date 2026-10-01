@@ -6,13 +6,14 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { CircleDot, Keyboard, Lightbulb, SquareStop, X } from "lucide-react";
+import { Check, CircleDot, Keyboard, Pencil, Redo2, SquareStop, Undo2, X } from "lucide-react";
+import ComposerGrid, { type ComposerSelection } from "./ComposerGrid";
+import { readComposerDraft, type ComposerSnapshot } from "../lib/composerDraft";
 import RhythmPlayer, { type RhythmPlayerHandle } from "./RhythmPlayer";
-import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
+import { stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import {
   blurPointerActivatedButton,
   shouldIgnoreKeyboardShortcut,
@@ -20,7 +21,6 @@ import {
 import { extractRhythmBlock } from "../lib/extractRhythmBlock";
 import { formatRhythmBlock } from "../lib/formatRhythmBlock";
 import { parseRhythm } from "../lib/parseRhythm";
-import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { sampleEntriesForRhythm, sampleMap } from "../lib/sampleMap";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import { validateRhythmIssues } from "../lib/validateRhythm";
@@ -32,7 +32,7 @@ type RhythmComposerProps = {
 };
 
 type ComposerSymbol = "." | "L" | "R" | "B";
-type HitSymbol = "L" | "R";
+type HitSymbol = "L" | "R" | "B";
 type HitInputSource = "touchstart" | "pointerdown" | "keyboard" | "click";
 type BrowserWindowWithAudio = Window &
   typeof globalThis & {
@@ -41,16 +41,11 @@ type BrowserWindowWithAudio = Window &
 
 const DEFAULT_SUBDIVISION: Subdivision = 16;
 const DEFAULT_STEP_COUNT = getStepsPerBeat(DEFAULT_SUBDIVISION) * 4;
-const DEFAULT_TITLE = "Untitled Alfaia Rhythm";
+const DEFAULT_TITLE = "My rhythm";
 const DEFAULT_DESCRIPTION = "A description.";
 const DEFAULT_DIFFICULTY = "beginner";
-const DEFAULT_TEMPO = 50;
+const DEFAULT_TEMPO = 90;
 const COMPOSER_TRACK_NAME = "Alfaia";
-const COMPOSER_TRACK_COLUMN_MIN_REM = 6;
-const COMPOSER_TRACK_COLUMN_MAX_REM = 7;
-const PLAYHEAD_SCROLL_MARGIN_PX = 24;
-const PLAYHEAD_RIGHT_LIMIT_RATIO = 0.55;
-const PLAYHEAD_TARGET_RATIO = 0.35;
 const PREVIEW_SAMPLES = {
   "Alfaia.L": sampleMap["Alfaia.L"],
   "Alfaia.R": sampleMap["Alfaia.R"],
@@ -59,11 +54,12 @@ const PREVIEW_SAMPLES = {
 const HIT_SAMPLE_URLS: Record<HitSymbol, string> = {
   L: sampleMap["Alfaia.L"],
   R: sampleMap["Alfaia.R"],
+  B: sampleMap["Alfaia.B"],
 };
 const TEMPO_KEYBOARD_STEP = 1;
 const MEDIA_HAS_CURRENT_DATA = 2;
 const TOUCH_POINTER_DEDUPLICATION_WINDOW_MS = 120;
-const PLAYER_TIP_ID = "composer-player-tip";
+
 
 function emptySteps(stepCount: number) {
   return Array.from({ length: stepCount }, () => "." as ComposerSymbol);
@@ -256,7 +252,7 @@ function tracksWithComposerSteps(tracks: RhythmTrack[], steps: ComposerSymbol[])
   const composerTrackIndex = tracks.findIndex((track) => track.name === COMPOSER_TRACK_NAME);
 
   if (composerTrackIndex === -1) {
-    return [{ name: COMPOSER_TRACK_NAME, steps }];
+    return [...tracks.map((track) => ({ ...track, steps: resizeTrackSteps(track.steps, steps.length) })), { name: COMPOSER_TRACK_NAME, steps }];
   }
 
   return tracks.map((track, index) => {
@@ -283,51 +279,8 @@ function hitSymbolForKeyboardKey(key: string): HitSymbol | null {
     return "R";
   }
 
+  if (key.toLowerCase() === "b") return "B";
   return null;
-}
-
-function scrollPlayheadIntoView(
-  container: HTMLDivElement,
-  cell: HTMLDivElement,
-  hasFutureSteps: boolean,
-) {
-  const containerRect = container.getBoundingClientRect();
-  const cellRect = cell.getBoundingClientRect();
-  const stickyColumnWidth =
-    cell.parentElement?.querySelector<HTMLElement>(".track-name")?.offsetWidth ?? 0;
-  const visibleLeft = containerRect.left + stickyColumnWidth;
-  const visibleRight = containerRect.right;
-  const visibleWidth = visibleRight - visibleLeft;
-  const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
-
-  if (cellRect.left < visibleLeft + PLAYHEAD_SCROLL_MARGIN_PX) {
-    container.scrollLeft = Math.max(
-      0,
-      container.scrollLeft + cellRect.left - visibleLeft - PLAYHEAD_SCROLL_MARGIN_PX,
-    );
-    return;
-  }
-
-  if (hasFutureSteps && visibleWidth > 0 && container.scrollLeft < maxScrollLeft) {
-    const rightLimit = visibleLeft + visibleWidth * PLAYHEAD_RIGHT_LIMIT_RATIO;
-
-    if (cellRect.right > rightLimit) {
-      const targetLeft = visibleLeft + visibleWidth * PLAYHEAD_TARGET_RATIO;
-
-      container.scrollLeft = Math.min(
-        maxScrollLeft,
-        Math.max(0, container.scrollLeft + cellRect.left - targetLeft),
-      );
-      return;
-    }
-  }
-
-  if (cellRect.right > visibleRight - PLAYHEAD_SCROLL_MARGIN_PX) {
-    container.scrollLeft = Math.min(
-      maxScrollLeft,
-      container.scrollLeft + cellRect.right - visibleRight + PLAYHEAD_SCROLL_MARGIN_PX,
-    );
-  }
 }
 
 function eventTimestampToPerformanceTime(timeStamp: number) {
@@ -358,7 +311,18 @@ export default function RhythmComposer({
   const { t, locale } = useTranslation();
   const initialTempo = clampTempo(initialRhythm?.tempo ?? DEFAULT_TEMPO);
   const subdivision = initialRhythm?.subdivision ?? DEFAULT_SUBDIVISION;
-  const displayTitle = initialRhythm?.title ?? t(DEFAULT_TITLE);
+  const [customTitle, setCustomTitle] = useState(initialRhythm?.title ?? "");
+  const displayTitle = customTitle || t(DEFAULT_TITLE);
+  const titleRef = useRef(customTitle);
+  const [renaming, setRenaming] = useState(false);
+  const [showPads, setShowPads] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState(0);
+  const selectedTrackRef = useRef(0);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<MessageKey>("Saving…");
+  const draftKey = `baque-facil-composer-draft:${initialRhythm?.slug ?? "new"}`;
+  const history = useRef<{ past: ComposerSnapshot[]; future: ComposerSnapshot[] }>({ past: [], future: [] });
+  const [historyCounts, setHistoryCounts] = useState({ past: 0, future: 0 });
   const [tempo, setTempo] = useState(initialTempo);
   const [recordedTracks, setRecordedTracks] = useState<RhythmTrack[]>(() =>
     cloneTracks(initialRhythm?.tracks ?? defaultTracks()),
@@ -380,10 +344,10 @@ export default function RhythmComposer({
   const [metronomeEnabled, setMetronomeEnabled] = useState(false);
   const [recordStatus, setRecordStatus] = useState<MessageKey>("Ready");
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
-  const [showPlayerTip, setShowPlayerTip] = useState(false);
   const [pressedHands, setPressedHands] = useState<Record<HitSymbol, boolean>>({
     L: false,
     R: false,
+    B: false,
   });
   const recordedTracksRef = useRef(recordedTracks);
   const currentTracksRef = useRef(currentTracks);
@@ -408,27 +372,28 @@ export default function RhythmComposer({
   const previewPlayerRef = useRef<RhythmPlayerHandle | null>(null);
   const leftHitButtonRef = useRef<HTMLButtonElement | null>(null);
   const rightHitButtonRef = useRef<HTMLButtonElement | null>(null);
+  const borderHitButtonRef = useRef<HTMLButtonElement | null>(null);
+  const recordPanelRef = useRef<HTMLDivElement | null>(null);
   const handleHitTouchStartRef = useRef<
     (symbol: HitSymbol, event: TouchEvent) => void
   >(() => undefined);
   const releaseHitTouchRef = useRef<(symbol: HitSymbol, event: TouchEvent) => void>(
     () => undefined,
   );
-  const gridScrollRef = useRef<HTMLDivElement | null>(null);
-  const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const composerAudioContextRef = useRef<AudioContext | null>(null);
   const hitBuffersRef = useRef<Partial<Record<HitSymbol, AudioBuffer>>>({});
   const hitBufferLoadPromiseRef = useRef<Promise<void> | null>(null);
   const hitAudioElementsRef = useRef<Partial<Record<HitSymbol, HTMLAudioElement>>>({});
-  const activeHitPointerRef = useRef<Record<HitSymbol, number | null>>({ L: null, R: null });
-  const activeHitPressRef = useRef<Record<HitSymbol, boolean>>({ L: false, R: false });
+  const activeHitPointerRef = useRef<Record<HitSymbol, number | null>>({ L: null, R: null, B: null });
+  const activeHitPressRef = useRef<Record<HitSymbol, boolean>>({ L: false, R: false, B: false });
   const lastHitInputRef = useRef<
     Record<HitSymbol, { source: HitInputSource; inputTime: number } | null>
-  >({ L: null, R: null });
-  const suppressNextHitClickRef = useRef<Record<HitSymbol, boolean>>({ L: false, R: false });
+  >({ L: null, R: null, B: null });
+  const suppressNextHitClickRef = useRef<Record<HitSymbol, boolean>>({ L: false, R: false, B: false });
   const suppressHitClickTimeoutRef = useRef<Record<HitSymbol, number | null>>({
     L: null,
     R: null,
+    B: null,
   });
   const recordingTimerRef = useRef<number | null>(null);
   const countInTimerRef = useRef<number | null>(null);
@@ -437,31 +402,7 @@ export default function RhythmComposer({
 
   const beatStepCount = getStepsPerBeat(subdivision);
   const isRecordLocked = isRecording || countIn !== null;
-  const recordedSteps = useMemo(
-    () => composerStepsFromTracks(recordedTracks) ?? emptySteps(DEFAULT_STEP_COUNT),
-    [recordedTracks],
-  );
-  const displaySteps = isRecordLocked ? recordingSteps : recordedSteps;
-  const stepCount = displaySteps.length;
-  const labels = useMemo(() => countLabels(stepCount, subdivision), [stepCount, subdivision]);
-  const gridStyle = useMemo(
-    () =>
-      ({
-        gridTemplateColumns: rhythmGridColumns(
-          COMPOSER_TRACK_COLUMN_MIN_REM,
-          COMPOSER_TRACK_COLUMN_MAX_REM,
-          stepCount,
-        ),
-      }) as CSSProperties,
-    [stepCount],
-  );
-  const gridShellStyle = useMemo(
-    () =>
-      ({
-        minWidth: rhythmGridMinWidth(COMPOSER_TRACK_COLUMN_MIN_REM, stepCount),
-      }) as CSSProperties,
-    [stepCount],
-  );
+  const stepCount = isRecordLocked ? recordingSteps.length : currentTracks[0]?.steps.length ?? DEFAULT_STEP_COUNT;
   const hasTranscriptionErrors = transcriptionErrors.length > 0;
   const isPatternDirty =
     hasTranscriptionErrors || !tracksEqual(currentTracks, recordedTracks);
@@ -498,13 +439,20 @@ export default function RhythmComposer({
 
   function applyCurrentTracks(
     nextTracks: RhythmTrack[],
-    options: { syncTranscription?: boolean; clearErrors?: boolean } = {},
+    options: { syncTranscription?: boolean; clearErrors?: boolean; remember?: boolean } = {},
   ) {
-    const { syncTranscription = true, clearErrors = true } = options;
+    const { syncTranscription = true, clearErrors = true, remember = true } = options;
+    if (remember) rememberChange();
     const clonedTracks = cloneTracks(nextTracks);
 
     currentTracksRef.current = clonedTracks;
     setCurrentTracks(clonedTracks);
+    const nextTrack = Math.min(selectedTrackRef.current, Math.max(0, clonedTracks.length - 1));
+    const nextStep = Math.min(selectedStepRef.current, Math.max(0, (clonedTracks[nextTrack]?.steps.length ?? 1) - 1));
+    selectedTrackRef.current = nextTrack;
+    selectedStepRef.current = nextStep;
+    setSelectedTrack(nextTrack);
+    setSelectedStep(nextStep);
 
     if (syncTranscription) {
       const nextTranscription = formatTranscriptionWithTracks(
@@ -536,8 +484,9 @@ export default function RhythmComposer({
   }
 
   function commitRecordingTracks(nextTracks: RhythmTrack[]) {
+    rememberChange();
     applyRecordedTracks(nextTracks);
-    applyCurrentTracks(nextTracks);
+    applyCurrentTracks(nextTracks, { remember: false });
   }
 
   function applyCurrentComposerSteps(nextSteps: ComposerSymbol[]) {
@@ -564,6 +513,8 @@ export default function RhythmComposer({
   }
 
   function handleTranscriptionChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    if (isRecordLocked) return;
+    rememberChange();
     const nextTranscription = event.target.value;
     const { tracks, errors } = parseTranscriptionTracks(
       nextTranscription,
@@ -579,7 +530,104 @@ export default function RhythmComposer({
       return;
     }
 
-    applyCurrentTracks(tracks, { syncTranscription: false });
+    applyCurrentTracks(tracks, { syncTranscription: false, remember: false });
+  }
+
+  function snapshot(): ComposerSnapshot {
+    return { title: titleRef.current, tempo: tempoRef.current, transcription: transcriptionRef.current, tracks: cloneTracks(currentTracksRef.current), baseline: cloneTracks(recordedTracksRef.current) };
+  }
+
+  function rememberChange() {
+    history.current.past = [...history.current.past.slice(-79), snapshot()];
+    history.current.future = [];
+    setHistoryCounts({ past: history.current.past.length, future: 0 });
+  }
+
+  function restoreSnapshot(value: ComposerSnapshot) {
+    previewPlayerRef.current?.stop();
+    titleRef.current = value.title;
+    setCustomTitle(value.title);
+    tempoRef.current = value.tempo;
+    setTempo(value.tempo);
+    applyRecordedTracks(value.baseline);
+    applyCurrentTracks(value.tracks, { syncTranscription: false, remember: false });
+    transcriptionRef.current = value.transcription;
+    setTranscription(value.transcription);
+    setTranscriptionErrors(parseTranscriptionTracks(value.transcription, value.tempo, subdivision).errors);
+    selectedStepRef.current = 0;
+    selectedTrackRef.current = 0;
+    setSelectedStep(0);
+    setSelectedTrack(0);
+  }
+
+  function travelHistory(direction: "past" | "future") {
+    if (isRecordLocked) return;
+    const value = history.current[direction].pop();
+    if (!value) return;
+    history.current[direction === "past" ? "future" : "past"].push(snapshot());
+    restoreSnapshot(value);
+    setHistoryCounts({ past: history.current.past.length, future: history.current.future.length });
+  }
+
+  useEffect(() => {
+    try {
+      const value = readComposerDraft(localStorage.getItem(draftKey), subdivision);
+      if (value) restoreSnapshot(value);
+    } catch { /* Storage can be unavailable; saving below reports the failure. */ }
+    setDraftReady(true);
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    setDraftStatus("Saving…");
+    const save = () => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({ ...snapshot(), version: 1, subdivision }));
+        setDraftStatus("Saved on this device");
+      } catch { setDraftStatus("Changes could not be saved on this device."); }
+    };
+    const timer = window.setTimeout(save, 250);
+    window.addEventListener("pagehide", save);
+    return () => { window.clearTimeout(timer); window.removeEventListener("pagehide", save); };
+  }, [draftReady, draftKey, transcription, tempo, customTitle, recordedTracks, subdivision]);
+
+  function renameTitle(value: string) {
+    if (value === titleRef.current || isRecordLocked) return;
+    rememberChange();
+    titleRef.current = value;
+    setCustomTitle(value);
+    const line = `title: "${escapeYamlString(value || t(DEFAULT_TITLE))}"`;
+    const next = /^title:.*$/m.test(transcriptionRef.current) ? transcriptionRef.current.replace(/^title:.*$/m, () => line) : transcriptionRef.current;
+    transcriptionRef.current = next;
+    setTranscription(next);
+  }
+
+  function selectCell(value: ComposerSelection) {
+    selectedTrackRef.current = value.track;
+    setSelectedTrack(value.track);
+    selectStep(value.step);
+  }
+
+  function changeNote(value: ComposerSelection, symbol: string) {
+    if (isRecordLocked) return;
+    const tracks = cloneTracks(currentTracksRef.current);
+    const track = tracks[value.track];
+    if (!track || value.step >= track.steps.length) return;
+    if (track.steps[value.step] !== symbol) {
+      track.steps[value.step] = symbol;
+      applyCurrentTracks(tracks);
+    }
+    previewPlayerRef.current?.previewNote(track.name, symbol);
+  }
+
+  function addBeat() {
+    if (isRecordLocked) return;
+    applyCurrentTracks(currentTracksRef.current.map((track) => ({ ...track, steps: [...track.steps, ...emptySteps(beatStepCount)] })));
+  }
+
+  function useExample() {
+    if (isRecordLocked) return;
+    applyCurrentTracks([{ name: "Alfaia", steps: ["L", ".", "R", ".", "L", ".", "B", ".", "R", ".", "R", ".", "L", "B", "R", "."] }]);
   }
 
   function getComposerAudioContext() {
@@ -640,6 +688,7 @@ export default function RhythmComposer({
   function prepareHitAudioElements() {
     getHitAudioElement("L");
     getHitAudioElement("R");
+    getHitAudioElement("B");
   }
 
   async function prepareHitSamples(options: { resume?: boolean } = {}) {
@@ -808,7 +857,8 @@ export default function RhythmComposer({
       const trimmedStepCount = Math.max(1, trimThroughStep + 1);
       const nextSelectedStep = Math.max(0, trimmedStepCount - 1);
       const trimmedSteps = resizeSteps(recordingStepsRef.current, trimmedStepCount);
-      const nextTracks = [{ name: COMPOSER_TRACK_NAME, steps: trimmedSteps }];
+      const otherLength = Math.max(0, ...currentTracksRef.current.filter((track) => track.name !== COMPOSER_TRACK_NAME).map((track) => track.steps.length));
+      const nextTracks = tracksWithComposerSteps(currentTracksRef.current, resizeSteps(trimmedSteps, Math.max(trimmedStepCount, otherLength)));
 
       recordingStepsRef.current = trimmedSteps;
       setRecordingSteps(trimmedSteps);
@@ -868,6 +918,8 @@ export default function RhythmComposer({
       return;
     }
 
+    previewPlayerRef.current?.stop();
+    setShowPads(true);
     clearRecordingTimer();
     clearCountInTimer();
     updateRecordingSteps(emptySteps(1));
@@ -940,13 +992,15 @@ export default function RhythmComposer({
     }
 
     const currentComposerSteps =
-      composerStepsFromTracks(currentTracksRef.current) ?? emptySteps(DEFAULT_STEP_COUNT);
+      composerStepsFromTracks(currentTracksRef.current) ?? emptySteps(currentTracksRef.current[0]?.steps.length ?? DEFAULT_STEP_COUNT);
     const nextSteps =
       targetStep < currentComposerSteps.length
         ? [...currentComposerSteps]
         : resizeSteps(currentComposerSteps, targetStep + 1);
 
     nextSteps[targetStep] = symbol;
+    selectedTrackRef.current = Math.max(0, currentTracksRef.current.findIndex((track) => track.name === COMPOSER_TRACK_NAME));
+    setSelectedTrack(selectedTrackRef.current);
     applyCurrentComposerSteps(nextSteps);
   }
 
@@ -967,19 +1021,16 @@ export default function RhythmComposer({
       return;
     }
 
-    const currentComposerSteps =
-      composerStepsFromTracks(currentTracksRef.current) ?? emptySteps(DEFAULT_STEP_COUNT);
-    const nextSteps = [...currentComposerSteps];
-    nextSteps[selectedStepRef.current] = ".";
-    applyCurrentComposerSteps(nextSteps);
+    const tracks = cloneTracks(currentTracksRef.current);
+    const track = tracks[selectedTrackRef.current];
+    if (!track || selectedStepRef.current >= track.steps.length) return;
+    track.steps[selectedStepRef.current] = ".";
+    applyCurrentTracks(tracks);
   }
 
   function clearGrid() {
-    if (isRecordLocked) {
-      return;
-    }
-
-    applyCurrentComposerSteps(emptySteps(stepCount || DEFAULT_STEP_COUNT));
+    if (isRecordLocked) return;
+    applyCurrentTracks(currentTracksRef.current.map((track) => ({ ...track, steps: emptySteps(track.steps.length) })));
     setSelectedStep(0);
     selectedStepRef.current = 0;
     setRecordStatus("Ready");
@@ -987,6 +1038,8 @@ export default function RhythmComposer({
 
   function updateTempo(value: number) {
     const clampedTempo = clampTempo(value, tempoRef.current);
+    if (isRecordLocked || clampedTempo === tempoRef.current) return;
+    rememberChange();
 
     tempoRef.current = clampedTempo;
     setTempo(clampedTempo);
@@ -1038,13 +1091,14 @@ export default function RhythmComposer({
   function releasePressedHands() {
     activeHitPressRef.current.L = false;
     activeHitPressRef.current.R = false;
+    activeHitPressRef.current.B = false;
 
     setPressedHands((currentHands) => {
-      if (!currentHands.L && !currentHands.R) {
+      if (!currentHands.L && !currentHands.R && !currentHands.B) {
         return currentHands;
       }
 
-      return { L: false, R: false };
+      return { L: false, R: false, B: false };
     });
   }
 
@@ -1118,7 +1172,7 @@ export default function RhythmComposer({
       allowMediaElementFallback:
         options.allowMediaElementFallback ?? (source === "keyboard" || source === "click"),
     });
-    writeHit(symbol, inputTime);
+    if (isRecording || !showPads) writeHit(symbol, inputTime);
 
     return true;
   }
@@ -1208,6 +1262,7 @@ export default function RhythmComposer({
     const touchListeners: Array<[HTMLButtonElement | null, HitSymbol]> = [
       [leftHitButtonRef.current, "L"],
       [rightHitButtonRef.current, "R"],
+      [borderHitButtonRef.current, "B"],
     ];
     const cleanupCallbacks: Array<() => void> = [];
 
@@ -1260,21 +1315,6 @@ export default function RhythmComposer({
   }, [transcription]);
 
   useEffect(() => {
-    countCellRefs.current = countCellRefs.current.slice(0, stepCount);
-  }, [stepCount]);
-
-  useEffect(() => {
-    const container = gridScrollRef.current;
-    const selectedCell = countCellRefs.current[selectedStep];
-
-    if (!container || !selectedCell) {
-      return;
-    }
-
-    scrollPlayheadIntoView(container, selectedCell, selectedStep < stepCount - 1);
-  }, [selectedStep, stepCount]);
-
-  useEffect(() => {
     tempoRef.current = tempo;
   }, [tempo]);
 
@@ -1287,6 +1327,10 @@ export default function RhythmComposer({
       shortcutHelpCloseButtonRef.current?.focus();
     }
   }, [showShortcutHelp]);
+
+  useEffect(() => {
+    if (showPads) recordPanelRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [showPads]);
 
   useEffect(() => {
     void prepareHitSamples().catch(() => undefined);
@@ -1304,11 +1348,13 @@ export default function RhythmComposer({
 
       clearHitClickSuppressionTimeout("L");
       clearHitClickSuppressionTimeout("R");
+      clearHitClickSuppressionTimeout("B");
     };
   }, []);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || document.querySelector(".composer-note-dialog[open]")) return;
       if (showShortcutHelp) {
         if (event.key === "Escape") {
           event.preventDefault();
@@ -1322,12 +1368,16 @@ export default function RhythmComposer({
         return;
       }
 
-      if (event.metaKey || event.ctrlKey || event.altKey) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (!isRecordLocked) travelHistory(event.shiftKey ? "future" : "past");
         return;
       }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
 
       const hitSymbol = hitSymbolForKeyboardKey(event.key);
       if (hitSymbol) {
+        if (event.repeat) return;
         event.preventDefault();
         setHandPressed(hitSymbol, true);
         triggerHit(hitSymbol, performance.now(), "keyboard");
@@ -1470,6 +1520,7 @@ export default function RhythmComposer({
     isRecordLocked,
     selectedStep,
     showShortcutHelp,
+    showPads,
     stepCount,
     tempo,
   ]);
@@ -1488,133 +1539,6 @@ export default function RhythmComposer({
       aria-label={t("Alfaia rhythm composer")}
       onClickCapture={(event) => blurPointerActivatedButton(event.target, event.detail)}
     >
-      <div className="composer-meta">
-        <label>
-          <span>{t("Tempo")}</span>
-          <div className="composer-slider-row">
-            <input
-              type="range"
-              min={MIN_TEMPO}
-              max={MAX_TEMPO}
-              step="1"
-              disabled={isRecordLocked}
-              value={tempo}
-              suppressHydrationWarning
-              onChange={(event) => updateTempo(Number(event.target.value))}
-            />
-            <output>{tempo} BPM</output>
-          </div>
-        </label>
-      </div>
-
-      <div className="composer-actions" aria-label={t("Composer controls")}>
-        <button
-          type="button"
-          className="metronome-toggle"
-          aria-label={t(metronomeEnabled ? "Turn metronome off" : "Turn metronome on")}
-          aria-pressed={metronomeEnabled}
-          title={t(metronomeEnabled ? "Turn metronome off" : "Turn metronome on")}
-          onClick={() => toggleMetronome(!metronomeEnabled)}
-        >
-          {t(metronomeEnabled ? "Metronome On" : "Metronome Off")}
-        </button>
-        <button
-          type="button"
-          className={isRecordLocked ? "record-button recording" : "record-button"}
-          aria-label={t(isRecordLocked ? "Stop recording" : "Record")}
-          onClick={toggleRecording}
-        >
-          {isRecordLocked ? (
-            <SquareStop aria-hidden="true" size={18} />
-          ) : (
-            <CircleDot aria-hidden="true" size={18} />
-          )}
-          {t(isRecordLocked ? "Stop" : "Record")}
-        </button>
-        <span aria-live="polite">{t(recordStatus)}</span>
-      </div>
-
-      {countIn !== null ? (
-        <div className="count-in" aria-live="assertive">
-          {countIn}
-        </div>
-      ) : null}
-
-      <div className="hand-keys" aria-label={t("Keyboard input controls")}>
-        <button
-          type="button"
-          className="hand-key left-hand"
-          data-pressed={pressedHands.L ? "true" : "false"}
-          ref={leftHitButtonRef}
-          onClick={(event) => handleHitClick("L", event)}
-          onPointerDown={(event) => handleHitPointerDown("L", event)}
-          onPointerUp={(event) => releaseHitPointer("L", event)}
-          onPointerCancel={(event) => releaseHitPointer("L", event)}
-          onPointerLeave={(event) => releaseHitPointer("L", event)}
-          title={t("Left hand")}
-        >
-          <span>{t("Press F key")}</span>
-          <strong>{t("Left")}</strong>
-        </button>
-        <button
-          type="button"
-          className="hand-key right-hand"
-          data-pressed={pressedHands.R ? "true" : "false"}
-          ref={rightHitButtonRef}
-          onClick={(event) => handleHitClick("R", event)}
-          onPointerDown={(event) => handleHitPointerDown("R", event)}
-          onPointerUp={(event) => releaseHitPointer("R", event)}
-          onPointerCancel={(event) => releaseHitPointer("R", event)}
-          onPointerLeave={(event) => releaseHitPointer("R", event)}
-          title={t("Right hand")}
-        >
-          <span>{t("Press J key")}</span>
-          <strong>{t("Right")}</strong>
-        </button>
-      </div>
-
-      <div className="grid-scroll" aria-label={t("Editable rhythm grid")} ref={gridScrollRef}>
-        <div className="rhythm-grid composer-grid" style={gridShellStyle}>
-          <div className="grid-row count-row composer-count-row" style={gridStyle}>
-            <div className="track-name">{t("Count")}</div>
-            {labels.map((label, index) => (
-              <div
-                className={`step-cell count-cell ${selectedStep === index ? "active" : ""} ${
-                  index % beatStepCount === 0 ? "beat-start" : ""
-                }`}
-                key={`${label}-${index}`}
-                ref={(element) => {
-                  countCellRefs.current[index] = element;
-                }}
-              >
-                {label}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid-row composer-step-row" style={gridStyle}>
-            <div className="track-name">Alfaia</div>
-            {displaySteps.map((symbol, index) => (
-              <button
-                type="button"
-                className={`step-cell composer-cell ${
-                  symbol === "." ? "rest-cell" : "hit-cell"
-                } ${selectedStep === index ? "active" : ""} ${
-                  index % beatStepCount === 0 ? "beat-start" : ""
-                }`}
-                aria-label={t("Step {step}: {symbol}", { step: index + 1, symbol })}
-                aria-pressed={selectedStep === index}
-                disabled={isRecordLocked}
-                onClick={() => selectStep(index)}
-                key={`${symbol}-${index}`}
-              >
-                {symbol}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <RhythmPlayer
         ref={previewPlayerRef}
         rhythm={rhythm}
@@ -1626,58 +1550,74 @@ export default function RhythmComposer({
         onPatternChange={handlePreviewPatternChange}
         onPatternReset={resetCurrentPattern}
         onTempoChange={updateTempo}
+        controlsLocked={isRecordLocked}
         exportRepetitions={1}
         exportDisabledReason={isRecordLocked
           ? "Stop recording before preparing an MP3."
           : hasTranscriptionErrors ? "Fix the transcription errors before preparing an MP3." : undefined}
+        composerHeading={<div className="composer-heading">
+          <p className="eyebrow">{t("Composer")}</p>
+          <div className="composer-title-row">
+            {renaming ? <input className="composer-title-input" aria-label={t("Rhythm name")} defaultValue={customTitle || t(DEFAULT_TITLE)} maxLength={200} autoFocus disabled={isRecordLocked}
+              onBlur={(event) => { renameTitle(event.target.value.trim()); setRenaming(false); }}
+              onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") setRenaming(false); }} /> :
+              <h1 aria-label={displayTitle}><button type="button" disabled={isRecordLocked} onClick={() => setRenaming(true)} aria-label={t("Rename rhythm")}>{displayTitle}<Pencil size={18} /></button></h1>}
+            {!initialRhythm ? <button type="button" className="composer-example" disabled={isRecordLocked} onClick={useExample}>{t("Use an example")}</button> : null}
+          </div>
+          <p className="composer-save-status" role="status">{draftStatus === "Saved on this device" ? <Check size={16} /> : null}{t(draftStatus)}</p>
+        </div>}
+        toolbarExtra={<div className="composer-actions">
+          <button type="button" className={isRecordLocked ? "record-button recording" : "record-button"}
+            aria-label={t(countIn !== null ? "Cancel count-in" : isRecording ? "Stop recording" : showPads ? "Record" : "Record with pads")}
+            onClick={() => { if (!showPads) setShowPads(true); else toggleRecording(); }}>
+            {isRecordLocked ? <SquareStop size={18} /> : <CircleDot size={18} />}
+            {t(countIn !== null ? "Cancel count-in" : isRecording ? "Stop recording" : showPads ? "Record" : "Record with pads")}
+          </button>
+        </div>}
+        renderEditor={({ activeStep, reversed, mutedTracks, toggleMute }) => <>
+          <div className="composer-edit-toolbar">
+            <span aria-live="polite" className={isRecording ? "recording-status" : "composer-record-status"}>{isRecordLocked ? t(recordStatus) : t("Your rhythm")}{isRecording ? ` · ${Math.floor(selectedStep / beatStepCount)} ${t("beats")}` : ""}</span>
+            <div className="composer-history">
+              <button type="button" disabled={isRecordLocked || historyCounts.past === 0} onClick={() => travelHistory("past")}><Undo2 size={16} />{t("Undo")}</button>
+              <button type="button" disabled={isRecordLocked || historyCounts.future === 0} onClick={() => travelHistory("future")}><Redo2 size={16} />{t("Redo")}</button>
+              <details className="composer-more"><summary>{t("More")}</summary><div>
+                <button type="button" disabled={isRecordLocked} onClick={clearGrid}>{t("Clear rhythm")}</button>
+                <button type="button" disabled={isRecordLocked || !isPatternDirty} aria-label={t("Reset pattern")} onClick={resetCurrentPattern}>{t("Restore last take")}</button>
+                {initialRhythm ? <button type="button" disabled={isRecordLocked} onClick={() => applyCurrentTracks(initialRhythm.tracks)}>{t("Restore original")}</button> : null}
+              </div></details>
+            </div>
+          </div>
+          {countIn !== null ? <div className="count-in" role="status"><span>{t("Get ready")}</span><strong>{countIn}</strong><span>{t("Recording starts after 3")}</span></div> : null}
+          <ComposerGrid tracks={isRecordLocked ? tracksWithComposerSteps(currentTracks, resizeSteps(recordingSteps, Math.max(recordingSteps.length, currentTracks[0]?.steps.length ?? DEFAULT_STEP_COUNT))) : currentTracks}
+            subdivision={subdivision} selection={{ track: selectedTrack, step: selectedStep }} activeStep={isRecording ? selectedStep : activeStep}
+            recording={isRecording} locked={isRecordLocked} reversed={reversed} mutedTracks={mutedTracks} onMute={toggleMute}
+            onSelect={selectCell} onChange={changeNote} onAddBeat={addBeat} />
+          <div className="composer-record-panel" ref={recordPanelRef} hidden={!showPads}>
+            <div className="composer-record-heading"><strong>{t("Record Alfaia")}</strong>
+              <button type="button" className="metronome-toggle" aria-label={t(metronomeEnabled ? "Turn metronome off" : "Turn metronome on")} aria-pressed={metronomeEnabled} onClick={() => toggleMetronome(!metronomeEnabled)}>{t(metronomeEnabled ? "Metronome On" : "Metronome Off")}</button>
+              <button type="button" disabled={isRecordLocked} aria-label={t("Close recording pads")} onClick={() => setShowPads(false)}><X size={18} /></button>
+            </div>
+            <div className="hand-keys" aria-label={t("Recording pads")}>
+              {(["L", "R", "B"] as const).map((symbol) => <button key={symbol} type="button" className="hand-key" data-symbol={symbol} data-pressed={pressedHands[symbol] ? "true" : "false"}
+                aria-label={t(symbol === "L" ? "Left hit" : symbol === "R" ? "Right hit" : "Border hit")}
+                ref={symbol === "L" ? leftHitButtonRef : symbol === "R" ? rightHitButtonRef : borderHitButtonRef}
+                onClick={(event) => handleHitClick(symbol, event)} onPointerDown={(event) => handleHitPointerDown(symbol, event)}
+                onPointerUp={(event) => releaseHitPointer(symbol, event)} onPointerCancel={(event) => releaseHitPointer(symbol, event)} onPointerLeave={(event) => releaseHitPointer(symbol, event)}>
+                <strong>{symbol}</strong><span>{t(symbol === "L" ? "Left" : symbol === "R" ? "Right" : "Border")}</span><kbd>{symbol === "L" ? "F" : symbol === "R" ? "J" : "B"}</kbd>
+              </button>)}
+            </div>
+            <p>{t(isRecordLocked ? "Leave a gap for a rest." : "Try the pads, then press Record. Your previous take stays in Undo.")}</p>
+          </div>
+        </>}
       />
-
-      <div className="player-tip">
-        <button
-          type="button"
-          className="player-tip-trigger"
-          aria-expanded={showPlayerTip}
-          aria-controls={PLAYER_TIP_ID}
-          onClick={() => setShowPlayerTip((isVisible) => !isVisible)}
-        >
-          <Lightbulb aria-hidden="true" size={15} />
-          <span>{t("Tip")}</span>
-        </button>
-        <div
-          className="player-tip-popover"
-          id={PLAYER_TIP_ID}
-          role="note"
-          hidden={!showPlayerTip}
-        >{t("Try clicking on a note in the player. This will toggle the note.")}</div>
+      <div className="composer-bottom-row">
+        <details className="composer-transcription">
+          <summary>{t("Transcription")}</summary>
+          <label className="markdown-output"><span className="sr-only">{t("Transcription")}</span><textarea value={transcription} rows={12} aria-invalid={hasTranscriptionErrors}
+            aria-describedby={hasTranscriptionErrors ? "composer-transcription-errors" : undefined} disabled={isRecordLocked} suppressHydrationWarning onChange={handleTranscriptionChange} /></label>
+        </details>
       </div>
-
-      <label className="markdown-output">
-        <span>{t("Transcription")}</span>
-        <textarea
-          value={transcription}
-          rows={15}
-          aria-invalid={hasTranscriptionErrors}
-          aria-describedby={
-            hasTranscriptionErrors ? "composer-transcription-errors" : undefined
-          }
-          suppressHydrationWarning
-          onChange={handleTranscriptionChange}
-        />
-      </label>
-
-      {hasTranscriptionErrors ? (
-        <div
-          className="transcription-errors"
-          id="composer-transcription-errors"
-          role="alert"
-        >
-          <ul>
-            {transcriptionErrors.map((error, index) => (
-              <li key={index}>{t(error)}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      {hasTranscriptionErrors ? <div className="transcription-errors" id="composer-transcription-errors" role="alert"><p>{t("The grid and playback show your last valid transcription.")}</p><ul>{transcriptionErrors.map((error, index) => <li key={index}>{t(error)}</li>)}</ul></div> : null}
 
       <button
         type="button"
@@ -1716,6 +1656,8 @@ export default function RhythmComposer({
             </div>
 
             <dl className="shortcut-list">
+              <div><dt><kbd>Ctrl / ⌘ + Z</kbd></dt><dd>{t("Undo")}</dd></div>
+              <div><dt><kbd>Ctrl / ⌘ + Shift + Z</kbd></dt><dd>{t("Redo")}</dd></div>
               <div>
                 <dt>
                   <kbd>{t("Space")}</kbd>
@@ -1763,8 +1705,9 @@ export default function RhythmComposer({
                 <dt>
                   <kbd>F</kbd>
                   <kbd>J</kbd>
+                  <kbd>B</kbd>
                 </dt>
-                <dd>{t("Add left or right hit")}</dd>
+                <dd>{t("Add left, right or border hit")}</dd>
               </div>
               <div>
                 <dt>

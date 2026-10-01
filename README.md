@@ -19,8 +19,8 @@ React rhythm grids, audio playback, and an Alfaia composer.
   for another try.
 - Fixed-note rhythm player with tempo control, looping, mute controls, restart,
   keyboard support, and background media playback. The composer preview remains editable.
-- Alfaia composer with recording controls, metronome, transcription editing, and
-  an embedded preview player.
+- Composer with one editable playback grid, an explicit note picker, Alfaia
+  recording pads, undo/redo, local draft recovery, and optional transcription editing.
 - MP3 downloads for rhythms, combos, compositions, and the full prepared radio mix.
 - Left-handed display preference stored locally without changing the underlying
   rhythm notation.
@@ -208,8 +208,8 @@ messages follow the selected English or Portuguese language.
 Once ready, reopen the app in airplane mode to browse and play rhythms, record
 and edit a composition, answer quiz rounds, or generate a new radio mix. Audio
 still starts through the normal Play controls. The existing preference storage
-continues to work. Composer drafts and generated MP3 recordings are not saved
-across page restarts by this feature.
+continues to work. Composer drafts are saved locally on this device, separately
+for each composer route. Generated MP3 recordings are not saved across page restarts.
 
 Updates are checked when the app opens, reconnects, or returns to the foreground.
 Changed files download with integrity checks, while unchanged samples are reused.
@@ -310,10 +310,36 @@ for missing attacks, gaps, or clicks, and measure preparation time and memory on
 lower-powered phone. Desktop and emulated mobile tests cannot establish this.
 See the [implementation and verification plan](specifications/radio-implementation-plan.md).
 
+## Composer
+
+Select a cell to choose a hit or rest. Alfaia supports Left (`L`), Right (`R`),
+Border (`B`) and Rest (`.`). The same grid shows editing, playback and recording.
+**Use an example** starts a short editable pattern. Add beat extends every track.
+
+Record with pads opens three Alfaia pads. Try them without changing the pattern,
+then press Record. Recording starts after three counts; gaps become rests.
+Canceling the count preserves the composition. A finished take replaces Alfaia
+while keeping the other instruments and their length. Undo recovers the previous
+composition. More contains Clear rhythm, Restore last take and, for customized
+rhythms, Restore original. Recent edits are reversible within the current session.
+
+Drafts, names, tempo, transcription and the latest completed take are saved on
+this device, separately for each composer route. The save indicator reports
+storage failures. Drafts survive reloads; undo history starts fresh. An invalid
+transcription keeps its text and the last valid grid. Transcription opens the raw
+editor, and Export offers copying and MP3 preparation. These features also work
+offline after the app is downloaded.
+
+Keyboard editing uses F for Left, J for Right, B for Border, arrows to move and
+Backspace to clear a cell. R starts recording, M toggles the recording metronome,
+Space plays/stops. Ctrl/Cmd+Z undoes changes (Shift adds redo). Shortcuts do
+not interrupt typing or the note picker. Left handed display changes the shown
+hand labels while preserving the underlying notation.
+
 ## MP3 downloads
 
-Open **Download MP3** in any rhythm, combo, or composer player, choose 1, 4, 8,
-or 16 repetitions, then select **Prepare MP3** and **Save MP3**. Rhythms default
+Open **Download MP3** in a rhythm or combo player, or **Export** in the composer.
+Choose 1, 4, 8 or 16 repetitions, then select **Prepare MP3** and **Save MP3**. Rhythms default
 to eight repetitions; combos and compositions default to one complete sequence.
 The file captures the current pattern, tempo, and unmuted tracks when preparation
 starts. It starts at the beginning and includes the final drum decay. Metronome,

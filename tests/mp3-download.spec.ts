@@ -1,3 +1,4 @@
+import { openTranscription, openPads } from "./composer-helpers";
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -9,9 +10,10 @@ test.beforeEach(async ({ page }) => {
 async function openExport(page: Page, route: string) {
   await page.goto(route);
   await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
-  await expect(page.locator(".player-secondary-actions .copy-transcription-button + .download-mp3-button")).toBeVisible();
+  if (!route.startsWith("/compose/")) await expect(page.locator(".player-secondary-actions .copy-transcription-button + .download-mp3-button")).toBeVisible();
   await expect(page.locator(".mp3-export")).toBeHidden();
-  await page.getByRole("button", { name: "Download MP3", exact: true }).click();
+  await page.getByRole("button", { name: route.startsWith("/compose/") ? "Export" : "Download MP3", exact: true }).click();
+  if (route.startsWith("/compose/")) await openTranscription(page);
 }
 
 async function save(page: Page, label = "Save MP3") {
@@ -28,7 +30,7 @@ async function save(page: Page, label = "Save MP3") {
 for (const scenario of [
   { route: "/rhythms/marcacao/", repetitions: "8", filename: "1-marcacao" },
   { route: "/rhythms/combo_entrada/", repetitions: "1", filename: "entrada" },
-  { route: "/compose/", repetitions: "1", filename: "untitled-alfaia-rhythm" },
+  { route: "/compose/", repetitions: "1", filename: "my-rhythm" },
   { route: "/compose/marcacao/", repetitions: "1", filename: "1-marcacao" },
 ]) {
   test(`downloads a playable MP3 from ${scenario.route}`, async ({ page }) => {
@@ -74,7 +76,7 @@ test("composer guards invalid, silent and recording states, and download button 
   await page.getByRole("button", { name: "Mute Alfaia", exact: true }).click();
   await expect(prepare).toBeDisabled();
   await page.getByRole("button", { name: "Unmute Alfaia", exact: true }).click();
-  const toggle = page.getByRole("button", { name: "Download MP3", exact: true });
+  const toggle = page.getByRole("button", { name: "Export", exact: true });
   await toggle.focus();
   await page.keyboard.press("Space");
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -83,10 +85,11 @@ test("composer guards invalid, silent and recording states, and download button 
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator(".mp3-export")).toBeVisible();
   await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
+  await openPads(page);
   await page.getByRole("button", { name: "Record", exact: true }).click();
   await expect(prepare).toBeDisabled();
   await expect(page.getByText("Stop recording before preparing an MP3.")).toBeVisible();
-  await page.getByRole("button", { name: "Stop recording", exact: true }).click();
+  await page.getByRole("button", { name: /Cancel count-in|Stop recording/ }).click();
 });
 
 test("export captures edits and tempo, supports repeated saves, cancellation and retry", async ({ page }) => {
@@ -171,7 +174,7 @@ test("radio saves the exact full mix while held and with pending or cancelled se
 test("export controls and availability messages are translated into Portuguese", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("baque-facil-language", "pt-BR"));
   await page.goto("/compose/");
-  await page.getByRole("button", { name: "Baixar MP3", exact: true }).click();
+  await page.getByRole("button", { name: "Exportar", exact: true }).click();
   await expect(page.getByLabel("Repetições", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preparar MP3", exact: true })).toBeDisabled();
   await expect(page.getByText("Adicione uma nota ou ative o som de um instrumento para preparar um MP3.")).toBeVisible();

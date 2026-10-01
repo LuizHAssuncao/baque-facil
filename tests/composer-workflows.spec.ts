@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { chooseNote, openPads, openTranscription, resetTake } from "./composer-helpers";
 
-// Exercise the real React islands, parser, sample loading and preview through the UI.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("baque-facil-language", "en-CA"));
 });
@@ -9,120 +9,177 @@ async function openComposer(page: Page, path = "/compose/") {
   await page.goto(path);
   await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
 }
+const notes = (page: Page) => page.locator(".composer-note-row .step-cell");
 
-const transcription = (page: Page) => page.getByRole("textbox", { name: "Transcription" });
-const previewNotes = (page: Page) => page.locator(".player-panel .grid-row:not(.count-row) .step-cell");
-
-test("recording commits timed hits and rests, and reset restores the completed take", async ({ page, isMobile }) => {
+test("one grid supports explicit notes, undo, redo, example, tempo and draft recovery", async ({ page }) => {
   await openComposer(page);
-  await page.getByRole("slider", { name: "Tempo", exact: true }).first().fill("120");
-  // Control only browser time: input events, recording logic and audio remain real.
+  await expect(page.locator(".rhythm-grid")).toHaveCount(1);
+  await expect(page.getByRole("slider", { name: "Tempo", exact: true })).toHaveCount(1);
+  await expect(page.locator(".composer-transcription textarea")).toBeHidden();
+  await expect(page.getByText("Tap a space to add a hit.")).toBeVisible();
+  await chooseNote(page, "Alfaia step 1: .", "Border");
+  await expect(page.getByText("Tap a space to add a hit.")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Alfaia step 1: B", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 1: .", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  await page.getByRole("slider", { name: "Tempo", exact: true }).fill("110");
+  await page.getByRole("button", { name: "Rename rhythm", exact: true }).click();
+  await page.getByRole("textbox", { name: "Rhythm name", exact: true }).fill("My border groove");
+  await page.getByRole("textbox", { name: "Rhythm name", exact: true }).press("Enter");
+  await expect(page.getByText("Saved on this device", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "My border groove" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Tempo", exact: true })).toHaveValue("110");
+  await expect(page.getByRole("button", { name: "Alfaia step 1: B", exact: true })).toBeVisible();
+  const transcription = await openTranscription(page);
+  await expect(transcription).toHaveValue(/title: "My border groove"/);
+  await expect(transcription).toHaveValue(/tempo: 110/);
+  await page.getByRole("button", { name: "Use an example", exact: true }).click();
+  await expect(notes(page)).toHaveCount(16);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(transcription).toHaveValue(/Alfaia:\nB \. \. \./);
+});
+
+test("recording captures Left, Right, Border and gaps; the previous composition is undoable", async ({ page, isMobile }) => {
+  await openComposer(page);
+  await chooseNote(page, "Alfaia step 1: .", "Right");
+  const transcription = await openTranscription(page);
+  const previous = await transcription.inputValue();
+  await page.getByRole("slider", { name: "Tempo", exact: true }).fill("120");
+  await openPads(page);
+  // Idle pads audition only; they never silently edit the selected step.
+  await page.getByRole("button", { name: "Border hit", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Alfaia step 1: R", exact: true })).toBeVisible();
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1000));
   await page.getByRole("button", { name: "Record", exact: true }).click();
-  await expect(page.locator(".count-in")).toHaveText("1");
+  await expect(page.locator(".count-in strong")).toHaveText("1");
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeDisabled();
+  await expect(transcription).toBeDisabled();
   await page.clock.runFor(1500);
-  await expect(page.locator(".composer-actions")).toContainText("Recording");
-  const left = page.getByRole("button", { name: "Press F key Left", exact: true });
-  const right = page.getByRole("button", { name: "Press J key Right", exact: true });
-  if (isMobile) await left.tap();
-  else await left.click();
-  await expect(page.getByRole("button", { name: "Step 1: L", exact: true })).toBeVisible();
-  // At 120 BPM and subdivision 16, each step is 125 ms. Leave step 2 silent.
-  await page.clock.runFor(250);
-  if (isMobile) await right.tap();
-  else await right.click();
-  await expect(page.getByRole("button", { name: "Step 3: R", exact: true })).toBeVisible();
+  await expect(page.locator(".recording-status")).toContainText("Recording");
+  for (const [label, delay] of [["Left hit", 250], ["Right hit", 125], ["Border hit", 0]] as const) {
+    const pad = page.getByRole("button", { name: label, exact: true });
+    if (isMobile) await pad.tap(); else await pad.click();
+    if (delay) await page.clock.runFor(delay);
+  }
   await page.getByRole("button", { name: "Stop recording", exact: true }).click();
-  await expect(page.locator(".composer-step-row button")).toHaveText(["L", ".", "R"]);
-  await expect(previewNotes(page)).toHaveText(["L", ".", "R"]);
-  await expect(transcription(page)).toHaveValue(/Alfaia:\nL \. R/);
-  const take = await transcription(page).inputValue();
+  await expect(notes(page)).toHaveText(["L", "·", "R", "B"]);
+  await expect(transcription).toHaveValue(/Alfaia:\nL \. R B/);
   await page.clock.resume();
-  await page.getByRole("button", { name: "Alfaia step 1: L", exact: true }).click();
-  await expect(transcription(page)).not.toHaveValue(take);
-  await page.getByRole("button", { name: "Reset pattern", exact: true }).click();
-  await expect(transcription(page)).toHaveValue(take);
-  await expect(previewNotes(page)).toHaveText(["L", ".", "R"]);
+  const take = await transcription.inputValue();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  expect((await transcription.inputValue()).replace("tempo: 120", "tempo: 90")).toBe(previous);
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect(transcription).toHaveValue(take);
+  await chooseNote(page, "Alfaia step 1: L", "Border");
+  await resetTake(page);
+  await expect(transcription).toHaveValue(take);
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Stop", exact: true }).click();
 });
 
-test("canceling count-in preserves unsaved multitrack edits and does not start a delayed take", async ({ page }) => {
+test("canceling count-in preserves every multitrack edit and recording keeps other instruments", async ({ page }) => {
   await openComposer(page, "/compose/combo_three_crossed_break/");
-  await page.getByRole("button", { name: "Caixa step 1: X", exact: true }).click();
-  const edited = await transcription(page).inputValue();
-  const notes = await previewNotes(page).allTextContents();
+  await chooseNote(page, "Caixa step 1: X", "Rest");
+  const transcription = await openTranscription(page);
+  const edited = await transcription.inputValue();
+  await page.getByRole("slider", { name: "Tempo", exact: true }).fill("120");
+  await openPads(page);
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1000));
   await page.getByRole("button", { name: "Record", exact: true }).click();
-  await expect(page.locator(".count-in")).toHaveText("1");
-  await page.getByRole("button", { name: "Press F key Left", exact: true }).click();
-  await expect(transcription(page)).toHaveValue(edited);
-  await page.getByRole("button", { name: "Stop recording", exact: true }).click();
+  await page.getByRole("button", { name: "Border hit", exact: true }).click();
+  await page.getByRole("button", { name: "Cancel count-in", exact: true }).click();
   await page.clock.runFor(5000);
-  await expect(page.locator(".composer-actions")).toContainText("Count-in canceled");
-  await expect(page.getByRole("button", { name: "Record", exact: true })).toBeEnabled();
   await expect(page.locator(".count-in")).toHaveCount(0);
-  await expect(transcription(page)).toHaveValue(edited);
-  await expect(previewNotes(page)).toHaveText(notes);
-  await expect(page.locator(".composer-step-row button")).toHaveCount(153);
-  await page.clock.resume();
-  await page.getByRole("button", { name: "Reset pattern", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Caixa step 1: X", exact: true })).toBeVisible();
+  expect((await transcription.inputValue()).replace("tempo: 120", "tempo: 95")).toBe(edited);
+  await expect(notes(page)).toHaveCount(306);
+  const caixa = (await transcription.inputValue()).split("Caixa:")[1];
+  await page.getByRole("button", { name: "Record", exact: true }).click();
+  await page.clock.runFor(1500);
+  await page.getByRole("button", { name: "Border hit", exact: true }).click();
+  await page.getByRole("button", { name: "Stop recording", exact: true }).click();
+  expect((await transcription.inputValue()).split("Caixa:")[1]).toBe(caixa);
+  await expect(notes(page)).toHaveCount(306);
+  await expect(page.getByRole("button", { name: "Alfaia step 1: B", exact: true })).toBeVisible();
 });
 
-test("keyboard composes and erases notes but typing transcription never triggers destructive shortcuts", async ({ page }) => {
+test("keyboard editing, picker focus and shortcuts respect text entry", async ({ page }) => {
   await openComposer(page);
-  await page.getByRole("button", { name: "Step 1: .", exact: true }).click();
+  const first = page.getByRole("button", { name: "Alfaia step 1: .", exact: true });
+  await first.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Change hit" })).toBeVisible();
+  await page.keyboard.press("r");
+  await expect(page.locator(".count-in")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(first).toBeFocused();
   await page.keyboard.press("f");
   await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("j");
-  await expect(transcription(page)).toHaveValue(/Alfaia:\nL R/);
+  await page.keyboard.press("b");
+  await expect(page.getByRole("button", { name: "Alfaia step 2: B", exact: true })).toBeVisible();
   await page.keyboard.press("Backspace");
-  await expect(transcription(page)).toHaveValue(/Alfaia:\nL \./);
-  const tempo = await page.getByRole("slider", { name: "Tempo", exact: true }).first().inputValue();
-  // A valid Markdown title can contain every dangerous shortcut character.
-  const original = await transcription(page).inputValue();
-  await transcription(page).focus();
-  await page.keyboard.press("Control+Home");
-  const prefix = "title: f j r m l c + - ";
-  await page.keyboard.type(prefix);
-  await page.keyboard.press("Enter");
-  await expect(transcription(page)).toHaveValue(`${prefix}\n${original}`);
-  await expect(page.getByRole("button", { name: "Record", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Turn metronome on", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Disable loop", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
-  await expect(page.getByRole("slider", { name: "Tempo", exact: true }).first()).toHaveValue(tempo);
+  await expect(page.getByRole("button", { name: "Alfaia step 2: .", exact: true })).toBeVisible();
+  const transcription = await openTranscription(page);
+  const original = await transcription.inputValue();
+  await transcription.fill(`title: f j b r m l c + -\n${original}`);
+  await expect(page.locator(".count-in")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Alfaia step 1: L", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
 });
 
-test("left-handed mode survives navigation and reload without changing copied or customized notation", async ({ page, context }) => {
-  await page.goto("/");
-  await page.locator("#settings summary").click();
-  await page.getByRole("checkbox", { name: /Left-handed mode/ }).check();
-  await page.goto("/rhythms/marcacao/");
-  await expect(previewNotes(page).first()).toHaveText("L");
+test("left-handed display preserves canonical notation in the explicit picker", async ({ page, context }) => {
+  await page.addInitScript(() => localStorage.setItem("baque-facil-reverse-hand-symbols", "true"));
+  await openComposer(page, "/compose/marcacao/");
+  const transcription = await openTranscription(page);
+  await expect(transcription).toHaveValue(/Alfaia:\nR \. \. \./);
+  await chooseNote(page, "Alfaia step 1: L", "Border");
+  await expect(transcription).toHaveValue(/Alfaia:\nB \. \. \./);
+  await chooseNote(page, "Alfaia step 1: B", "Left");
+  await expect(transcription).toHaveValue(/Alfaia:\nR \. \. \./);
+  await page.getByRole("button", { name: "Export", exact: true }).click();
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: "Copy transcription", exact: true }).click();
-  const canonical = "Alfaia:\nR . . . | . . . . | L R . . | L R . .";
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(canonical);
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Alfaia:\nR . . .");
+});
+
+test("invalid transcriptions recover after reload and storage failures never claim a saved draft", async ({ page, context }) => {
+  await openComposer(page);
+  await chooseNote(page, "Alfaia step 1: .", "Left");
+  const transcription = await openTranscription(page);
+  await transcription.fill("Alfaia:\nQ");
+  await expect(page.getByRole("alert")).toContainText("last valid transcription");
+  await expect(page.getByText("Saved on this device", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(previewNotes(page).first()).toHaveText("L");
-  await page.getByRole("link", { name: "Customize", exact: true }).click();
-  await expect(transcription(page)).toHaveValue(/Alfaia:\nR \. \. \./);
   await expect(page.getByRole("button", { name: "Alfaia step 1: L", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Alfaia step 1: L", exact: true }).click();
-  await expect(transcription(page)).toHaveValue(/Alfaia:\nB \. \. \./);
-  await page.getByRole("button", { name: "Reset pattern", exact: true }).click();
-  expect(await transcription(page).inputValue()).toContain(canonical);
-  await expect(previewNotes(page).first()).toHaveText("L");
-  await page.goto("/");
-  await page.locator("#settings summary").click();
-  await expect(page.getByRole("checkbox", { name: /Left-handed mode/ })).toBeChecked();
-  await page.getByRole("checkbox", { name: /Left-handed mode/ }).uncheck();
-  await page.goto("/rhythms/marcacao/");
-  await expect(previewNotes(page).first()).toHaveText("R");
+  await expect(await openTranscription(page)).toHaveValue("Alfaia:\nQ");
+  const blocked = await context.newPage();
+  await blocked.addInitScript(() => { Storage.prototype.setItem = () => { throw new DOMException("Storage blocked", "QuotaExceededError"); }; });
+  await blocked.goto("/compose/marcacao/");
+  await expect(blocked.getByText("Changes could not be saved on this device.", { exact: true })).toBeVisible();
+  await expect(blocked.getByText("Saved on this device", { exact: true })).toHaveCount(0);
+});
+
+test("a malformed stored draft is ignored and beat growth remains editable", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("baque-facil-composer-draft:new", '{"version":1,"tracks":null}'));
+  await openComposer(page);
+  await page.getByRole("button", { name: "Add beat", exact: true }).click();
+  await expect(notes(page)).toHaveCount(20);
+  await chooseNote(page, "Alfaia step 20: .", "Border");
+  await expect(page.getByRole("button", { name: "Alfaia step 20: B", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("adding Alfaia by keyboard preserves a longer rhythm containing only another instrument", async ({ page }) => {
+  await openComposer(page);
+  const transcription = await openTranscription(page);
+  await transcription.fill(`Gongue:\n${Array.from({ length: 24 }, (_, index) => index % 4 === 0 ? "X" : ".").join(" ")}`);
+  await chooseNote(page, "Gongue step 20: .", "Rest");
+  await page.keyboard.press("f");
+  await expect(notes(page)).toHaveCount(48);
+  await expect(page.getByRole("button", { name: "Gongue step 24: .", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Alfaia step 20: L", exact: true })).toBeVisible();
 });
