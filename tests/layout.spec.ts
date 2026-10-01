@@ -95,6 +95,12 @@ test("predefined rhythm player copies transcription", async ({ page }) => {
   await page.getByRole("button", { name: "Copy transcription" }).click();
 
   await expect(page.locator(".player-status")).toHaveText("Copied transcription.");
+  const actionRows = await page.locator(".player-secondary-actions > :is(a, button)").evaluateAll(
+    (actions) => actions.map((action) => action.getBoundingClientRect().top),
+  );
+  expect(actionRows).toHaveLength(3);
+  expect(Math.max(...actionRows) - Math.min(...actionRows)).toBeLessThan(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(
     marcacaoRhythmBlock,
   );

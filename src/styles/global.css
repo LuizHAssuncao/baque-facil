@@ -1210,12 +1210,16 @@ button.step-cell:disabled {
 }
 
 .player-secondary-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.55rem;
-  margin-top: 0.7rem;
+  justify-content: end;
+  gap: 0.25rem 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.player-secondary-actions:has(.customize-rhythm-button) {
+  grid-template-columns: repeat(3, max-content);
 }
 
 .copy-transcription-button,
@@ -1224,42 +1228,54 @@ button.step-cell:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.3rem;
-  min-height: 2rem;
-  padding: 0 0.65rem;
-  border: 1px solid rgb(13 93 89 / 0.22);
+  gap: 0.35rem;
+  min-height: 2.5rem;
+  padding: 0.25rem 0.3rem;
+  border: 0;
   border-radius: var(--radius-sm);
-  background: rgb(255 250 242 / 0.66);
+  background: transparent;
   color: var(--muted-strong);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset;
+  box-shadow: none;
   cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 900;
+  font-size: 0.8rem;
+  font-weight: 500;
   text-decoration: none;
+  white-space: nowrap;
   transition:
     background 170ms ease,
-    border-color 170ms ease,
-    box-shadow 170ms ease,
-    color 170ms ease,
-    transform 170ms ease;
+    color 170ms ease;
 }
 
 .copy-transcription-button:hover,
 .download-mp3-button:hover,
 .customize-rhythm-button:hover {
-  border-color: rgb(13 93 89 / 0.45);
-  background: rgb(220 239 235 / 0.52);
+  background: rgb(220 239 235 / 0.4);
   color: var(--teal-deep);
-  box-shadow:
-    0 1px 0 rgb(255 255 255 / 0.72) inset,
-    0 0.45rem 0.8rem rgb(47 34 18 / 0.07);
-  transform: translateY(-1px);
 }
 
 .copy-transcription-button svg,
 .download-mp3-button svg,
 .customize-rhythm-button svg {
   flex: none;
+}
+
+@media (max-width: 360px) {
+  .player-secondary-actions:has(.customize-rhythm-button) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr) minmax(0, 1.25fr);
+    justify-content: stretch;
+    column-gap: 0.35rem;
+  }
+
+  .player-secondary-actions:has(.customize-rhythm-button) > :is(a, button) {
+    align-self: stretch;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0.3rem;
+    min-height: 3.25rem;
+    padding: 0.4rem 0.1rem;
+    line-height: 1.25;
+    white-space: normal;
+  }
 }
 
 .loop-toggle,
@@ -1301,10 +1317,16 @@ button.step-cell:disabled {
 }
 
 .player-status {
+  grid-column: 1 / -1;
   min-height: 1.25rem;
   color: var(--muted-strong);
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 500;
+  text-align: right;
+}
+
+.player-status:empty {
+  display: none;
 }
 
 .player-status[data-tone="error"] {
