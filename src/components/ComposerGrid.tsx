@@ -7,6 +7,8 @@ import { useTranslation } from "../lib/i18n/useTranslation";
 import type { MessageKey } from "../lib/i18n/messages";
 import type { RhythmTrack, Subdivision } from "../lib/rhythmTypes";
 
+const GRID_SCROLL_MARGIN_PX = 12;
+
 export type ComposerSelection = { track: number; step: number };
 type Props = {
   tracks: RhythmTrack[];
@@ -87,31 +89,43 @@ export default function ComposerGrid(props: Props) {
     const cell = scroll.current?.querySelector<HTMLElement>(`[data-count="${step}"]`);
     const container = scroll.current;
     if (!cell || !container) return;
-    const sticky = container.querySelector<HTMLElement>(".track-name")?.offsetWidth ?? 0;
     const rect = cell.getBoundingClientRect();
     const bounds = container.getBoundingClientRect();
-    if (rect.right > bounds.right - 12 || rect.left < bounds.left + sticky) {
-      container.scrollLeft += rect.left - bounds.left - sticky - 12;
+    if (rect.right > bounds.right - GRID_SCROLL_MARGIN_PX || rect.left < bounds.left + GRID_SCROLL_MARGIN_PX) {
+      container.scrollLeft += rect.left - bounds.left - GRID_SCROLL_MARGIN_PX;
     }
   }, [activeStep, selection.step, length]);
 
   function moveBeat(offset: number) {
     const beat = Math.max(1, Math.min(beats, visibleBeat + offset));
-    const cell = scroll.current?.querySelector<HTMLElement>(`[data-count="${(beat - 1) * perBeat}"]`);
-    if (cell && scroll.current) {
-      const sticky = scroll.current.querySelector<HTMLElement>(".track-name")?.offsetWidth ?? 0;
-      scroll.current.scrollTo({ left: cell.offsetLeft - sticky, behavior: "smooth" });
+    const container = scroll.current;
+    const cell = container?.querySelector<HTMLElement>(`[data-count="${(beat - 1) * perBeat}"]`);
+    if (cell && container) {
+      const left = beat === 1 ? 0 : container.scrollLeft + cell.getBoundingClientRect().left
+        - container.getBoundingClientRect().left - GRID_SCROLL_MARGIN_PX;
+      container.scrollTo({ left, behavior: "smooth" });
     }
+  }
+
+  function updateVisibleBeat() {
+    const container = scroll.current;
+    const cell = container?.querySelector<HTMLElement>("[data-count]");
+    if (!cell || !container) return;
+    const rect = cell.getBoundingClientRect();
+    // Use the column spacing, including cell margins, after the labels scroll away.
+    const stepWidth = cell.nextElementSibling
+      ? cell.nextElementSibling.getBoundingClientRect().left - rect.left
+      : rect.width;
+    const hiddenWidth = Math.max(0, container.getBoundingClientRect().left + GRID_SCROLL_MARGIN_PX - rect.left);
+    // Allow for rounding of scrollLeft to a whole CSS pixel.
+    setVisibleBeat(Math.min(beats, Math.floor((hiddenWidth + 1) / (stepWidth * perBeat)) + 1));
   }
 
   return (
     <div className="composer-editor">
       {empty && !locked ? <p className="composer-empty-hint">{t("Tap a space to add a hit.")}</p> : null}
       <div className="grid-scroll composer-grid-scroll" aria-label={t("Editable rhythm grid")} ref={scroll}
-        onScroll={() => {
-          const cell = scroll.current?.querySelector<HTMLElement>("[data-count]");
-          if (cell && scroll.current) setVisibleBeat(Math.min(beats, Math.floor(scroll.current.scrollLeft / (cell.offsetWidth * perBeat)) + 1));
-        }}>
+        onScroll={updateVisibleBeat}>
         <div className="rhythm-grid composer-unified-grid" style={columns}>
           <div className="composer-beat-row" aria-hidden="true">
             <div className="track-name" />

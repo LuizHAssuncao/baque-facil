@@ -1712,9 +1712,6 @@ button.step-cell:disabled {
 }
 
 .track-name {
-  position: sticky;
-  left: 0;
-  z-index: 2;
   justify-content: start;
   padding: 0 0.75rem;
   background:
@@ -2909,7 +2906,7 @@ kbd {
 .composer-unified-grid { min-width: calc(72px + var(--composer-steps) * 52px); }
 .composer-page .composer-unified-grid { background: transparent; border: 0; border-radius: 0; }
 .composer-unified-grid .grid-row, .composer-beat-row { display: grid; grid-template-columns: 72px repeat(var(--composer-steps), minmax(52px, 1fr)); gap: 0; }
-.composer-unified-grid .track-name { min-width: 0; padding: 0.4rem 0.2rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; background: var(--paper-strong); z-index: 2; font-size: 0.85rem; }
+.composer-unified-grid .track-name { min-width: 0; padding: 0.4rem 0.2rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; background: var(--paper-strong); font-size: 0.85rem; }
 .composer-unified-grid .count-row .track-name { font-size: 0.7rem; font-weight: 400; color: var(--muted); }
 .composer-unified-grid .step-cell { min-width: 0; margin: 3px; height: 52px; padding: 0; border-radius: 6px; font-size: 1.25rem; border: 1px solid var(--line); position: relative; }
 .composer-unified-grid .count-cell { border: 0; background: transparent; color: var(--muted-strong); font-size: 0.8rem; height: 25px; box-shadow: none; }

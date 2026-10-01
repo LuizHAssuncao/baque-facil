@@ -223,7 +223,7 @@ Recommended mobile behavior:
 
 - Horizontal scrolling grid for full detail.
 - Beat-grouped columns to make the structure readable.
-- Track rows with sticky track names.
+- Track names scroll horizontally with their rows.
 - Larger visual treatment for the active step.
 - Optional simplified beginner mode later.
 

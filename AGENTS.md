@@ -163,9 +163,9 @@ the new key.
 ## Styling And Layout
 
 All styles live in `src/styles/global.css`. The app relies on horizontal grid
-scroll containers for long rhythm patterns, sticky track labels, fixed grid
-column helpers from `src/lib/rhythmGridLayout.ts`, and responsive breakpoints
-around narrow/mobile layouts.
+scroll containers for long rhythm patterns, track labels that scroll with the
+notes, fixed grid column helpers from `src/lib/rhythmGridLayout.ts`, and responsive
+breakpoints around narrow/mobile layouts.
 
 For visible changes:
 

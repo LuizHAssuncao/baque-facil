@@ -43,7 +43,7 @@ export const RadioRhythmGrid = memo(function RadioRhythmGrid({
     if (!container || !cell) return;
     const outer = container.getBoundingClientRect();
     const inner = cell.getBoundingClientRect();
-    if (inner.left < outer.left + 150 || inner.right > outer.right - 20) {
+    if (inner.left < outer.left + 20 || inner.right > outer.right - 20) {
       container.scrollLeft +=
         inner.left - outer.left - Math.min(180, outer.width * 0.55);
     }

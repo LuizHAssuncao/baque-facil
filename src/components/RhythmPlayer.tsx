@@ -187,9 +187,7 @@ function scrollPlayheadIntoView(
 ) {
   const containerRect = container.getBoundingClientRect();
   const cellRect = cell.getBoundingClientRect();
-  const stickyColumnWidth =
-    cell.parentElement?.querySelector<HTMLElement>(".track-name")?.offsetWidth ?? 0;
-  const visibleLeft = containerRect.left + stickyColumnWidth;
+  const visibleLeft = containerRect.left;
   const visibleRight = containerRect.right;
   const visibleWidth = visibleRight - visibleLeft;
   const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
