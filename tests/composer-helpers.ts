@@ -23,5 +23,4 @@ export async function resetTake(page: Page) {
   const details = page.locator(".composer-more");
   if (!(await details.evaluate((element) => (element as HTMLDetailsElement).open))) await details.locator("summary").click();
   await page.getByRole("button", { name: "Reset pattern", exact: true }).click();
-  await details.locator("summary").click();
 }

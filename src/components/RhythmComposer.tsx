@@ -1607,8 +1607,14 @@ export default function RhythmComposer({
               <button type="button" disabled={isRecordLocked || historyCounts.past === 0} onClick={() => travelHistory("past")}><Undo2 size={16} />{t("Undo")}</button>
               <button type="button" disabled={isRecordLocked || historyCounts.future === 0} onClick={() => travelHistory("future")}><Redo2 size={16} />{t("Redo")}</button>
               <details className="composer-more"><summary>{t("More")}</summary><div>
-                <button type="button" disabled={isRecordLocked} onClick={clearGrid}>{t("Clear rhythm")}</button>
-                <button type="button" disabled={isRecordLocked || !isPatternDirty} aria-label={t("Reset pattern")} onClick={resetCurrentPattern}>{t("Restore last take")}</button>
+                <button type="button" disabled={isRecordLocked} onClick={(event) => {
+                  clearGrid();
+                  event.currentTarget.closest("details")?.removeAttribute("open");
+                }}>{t("Clear rhythm")}</button>
+                <button type="button" disabled={isRecordLocked || !isPatternDirty} aria-label={t("Reset pattern")} onClick={(event) => {
+                  resetCurrentPattern();
+                  event.currentTarget.closest("details")?.removeAttribute("open");
+                }}>{t("Restore last take")}</button>
                 {initialRhythm ? <button type="button" disabled={isRecordLocked} onClick={() => applyCurrentTracks(initialRhythm.tracks)}>{t("Restore original")}</button> : null}
               </div></details>
             </div>
