@@ -120,7 +120,7 @@ export const portuguese = {
   "Compose an Alfaia rhythm": "Crie um ritmo de alfaia",
   "Record an Alfaia rhythm on a beat-based grid": "Grave um ritmo de alfaia em uma grade de tempos",
   "Left-handed mode": "Modo para canhotos",
-  "Reverse R (right) and L (left) in rhythm grids.": "Inverta R (direita) e L (esquerda) nas grades de ritmo.",
+  "Reverse R (right) and L (left) in rhythm grids.": "Inverta D (direita) e E (esquerda) nas grades de ritmo.",
   "beginner": "iniciante",
   "intermediate": "intermediário",
   "advanced": "avançado",

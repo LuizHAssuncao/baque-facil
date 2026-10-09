@@ -1,3 +1,6 @@
+import type { Locale } from "./i18n/messages";
+import { localizeHandSymbol } from "./rhythmNotation";
+
 export const HAND_SYMBOL_REVERSE_STORAGE_KEY = "baque-facil-reverse-hand-symbols";
 export const HAND_SYMBOL_REVERSE_EVENT = "baque-facil-hand-symbol-reverse-change";
 
@@ -38,18 +41,15 @@ export function writeHandSymbolReversePreference(reverseHandSymbols: boolean) {
   );
 }
 
-export function displayHandSymbol(symbol: string, reverseHandSymbols: boolean) {
-  if (!reverseHandSymbols) {
-    return symbol;
+export function displayHandSymbol(
+  symbol: string,
+  reverseHandSymbols: boolean,
+  locale: Locale = "en-CA",
+) {
+  let displayedSymbol = symbol;
+  if (reverseHandSymbols) {
+    if (symbol === "R") displayedSymbol = "L";
+    else if (symbol === "L") displayedSymbol = "R";
   }
-
-  if (symbol === "R") {
-    return "L";
-  }
-
-  if (symbol === "L") {
-    return "R";
-  }
-
-  return symbol;
+  return localizeHandSymbol(displayedSymbol, locale);
 }

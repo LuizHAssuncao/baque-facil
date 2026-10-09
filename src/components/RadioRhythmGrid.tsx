@@ -17,7 +17,7 @@ export const RadioRhythmGrid = memo(function RadioRhythmGrid({
   rhythm: Rhythm;
   activeStep: number | null;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [reverse, setReverse] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const cells = useRef<(HTMLDivElement | null)[]>([]);
@@ -77,7 +77,7 @@ export const RadioRhythmGrid = memo(function RadioRhythmGrid({
                 key={index}
                 className={`step-cell ${symbol === "." ? "rest-cell" : "hit-cell"} ${activeStep === index ? "active" : ""} ${index % stepsPerBeat(rhythm.subdivision) === 0 ? "beat-start" : ""}`}
               >
-                {displayHandSymbol(symbol, reverse)}
+                {displayHandSymbol(symbol, reverse, locale)}
               </div>
             ))}
           </div>

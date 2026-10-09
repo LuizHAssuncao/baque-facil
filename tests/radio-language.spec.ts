@@ -45,6 +45,9 @@ test("radio translates preparation and active playback without replacing the rec
   await expect(audio).toHaveAttribute("src", source!);
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(false);
   await expect(page.locator('.grid-scroll[aria-label="Grade do ritmo atual"]')).toBeVisible();
+  const notes = page.locator('.grid-scroll[aria-label="Grade do ritmo atual"] .grid-row:not(.count-row) .step-cell');
+  await expect(notes.filter({ hasText: /^[LR]$/ })).toHaveCount(0);
+  await expect.poll(() => notes.filter({ hasText: /^[ED]$/ }).count()).toBeGreaterThan(0);
   await expect(page.getByRole("slider", { name: "Tempo da rádio" })).toHaveValue("90");
   await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.album)).toBe("Rádio Baque");
   await page.getByRole("button", { name: "Ficar neste ritmo", exact: true }).click();
@@ -53,6 +56,9 @@ test("radio translates preparation and active playback without replacing the rec
   expect(heldSource).not.toBe(source);
   await switchLanguage(page, "English (Canada)");
   await expect(page.getByRole("button", { name: "Back to mix", exact: true })).toHaveAttribute("aria-pressed", "true");
+  const englishNotes = page.locator('.grid-scroll[aria-label="Current rhythm grid"] .grid-row:not(.count-row) .step-cell');
+  await expect(englishNotes.filter({ hasText: /^[ED]$/ })).toHaveCount(0);
+  await expect.poll(() => englishNotes.filter({ hasText: /^[LR]$/ }).count()).toBeGreaterThan(0);
   await expect(audio).toHaveAttribute("src", heldSource!);
   await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.album)).toBe("Baque Radio");
   await page.getByRole("button", { name: "Back to mix", exact: true }).click();

@@ -1,4 +1,5 @@
 import { translate, type Message } from "./messages";
+import { localizeRhythmTranscription } from "../rhythmNotation";
 import {
   applyLocale,
   DEFAULT_LOCALE,
@@ -17,6 +18,9 @@ export function initLanguageControls() {
   const marked = document.querySelectorAll<HTMLElement>(
     attributes.map((name) => `[data-i18n-${name}]`).join(","),
   );
+  const transcriptions = Array.from(document.querySelectorAll<HTMLElement>("[data-rhythm-transcription] pre code"))
+    .filter((element) => element.textContent?.trim() === element.closest("[data-rhythm-transcription]")?.getAttribute("data-rhythm-transcription"))
+    .map((element) => ({ element, source: element.textContent ?? "" }));
 
   function update() {
     const locale = getLocale();
@@ -31,6 +35,9 @@ export function initLanguageControls() {
         if (attribute === "text") element.textContent = value;
         else element.setAttribute(attribute, value);
       });
+    });
+    transcriptions.forEach(({ element, source }) => {
+      element.textContent = localizeRhythmTranscription(source, locale);
     });
   }
 

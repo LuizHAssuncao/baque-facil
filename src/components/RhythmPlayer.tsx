@@ -707,7 +707,7 @@ function RhythmPlayer(
   async function copyTranscription() {
     try {
       await navigator.clipboard.writeText(
-        formatRhythmBlock(currentTracksRef.current, beatStepCount),
+        formatRhythmBlock(currentTracksRef.current, beatStepCount, locale),
       );
       setError(null);
       showCopyFeedback("Copied transcription.");
@@ -969,7 +969,7 @@ function RhythmPlayer(
                   } ${activeStep === index ? "active" : ""} ${
                     index % beatStepCount === 0 ? "beat-start" : ""
                   }`;
-                  const displayedSymbol = displayHandSymbol(symbol, reverseHandSymbols);
+                  const displayedSymbol = displayHandSymbol(symbol, reverseHandSymbols, locale);
                   const canEditCell = editableNotes && hasEditableSymbol(track.name, symbol);
 
                   return canEditCell ? (

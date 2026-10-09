@@ -34,7 +34,7 @@ function noteLabel(track: string, symbol: string): MessageKey {
 
 export default function ComposerGrid(props: Props) {
   const { tracks, subdivision, selection, activeStep, recording, locked, reversed, mutedTracks, onMute, onSelect, onChange, onAddBeat } = props;
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const scroll = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
@@ -138,9 +138,10 @@ export default function ComposerGrid(props: Props) {
           {tracks.map((track, trackIndex) => <div key={track.name} className={`grid-row composer-note-row ${mutedTracks.includes(track.name) ? "muted-row" : ""}`}>
             <div className="track-name"><span>{track.name}</span><button className="track-mute-button" type="button" disabled={locked} aria-label={t(mutedTracks.includes(track.name) ? "Unmute {track}" : "Mute {track}", { track: track.name })} aria-pressed={mutedTracks.includes(track.name)} onClick={() => onMute(track.name)}>{mutedTracks.includes(track.name) ? <VolumeX size={16} /> : <Volume2 size={16} />}</button></div>
             {track.steps.map((symbol, step) => {
-              const shown = displayHandSymbol(symbol, reversed);
+              const handSymbol = displayHandSymbol(symbol, reversed);
+              const shown = displayHandSymbol(symbol, reversed, locale);
               const selected = selection.track === trackIndex && selection.step === step;
-              return <button type="button" key={step} data-note={`${trackIndex}-${step}`} data-symbol={shown}
+              return <button type="button" key={step} data-note={`${trackIndex}-${step}`} data-symbol={handSymbol}
                 className={`step-cell ${symbol === "." ? "rest-cell" : "hit-cell"} ${step % perBeat === 0 ? "beat-start" : ""} ${selected && !locked ? "selected-note" : ""} ${activeStep === step ? recording ? "recording-playhead" : "playhead" : ""}`}
                 disabled={locked} aria-pressed={selected && !locked} aria-haspopup="dialog"
                 aria-label={t("{track} step {step}: {symbol}", { track: track.name, step: step + 1, symbol: shown })}
@@ -172,10 +173,11 @@ export default function ComposerGrid(props: Props) {
         <div className="composer-picker-title"><strong>{t("Change hit")}</strong><button type="button" aria-label={t("Close note picker")} onClick={closePicker}><X size={18} /></button></div>
         <div className="composer-note-choices">
           {pickedTrack ? symbols.map((symbol) => {
-            const shown = displayHandSymbol(symbol, reversed);
+            const handSymbol = displayHandSymbol(symbol, reversed);
+            const shown = displayHandSymbol(symbol, reversed, locale);
             const selected = pickedTrack.steps[picker!.step] === symbol;
-            return <button type="button" key={symbol} data-symbol={shown} aria-label={t(noteLabel(pickedTrack.name, shown))} aria-pressed={selected} onClick={() => { onChange(picker!, symbol); closePicker(); }}>
-              {selected ? <Check className="note-choice-check" size={15} /> : null}<strong>{shown === "." ? "·" : shown}</strong><span>{t(noteLabel(pickedTrack.name, shown))}</span>
+            return <button type="button" key={symbol} data-symbol={handSymbol} aria-label={t(noteLabel(pickedTrack.name, handSymbol))} aria-pressed={selected} onClick={() => { onChange(picker!, symbol); closePicker(); }}>
+              {selected ? <Check className="note-choice-check" size={15} /> : null}<strong>{shown === "." ? "·" : shown}</strong><span>{t(noteLabel(pickedTrack.name, handSymbol))}</span>
             </button>;
           }) : null}
         </div>

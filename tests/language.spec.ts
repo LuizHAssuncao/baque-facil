@@ -2,6 +2,9 @@ import { openTranscription } from "./composer-helpers";
 import { expect, test, type Page } from "@playwright/test";
 import { sampleMap } from "../src/lib/sampleMap";
 import { portuguese, translate } from "../src/lib/i18n/messages";
+import { formatRhythmBlock } from "../src/lib/formatRhythmBlock";
+import { parseRhythm } from "../src/lib/parseRhythm";
+import { localizeRhythmTranscription } from "../src/lib/rhythmNotation";
 
 const languageKey = "baque-facil-language";
 const english = "English (Canada)";
@@ -67,6 +70,93 @@ test("translated messages retain every interpolation parameter", () => {
   }
 });
 
+test("Portuguese transcription round-trips without translating metadata, comments, or other instruments", () => {
+  const block = "Alfaia:\r\nL R B . | R L - .\r\n# Keep L and R in this comment\r\n\r\nGongue:\r\nX x . . | X x . .";
+  const markdown = `---\r\ntitle: "L R E D"\r\n---\r\n\r\nPlay L then R.\r\n\r\n\`\`\`rhythm\r\n${block}\r\n\`\`\`\r\n`;
+  const translated = localizeRhythmTranscription(markdown, "pt-BR");
+  expect(translated).toContain("Alfaia:\r\nE D B . | D E - .");
+  expect(translated).toContain('title: "L R E D"');
+  expect(translated).toContain("Play L then R.");
+  expect(translated).toContain("# Keep L and R in this comment");
+  expect(translated).toContain("Gongue:\r\nX x . . | X x . .");
+  expect(localizeRhythmTranscription(translated, "en-CA")).toBe(markdown);
+  expect(localizeRhythmTranscription("```rhythm\nAlfaia:\nL R", "pt-BR")).toBe("```rhythm\nAlfaia:\nE D");
+
+  const tracks = parseRhythm("Alfaia:\nE D B -\n\nCaixa:\nX . X .");
+  expect(tracks[0].steps).toEqual(["L", "R", "B", "."]);
+  expect(formatRhythmBlock(tracks, 4, "pt-BR")).toBe("Alfaia:\nE D B .\n\nCaixa:\nX . X .");
+  expect(tracks[0].steps).toEqual(["L", "R", "B", "."]);
+});
+
+test("rhythm grids and copied transcriptions use the selected language's hand symbols", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/rhythms/marcacao/");
+  await chooseLanguage(page, portugueseLabel);
+  const notes = page.locator(".player-panel .grid-row:not(.count-row) .step-cell");
+  const printed = page.locator(".content pre code");
+  await expect(notes.first()).toHaveText("D");
+  await expect(notes.filter({ hasText: /^[LR]$/ })).toHaveCount(0);
+  await expect(printed).toHaveText("Alfaia:\nD . . . | . . . . | E D . . | E D . .");
+  await page.getByRole("button", { name: "Copiar transcrição" }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Alfaia:\nD . . . | . . . . | E D . . | E D . .");
+
+  await switchLanguage(page, english);
+  await expect(notes.first()).toHaveText("R");
+  await expect(printed).toHaveText("Alfaia:\nR . . . | . . . . | L R . . | L R . .");
+  await page.getByRole("button", { name: "Copy transcription" }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Alfaia:\nR . . . | . . . . | L R . . | L R . .");
+
+  await page.goto("/");
+  await switchLanguage(page, portugueseLabel);
+  await page.locator("#settings summary").click();
+  await expect(page.locator("#settings")).toContainText("Inverta D (direita) e E (esquerda)");
+  await page.getByRole("checkbox", { name: /Modo para canhotos/ }).check();
+  await page.goto("/rhythms/marcacao/");
+  await expect(notes.first()).toHaveText("E");
+  await expect(printed).toHaveText("Alfaia:\nD . . . | . . . . | E D . . | E D . .");
+  await page.getByRole("button", { name: "Copiar transcrição" }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Alfaia:\nD . . .");
+});
+
+test("Portuguese composer notation supports editing, hand reversal, draft recovery, and copying", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.addInitScript(() => {
+    localStorage.setItem("baque-facil-language", "pt-BR");
+    localStorage.setItem("baque-facil-reverse-hand-symbols", "true");
+  });
+  await page.goto("/compose/marcacao/");
+  const transcription = await openTranscription(page);
+  await expect(transcription).toHaveValue(/Alfaia:\nD \. \. \./);
+  await expect(page.getByRole("button", { name: "Alfaia, posição 1: E", exact: true })).toHaveCSS("background-color", "rgb(220, 239, 235)");
+  await page.getByRole("button", { name: "Alfaia, posição 1: E", exact: true }).click();
+  const picker = page.getByRole("dialog", { name: "Alterar toque" });
+  await expect(picker.getByRole("button", { name: "Esquerda", exact: true }).locator("strong")).toHaveText("E");
+  await expect(picker.getByRole("button", { name: "Direita", exact: true }).locator("strong")).toHaveText("D");
+  await expect(picker.getByRole("button", { name: "Esquerda", exact: true })).toHaveCSS("background-color", "rgb(220, 239, 235)");
+  await expect(picker.getByRole("button", { name: "Direita", exact: true })).toHaveCSS("background-color", "rgb(245, 223, 207)");
+  await picker.getByRole("button", { name: "Direita", exact: true }).click();
+  await expect(transcription).toHaveValue(/Alfaia:\nE \. \. \./);
+  await expect(page.getByRole("button", { name: "Alfaia, posição 1: D", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Alfaia, posição 1: D", exact: true })).toHaveCSS("background-color", "rgb(245, 223, 207)");
+
+  await transcription.fill("Alfaia:\nE D B .\n\nCaixa:\nX . X .");
+  await expect(page.getByRole("alert")).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Alfaia, posição 2: E", exact: true })).toBeVisible();
+  await expect(page.getByText("Salvo neste dispositivo", { exact: true })).toBeVisible();
+  const draft = await page.evaluate(() => JSON.parse(localStorage.getItem("baque-facil-composer-draft:marcacao")!));
+  expect(draft.tracks[0].steps).toEqual(["L", "R", "B", "."]);
+  await page.reload();
+  await expect(await openTranscription(page)).toHaveValue("Alfaia:\nE D B .\n\nCaixa:\nX . X .");
+  await page.getByRole("button", { name: "Gravar com os botões", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Toque esquerdo", exact: true }).locator("strong")).toHaveText("E");
+  await expect(page.getByRole("button", { name: "Toque direito", exact: true }).locator("strong")).toHaveText("D");
+  await page.getByRole("button", { name: "Exportar", exact: true }).click();
+  await page.getByRole("button", { name: "Copiar transcrição", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("Alfaia:\nE D B .\n\nCaixa:\nX . X .");
+  await switchLanguage(page, english);
+  await expect(transcription).toHaveValue("Alfaia:\nL R B .\n\nCaixa:\nX . X .");
+});
+
 for (const locale of ["pt-BR", "en-CA"] as const) {
   test(`first visit chooses ${locale}, persists through reload, navigation, and a new session`, async ({ page, context, browser }) => {
     const name = locale === "pt-BR" ? portugueseLabel : english;
@@ -120,6 +210,7 @@ test("composer keeps edits and translates existing validation errors when langua
   await expect(transcription).toHaveValue(/Meu ritmo/);
   await transcription.fill("Alfaia:\nR Q . .");
   await expect(page.getByRole("alert")).toContainText('Símbolo desconhecido "Q"');
+  await expect(page.getByRole("alert")).toContainText("D, E, B, ., -");
   await switchLanguage(page, english);
   await expect(page.getByRole("textbox", { name: "Transcrição", exact: true })).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: "Transcription", exact: true })).toHaveValue("Alfaia:\nR Q . .");
@@ -127,8 +218,8 @@ test("composer keeps edits and translates existing validation errors when langua
   await page.getByRole("textbox", { name: "Transcription", exact: true }).fill("Alfaia:\nL R . B");
   await expect(page.getByRole("alert")).not.toBeVisible();
   await switchLanguage(page, portugueseLabel);
-  await expect(page.getByRole("textbox", { name: "Transcrição", exact: true })).toHaveValue("Alfaia:\nL R . B");
-  await expect(page.getByRole("button", { name: "Alfaia, posição 1: L", exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Transcrição", exact: true })).toHaveValue("Alfaia:\nE D . B");
+  await expect(page.getByRole("button", { name: "Alfaia, posição 1: E", exact: true })).toBeVisible();
   await page.getByRole("textbox", { name: "Transcrição", exact: true }).fill("R L . .");
   await expect(page.getByRole("alert")).toContainText("A linha 1 tem notas antes do nome de um instrumento.");
 });

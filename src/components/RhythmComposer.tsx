@@ -22,6 +22,7 @@ import {
 import { extractRhythmBlock } from "../lib/extractRhythmBlock";
 import { formatRhythmBlock } from "../lib/formatRhythmBlock";
 import { parseRhythm } from "../lib/parseRhythm";
+import { localizeHandSymbol, localizeRhythmIssue, localizeRhythmTranscription } from "../lib/rhythmNotation";
 import { sampleEntriesForRhythm, sampleMap } from "../lib/sampleMap";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import { validateRhythmIssues } from "../lib/validateRhythm";
@@ -520,7 +521,7 @@ export default function RhythmComposer({
   function handleTranscriptionChange(event: ChangeEvent<HTMLTextAreaElement>) {
     if (isRecordLocked) return;
     rememberChange();
-    const nextTranscription = event.target.value;
+    const nextTranscription = localizeRhythmTranscription(event.target.value, "en-CA");
     const { tracks, errors } = parseTranscriptionTracks(
       nextTranscription,
       tempoRef.current,
@@ -1635,7 +1636,7 @@ export default function RhythmComposer({
                 ref={symbol === "L" ? leftHitButtonRef : symbol === "R" ? rightHitButtonRef : borderHitButtonRef}
                 onClick={(event) => handleHitClick(symbol, event)} onPointerDown={(event) => handleHitPointerDown(symbol, event)}
                 onPointerUp={(event) => releaseHitPointer(symbol, event)} onPointerCancel={(event) => releaseHitPointer(symbol, event)} onPointerLeave={(event) => releaseHitPointer(symbol, event)}>
-                <strong>{symbol}</strong><span>{t(symbol === "L" ? "Left" : symbol === "R" ? "Right" : "Border")}</span><kbd>{symbol === "L" ? "F" : symbol === "R" ? "J" : "B"}</kbd>
+                <strong>{localizeHandSymbol(symbol, locale)}</strong><span>{t(symbol === "L" ? "Left" : symbol === "R" ? "Right" : "Border")}</span><kbd>{symbol === "L" ? "F" : symbol === "R" ? "J" : "B"}</kbd>
               </button>)}
             </div>
             <p>{t(isRecordLocked ? "Leave a gap for a rest." : "Try the pads, then press Record. Your previous take stays in Undo.")}</p>
@@ -1648,11 +1649,11 @@ export default function RhythmComposer({
           : hasTranscriptionErrors ? "Fix the transcription errors before sharing a rhythm." : undefined} />
         <details className="composer-transcription">
           <summary>{t("Transcription")}</summary>
-          <label className="markdown-output"><span className="sr-only">{t("Transcription")}</span><textarea value={transcription} rows={12} aria-invalid={hasTranscriptionErrors}
+          <label className="markdown-output"><span className="sr-only">{t("Transcription")}</span><textarea value={localizeRhythmTranscription(transcription, locale)} rows={12} aria-invalid={hasTranscriptionErrors}
             aria-describedby={hasTranscriptionErrors ? "composer-transcription-errors" : undefined} disabled={isRecordLocked} suppressHydrationWarning onChange={handleTranscriptionChange} /></label>
         </details>
       </div>
-      {hasTranscriptionErrors ? <div className="transcription-errors" id="composer-transcription-errors" role="alert"><p>{t("The grid and playback show your last valid transcription.")}</p><ul>{transcriptionErrors.map((error, index) => <li key={index}>{t(error)}</li>)}</ul></div> : null}
+      {hasTranscriptionErrors ? <div className="transcription-errors" id="composer-transcription-errors" role="alert"><p>{t("The grid and playback show your last valid transcription.")}</p><ul>{transcriptionErrors.map((error, index) => <li key={index}>{t(localizeRhythmIssue(error, locale))}</li>)}</ul></div> : null}
 
       <button
         type="button"
