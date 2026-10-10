@@ -12,8 +12,8 @@ async function expectBelowNavigation(page: Page, target: Locator) {
 for (const locale of ["en-CA", "pt-BR"] as const) {
   test.describe(`homepage in ${locale}`, () => {
     const labels = locale === "pt-BR"
-      ? { navigation: "Navegação principal", rhythms: "Ritmos", radio: "Rádio", compose: "Compor", jump: "Ir para combos", settings: "Configurações", return: "Todos os ritmos" }
-      : { navigation: "Main navigation", rhythms: "Rhythms", radio: "Radio", compose: "Compose", jump: "Jump to combos", settings: "Settings", return: "All rhythms" };
+      ? { navigation: "Navegação principal", rhythms: "Ritmos", sequences: "Sequências", radio: "Rádio", compose: "Compor", jump: "Ir para sequências", settings: "Configurações", return: "Todos os ritmos" }
+      : { navigation: "Main navigation", rhythms: "Rhythms", sequences: "Sequences", radio: "Radio", compose: "Compose", jump: "Jump to sequences", settings: "Settings", return: "All rhythms" };
 
     test.beforeEach(async ({ page }) => {
       await page.addInitScript((language) => localStorage.setItem("baque-facil-language", language), locale);
@@ -34,10 +34,10 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
       for (let index = 0; index < 4; index += 1) {
         await expect(rhythms.nth(index)).toBeInViewport({ ratio: 1 });
       }
-      const combos = page.getByRole("region", { name: "Combos", exact: true }).locator(".rhythm-link");
-      expect(await combos.count()).toBeGreaterThan(0);
-      for (const combo of await combos.all()) await expect(combo).toBeVisible();
-      await expect(combos.locator("strong")).toHaveText([
+      const sequences = page.getByRole("region", { name: labels.sequences, exact: true }).locator(".rhythm-link");
+      expect(await sequences.count()).toBeGreaterThan(0);
+      for (const sequence of await sequences.all()) await expect(sequence).toBeVisible();
+      await expect(sequences.locator("strong")).toHaveText([
         "Entrada",
         "Parada + Arrasto",
         "Flying four",
@@ -69,12 +69,12 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
       const jump = page.getByRole("link", { name: labels.jump });
       await jump.focus();
       await page.keyboard.press("Enter");
-      const combosHeading = page.getByRole("heading", { name: "Combos", exact: true });
-      await expect(combosHeading).toBeFocused();
-      await expectBelowNavigation(page, combosHeading);
+      const sequencesHeading = page.getByRole("heading", { name: labels.sequences, exact: true });
+      await expect(sequencesHeading).toBeFocused();
+      await expectBelowNavigation(page, sequencesHeading);
 
       await page.keyboard.press("Tab");
-      await expect(page.getByRole("region", { name: "Combos", exact: true }).getByRole("link").first()).toBeFocused();
+      await expect(page.getByRole("region", { name: labels.sequences, exact: true }).getByRole("link").first()).toBeFocused();
 
       const rhythmsLink = page.getByRole("navigation", { name: labels.navigation }).getByRole("link", { name: labels.rhythms });
       await rhythmsLink.focus();
@@ -115,7 +115,7 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
       const overflow = await page.evaluate(() => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth);
       expect(overflow).toBeLessThanOrEqual(1);
       await page.getByRole("link", { name: labels.jump }).click();
-      await expectBelowNavigation(page, page.getByRole("heading", { name: "Combos", exact: true }));
+      await expectBelowNavigation(page, page.getByRole("heading", { name: labels.sequences, exact: true }));
     });
   });
 }

@@ -208,16 +208,16 @@ test("failed sample preparation can be retried, and a single selection disables 
   ).toBeVisible();
 });
 
-test("preferences, optional combos, and keyboard controls work without autoplay on reload", async ({
+test("preferences, optional sequences, and keyboard controls work without autoplay on reload", async ({
   page,
 }) => {
   const audio = await openRadio(page);
   await page
-    .getByRole("checkbox", { name: "Include combos", exact: true })
+    .getByRole("checkbox", { name: "Include sequences", exact: true })
     .check();
   await expect(page.getByRole("checkbox", { name: /Entrada/ })).toBeChecked();
   await page
-    .getByRole("checkbox", { name: "Include combos", exact: true })
+    .getByRole("checkbox", { name: "Include sequences", exact: true })
     .uncheck();
   await expect(page.getByRole("checkbox", { name: /Entrada/ })).toHaveCount(0);
   await page.getByRole("slider", { name: "Radio tempo" }).fill("100");

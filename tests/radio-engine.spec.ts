@@ -67,7 +67,7 @@ test("radio visits complete shuffle bags without adjacent repeats, including the
   }
 });
 
-test("radio handles a single rhythm, two rhythms, combos, and invalid settings", () => {
+test("radio handles a single rhythm, two rhythms, sequences, and invalid settings", () => {
   expect(shuffleBag([], "x")).toEqual([]);
   expect(shuffleBag(["a"], "a")).toEqual(["a"]);
   for (let seed = 0; seed < 10; seed += 1) {

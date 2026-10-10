@@ -24,9 +24,9 @@ are pending.
 
 ## Behaviour
 
-- Default to all regular rhythms; allow individual selection and optional combos.
+- Default to all regular rhythms; allow individual selection and optional sequences.
 - Default to 90 BPM, using existing bounds of 30–130 BPM.
-- Repeat each regular rhythm 8 times; offer 4, 8, and 16 repetitions. Combos
+- Repeat each regular rhythm 8 times; offer 4, 8, and 16 repetitions. Sequences
   already contain longer sequences and play once per turn.
 - Offer shorter recordings for quicker preparation as well as the 20-minute
   default. Show the actual planned duration and approximate file size, then progress
@@ -106,7 +106,7 @@ is supplementary evidence and cannot verify an actual locked phone.
   Imalê, and Martelo at 90 BPM, eight repetitions, approximately 20 minutes.
   This is a cloud Chromium measurement, not a phone performance measurement.
 - Production preview verification covered the home link, mobile layout, actual
-  worker encoding, playback with long combos, Pause, Skip, and Stay while paused.
+  worker encoding, playback with long sequences, Pause, Skip, and Stay while paused.
   No browser errors or horizontal page overflow were observed.
 - Physical iPhone and Android locking, audible loop quality, interruptions,
   Bluetooth, and phone memory/preparation measurements remain pending release checks.

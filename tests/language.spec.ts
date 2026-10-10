@@ -356,7 +356,9 @@ test("all main pages render Portuguese without errors or horizontal overflow", a
     }
     if (path === "/rhythms/combo_parada_arrasto/") {
       await expect(page.locator('.content [data-language="pt-BR"]').last()).toBeVisible();
+      await expect(page.locator('.content [data-language="pt-BR"]').last()).toContainText("Esta sequência repete Parada");
       await expect(page.locator('.content [data-language="en-CA"]').last()).toBeHidden();
+      await expect(page.locator('.content [data-language="en-CA"]').last()).toContainText("This sequence repeats Parada");
     }
     const overflow = await page.evaluate(() => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth);
     expect(overflow, path).toBeLessThanOrEqual(1);

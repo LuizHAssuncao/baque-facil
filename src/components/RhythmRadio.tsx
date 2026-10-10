@@ -148,7 +148,7 @@ export default function RhythmRadio({
         </div>
         <p className="radio-caption">
           {snapshot.ready
-            ? `${snapshot.tempo} BPM · ${snapshot.held ? t("Repeating this pattern") : current?.combo ? t("One pass through this combo") : t("{count} repetitions per rhythm", { count: snapshot.repetitions })}`
+            ? `${snapshot.tempo} BPM · ${snapshot.held ? t("Repeating this pattern") : current?.combo ? t("One pass through this sequence") : t("{count} repetitions per rhythm", { count: snapshot.repetitions })}`
             : t("A shuffled mix of familiar patterns. Listen closely, or pick up your alfaia and play along.")}
         </p>
         <div className="radio-controls">
@@ -362,7 +362,7 @@ export default function RhythmRadio({
                 })
               }
             />{" "}
-            {t("Include combos")}
+            {t("Include sequences")}
           </label>
         </div>
         <fieldset className="radio-selection">
@@ -387,7 +387,7 @@ export default function RhythmRadio({
                 />
                 <span>
                   <strong>{entry.rhythm.title}</strong>
-                  <small>{t(entry.combo ? "Combo" : entry.difficulty as MessageKey)}</small>
+                  <small>{t(entry.combo ? "Sequence" : entry.difficulty as MessageKey)}</small>
                 </span>
               </label>
             ))}
@@ -399,7 +399,7 @@ export default function RhythmRadio({
           {estimate
             ? t("This mix will last {duration} (about {size} MB).", { duration: formatTime(estimate), size: sizeFormat.format((estimate * 16000) / 1_000_000) })
             : ""}{" "}
-          {t("Mixes finish on a full round of your selection. Combos play once per turn.")}
+          {t("Mixes finish on a full round of your selection. Sequences play once per turn.")}
         </p>
         <p className="radio-footnote">{t("Each new mix has a fresh shuffle. The complete recording repeats until you shuffle again. Shorter recordings prepare faster.")}</p>
       </section>

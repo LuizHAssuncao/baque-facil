@@ -135,7 +135,7 @@ export function buildRadioTimeline(
   }
   const rounds = Math.max(1, Math.round(targetFrames / framesPerRound));
   // Finish the nearest whole round: every selected rhythm gets equal turns,
-  // including across the native file loop. Combos already contain repetitions.
+  // including across the native file loop. Sequences already contain repetitions.
   while (segments.length < rounds * slugs.length) {
     if (!bag.length) {
       bag = shuffleBag(slugs, segments.at(-1)?.slug ?? previousSlug, random);

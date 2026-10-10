@@ -11,7 +11,7 @@ for composer input.
 
 Core user flows:
 
-- `/`: rhythm index, combo grouping, composer link, left-handed display setting.
+- `/`: rhythm index, sequence grouping, composer link, left-handed display setting.
 - `/radio/`: browser-generated MP3 mixes played through one native looping audio
   element, with a frame-based timeline for the visible grid and seeking.
 - `/rhythms/[slug]/`: generated from Markdown rhythm entries and rendered with

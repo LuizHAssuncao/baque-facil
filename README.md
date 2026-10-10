@@ -8,7 +8,7 @@ React rhythm grids, audio playback, and an Alfaia composer.
 
 ## Features
 
-- Rhythm index with separate practice rhythm and combo sections.
+- Rhythm index with separate practice rhythm and sequence sections.
 - Generated rhythm pages from Markdown content in `src/content/rhythms/`.
 - Baque Radio at `/radio/`: a locally generated, shuffled MP3 mix with continuous
   native playback, rhythm selection, tempo, Skip, and Stay on this rhythm.
@@ -21,7 +21,7 @@ React rhythm grids, audio playback, and an Alfaia composer.
   keyboard support, and background media playback. The composer preview remains editable.
 - Composer with one editable playback grid, an explicit note picker, Alfaia
   recording pads, undo/redo, local draft recovery, and optional transcription editing.
-- MP3 downloads for rhythms, combos, compositions, and the full prepared radio mix.
+- MP3 downloads for rhythms, sequences, compositions, and the full prepared radio mix.
 - Left-handed display preference stored locally without changing the underlying
   rhythm notation.
 - English (Canada) and Portuguese (Brazil), with a first-visit language picker,
@@ -290,7 +290,7 @@ and the iOS audio help flow when relevant.
 Open `/radio/`, choose rhythms and a tempo, then press Play. Preparation runs on
 the device and can be cancelled. Keep the page open until the recording is ready;
 some browsers require another Play tap after preparation. Defaults are all regular
-rhythms, 90 BPM, eight repetitions, and about 20 minutes. Combos are optional and
+rhythms, 90 BPM, eight repetitions, and about 20 minutes. Sequences are optional and
 play once per turn because they already contain longer sequences.
 
 Each new session or Shuffle again builds a fresh sequence in complete shuffled
@@ -366,9 +366,9 @@ hand labels while preserving the underlying notation.
 
 ## MP3 downloads
 
-Open **Download MP3** in a rhythm or combo player, or **Export** in the composer.
+Open **Download MP3** in a rhythm or sequence player, or **Export** in the composer.
 Choose 1, 4, 8 or 16 repetitions, then select **Prepare MP3** and **Save MP3**. Rhythms default
-to eight repetitions; combos and compositions default to one complete sequence.
+to eight repetitions; sequences and compositions default to one complete sequence.
 The file captures the current pattern, tempo, and unmuted tracks when preparation
 starts. It starts at the beginning and includes the final drum decay. Metronome,
 count-in, and left-handed display settings do not affect the file. Invalid or
@@ -416,7 +416,7 @@ background playback reliability. Before releasing, test on a physical iPhone:
 
 1. Play a short rhythm, switch apps, and lock the screen for at least 15 minutes.
 2. Listen across several rhythm-loop boundaries for gaps or missing hits.
-3. Change tempo between 30 and 130 BPM, including rapid changes and a long combo.
+3. Change tempo between 30 and 130 BPM, including rapid changes and a long sequence.
 4. Lock during a pending change; confirm playback continues through the transition.
 5. Exercise mute, Stop, Restart, one-shot playback, and lock-screen play/pause.
 6. Test interruption/resume and Bluetooth route changes.

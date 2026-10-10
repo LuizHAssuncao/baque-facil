@@ -18,8 +18,8 @@ instruments:
 <p data-language="pt-BR" lang="pt-BR">Instruções:</p>
 
 
-<p data-language="en-CA" lang="en-CA">This combo repeats Parada 3x and after a transition we play Arrasto three times until we come back to Parada.</p>
-<p data-language="pt-BR" lang="pt-BR">Este combo repete Parada três vezes. Depois de uma transição, tocamos Arrasto três vezes e voltamos para Parada.</p>
+<p data-language="en-CA" lang="en-CA">This sequence repeats Parada 3x and after a transition we play Arrasto three times until we come back to Parada.</p>
+<p data-language="pt-BR" lang="pt-BR">Esta sequência repete Parada três vezes. Depois de uma transição, tocamos Arrasto três vezes e voltamos para Parada.</p>
 
 
 ```rhythm

@@ -27,7 +27,7 @@ Physical phone checks and deployment-host verification remain release checks.
 
 The first release includes:
 
-- All built-in rhythm and combo pages, their notation, and playback controls.
+- All built-in rhythm and sequence pages, their notation, and playback controls.
 - The blank composer and every built-in rhythm's Customize page, including hit
   input, recording, metronome, transcription editing, and preview playback.
 - Quiz rounds and audio generated from the saved rhythm library.
@@ -311,7 +311,7 @@ does not mask missing offline support.
    Check the initial uncontrolled state and ensure readiness is not reported
    before the download and control requirements are satisfied.
 2. **Offline reopening:** turn the browser context offline and reopen the site
-   from its persistent storage. Directly open a rhythm, a combo, and a Customize
+   from its persistent storage. Directly open a rhythm, a sequence, and a Customize
    URL that were never visited online. Check real page content and audio controls.
 3. **First use of lazy features:** without first playing anything online, go
    offline and exercise composer recording, hit buttons, metronome, and Tone.js
