@@ -105,7 +105,6 @@ export const portuguese = {
   "Sequences": "Sequências",
   "Jump to sequences": "Ir para sequências",
   "All rhythms": "Todos os ritmos",
-  "Listening practice": "Prática de escuta",
   "Quiz": "Quiz",
   "Rhythm Quiz": "Quiz de ritmos",
   "Listen and find the matching rhythm.": "Ouça e encontre o ritmo correspondente.",
