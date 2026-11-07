@@ -439,7 +439,7 @@ test("player, composer, quiz, and fresh radio encoding work on first use offline
   await expect(page.locator(".radio-pattern").getByText("Transition", { exact: true })).toBeVisible();
   await expect(page.locator(".radio-pattern").getByText("Whistle", { exact: true })).toBeVisible();
   expect(await page.evaluate(async () => {
-    const response = await fetch("/samples/whistle/short.wav");
+    const response = await fetch("/samples/whistle/whistle.wav");
     return response.ok && (await response.arrayBuffer()).byteLength > 44;
   })).toBe(true);
   await page.getByRole("button", { name: "Play", exact: true }).click();

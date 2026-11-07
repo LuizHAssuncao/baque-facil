@@ -1,27 +1,37 @@
 import { parseRhythm } from "../parseRhythm";
 import type { Rhythm, RhythmTrack } from "../rhythmTypes";
+import { isRadioSequence } from "./sequence";
 
-const transition = parseRhythm(`Alfaia:
+export const RADIO_TRANSITION_STEPS = 16;
+
+const [alfaia, whistle] = parseRhythm(`Alfaia:
 R . . . | . . . . | L R . R | L . R .
 
 Whistle:
 X . . . | . . . . | X X . X | X . X .`);
 
-/** The outgoing bar for these two rhythms; lesson/composer tracks stay untouched. */
+/** Add a final-bar whistle; only marcação and imalê change their alfaia notes. */
 export function radioTransitionTracks(rhythm: Rhythm): RhythmTrack[] | undefined {
+  const stepCount = rhythm.tracks[0]?.steps.length ?? 0;
   if (
-    (rhythm.slug !== "marcacao" && rhythm.slug !== "imale") ||
+    isRadioSequence(rhythm) ||
     rhythm.subdivision !== 16 ||
-    !rhythm.tracks.some((track) => track.name === "Alfaia") ||
-    rhythm.tracks.some((track) => track.steps.length !== 16)
+    stepCount < RADIO_TRANSITION_STEPS ||
+    rhythm.tracks.some((track) => track.steps.length !== stepCount)
   ) return undefined;
 
-  return [
-    ...rhythm.tracks.map((track) =>
-      transition.find((replacement) => replacement.name === track.name) ?? track,
-    ),
-    ...transition.filter((track) =>
-      !rhythm.tracks.some((original) => original.name === track.name),
-    ),
-  ];
+  const start = stepCount - RADIO_TRANSITION_STEPS;
+  const changeAlfaia = rhythm.slug === "marcacao" || rhythm.slug === "imale";
+  const tracks = rhythm.tracks.map((track) => {
+    const replacement = track.name === "Whistle"
+      ? whistle
+      : changeAlfaia && track.name === "Alfaia" ? alfaia : null;
+    return replacement
+      ? { ...track, steps: [...track.steps.slice(0, start), ...replacement.steps] }
+      : track;
+  });
+  if (!tracks.some((track) => track.name === "Whistle")) {
+    tracks.push({ name: "Whistle", steps: [...Array<string>(start).fill("."), ...whistle.steps] });
+  }
+  return tracks;
 }

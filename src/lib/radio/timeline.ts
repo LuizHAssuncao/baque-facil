@@ -1,7 +1,8 @@
 import { TranslatableError } from "../i18n/messages";
 import type { Rhythm, RhythmTrack } from "../rhythmTypes";
 import { clampTempo } from "../tempo";
-import { radioTransitionTracks } from "./transitions";
+import { RADIO_TRANSITION_STEPS, radioTransitionTracks } from "./transitions";
+import { isRadioSequence } from "./sequence";
 
 import { MP3_SAMPLE_RATE as RADIO_SAMPLE_RATE } from "../audio/mp3Constants";
 export { MP3_SAMPLE_RATE as RADIO_SAMPLE_RATE, MP3_BITRATE as RADIO_BITRATE, PCM_CHUNK_FRAMES as RADIO_CHUNK_FRAMES } from "../audio/mp3Constants";
@@ -22,6 +23,7 @@ export type RadioSegment = {
   stepCount: number;
   repetitions: number;
   transitionTracks?: RhythmTrack[];
+  transitionStartFrame?: number;
 };
 export type RadioTimeline = {
   segments: RadioSegment[];
@@ -114,11 +116,7 @@ export function buildRadioTimeline(
   let totalFrames = 0;
   const targetFrames = Math.ceil(durationSeconds * RADIO_SAMPLE_RATE);
   const framesPerRound = rhythms.reduce((sum, rhythm) => {
-    const cycles =
-      rhythm.slug.startsWith("combo") ||
-      rhythm.title.toLowerCase().startsWith("combo")
-        ? 1
-        : repetitions;
+    const cycles = isRadioSequence(rhythm) ? 1 : repetitions;
     return (
       sum +
       Math.round(
@@ -162,11 +160,7 @@ export function buildRadioTimeline(
     );
     if (cycleFrames / RADIO_SAMPLE_RATE > 180)
       throw new TranslatableError({ key: "{title} is too long at this tempo.", values: { title: rhythm.title } });
-    const groupRepetitions =
-      rhythm.slug.startsWith("combo") ||
-      rhythm.title.toLowerCase().startsWith("combo")
-        ? 1
-        : repetitions;
+    const groupRepetitions = isRadioSequence(rhythm) ? 1 : repetitions;
     const endFrame = totalFrames + cycleFrames * groupRepetitions;
     segments.push({
       slug,
@@ -184,7 +178,12 @@ export function buildRadioTimeline(
     const next = segments[(index + 1) % segments.length];
     if (next.slug !== segment.slug) {
       const tracks = radioTransitionTracks(bySlug.get(segment.slug)!);
-      if (tracks) segment.transitionTracks = tracks;
+      if (tracks) {
+        segment.transitionTracks = tracks;
+        segment.transitionStartFrame = segment.endFrame - segment.cycleFrames + Math.round(
+          (segment.stepCount - RADIO_TRANSITION_STEPS) * segment.cycleFrames / segment.stepCount,
+        );
+      }
     }
   });
   return { segments, totalFrames, tempo: actualTempo };
@@ -226,6 +225,9 @@ export function radioPosition(timeline: RadioTimeline, seconds: number) {
       ),
     ),
     repetition,
-    transitionTracks: transitionTracksForRepetition(segment, repetition),
+    transitionTracks:
+      segment.transitionStartFrame !== undefined && frame >= segment.transitionStartFrame
+        ? transitionTracksForRepetition(segment, repetition)
+        : null,
   };
 }

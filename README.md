@@ -222,7 +222,8 @@ X . . . | . . . .
 
 The shared sample map makes the whistle available to rhythm playback, composer
 note editing and preview, MP3 exports, radio, and offline caching when used by a
-rhythm. Existing rhythms do not include it until a whistle track is added.
+rhythm. Radio adds it automatically for transitions out of regular rhythms.
+Lessons and compositions play the whistle when it is included in their tracks.
 
 When adding a new instrument or symbol, add the sample under `public/samples/`,
 update `src/lib/sampleMap.ts` and verify a rhythm page that uses it.
@@ -362,6 +363,17 @@ in its existing order. Skip seeks to the next group; Stay on this rhythm prepare
 a short looping recording, and Back to mix returns to the next group. Settings
 take effect through Apply settings. Preferences persist locally; recordings do
 not survive a page reload, and restored preferences never start playback.
+
+Before a regular rhythm changes to a different item, its final bar includes the
+whistle cue `X . . . | . . . . | X X . X | X . X .`. Marcação and Imalê also
+replace that bar's alfaia notes with `R . . . | . . . . | L R . R | L . R .`.
+Other rhythms keep their drum notes. For longer patterns such as Parada, the cue
+occupies the last bar of the final repetition.
+
+Sequences play as written and receive no automatic exit cue. Regular rhythms
+still get the cue when the next item is a sequence. Solo and held playback have
+no automatic cue. The grid, downloaded MP3, and recording's loop boundary all
+follow these rules.
 
 No backend is required. Only application code, the encoder, and short drum samples
 download; the mix stays local. MP3 at 128 kbps uses about 19.2 MB per 20 minutes.
