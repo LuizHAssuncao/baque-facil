@@ -66,9 +66,6 @@ export const RadioSignalCue = memo(function RadioSignalCue({
             {t(held ? "When you return to the mix" : "Next rhythm")}: <strong>{nextTitle}</strong>
           </p>
         ) : null}
-        {!active && !repeating ? (
-          <p className="radio-cue-hint">{t("The signal appears in the last two repetitions, or after 70% of a sequence.")}</p>
-        ) : null}
       </div>
       <span className="radio-sr-only" role="status" aria-atomic="true">
         {active && next
