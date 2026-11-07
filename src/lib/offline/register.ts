@@ -80,6 +80,7 @@ export function initOfflineStatus(root: HTMLElement) {
   const install = root.querySelector<HTMLButtonElement>("[data-offline-install]")!;
   const ios = root.querySelector<HTMLElement>("[data-offline-ios]")!;
   const settings = document.querySelector<HTMLElement>("[data-offline-settings]");
+  const offlineSize = settings?.querySelector<HTMLElement>("[data-offline-size]");
   const refreshButton = settings?.querySelector<HTMLButtonElement>("[data-offline-refresh]");
   const refreshMessage = settings?.querySelector<HTMLElement>("[data-offline-refresh-message]");
   const supported = "serviceWorker" in navigator && window.isSecureContext;
@@ -91,6 +92,7 @@ export function initOfflineStatus(root: HTMLElement) {
   let recoveryMessage: Message | undefined;
   let updateError: Message | undefined;
   let footerMessage: Message = "Preparing offline access…";
+  let totalBytes: number | undefined;
   let refreshId = 0;
   let lastCheck = 0;
   let pendingRelease: string | undefined;
@@ -117,6 +119,12 @@ export function initOfflineStatus(root: HTMLElement) {
     if (refreshMessage) {
       const key = !supported ? "Offline access unavailable in this browser" : !navigator.onLine && !refreshing ? "Connect to the internet to refresh the offline app." : recoveryMessage;
       refreshMessage.textContent = key ? translate(getLocale(), key) : "";
+    }
+    if (offlineSize) {
+      offlineSize.hidden = totalBytes === undefined;
+      offlineSize.textContent = totalBytes === undefined ? "" : translate(getLocale(), "Offline app size: {size} MB", {
+        size: new Intl.NumberFormat(getLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(totalBytes / 1_000_000),
+      });
     }
   }
 
@@ -154,6 +162,7 @@ export function initOfflineStatus(root: HTMLElement) {
     if (!supported || refreshing) return;
     const id = ++refreshId;
     if (resetIncomplete) {
+      totalBytes = undefined;
       root.dataset.ready = "false";
       show("incomplete", "Offline download incomplete");
       return;
@@ -166,6 +175,8 @@ export function initOfflineStatus(root: HTMLElement) {
       waiting ? ask(waiting).catch(() => undefined) : undefined,
     ]);
     if (id !== refreshId || refreshing) return;
+    totalBytes = typeof current?.totalBytes === "number" && Number.isFinite(current.totalBytes) && current.totalBytes > 0
+      ? current.totalBytes : undefined;
     root.dataset.release = current?.release ?? "";
     root.dataset.ready = String(Boolean(controller && current?.ready));
     if (next?.ready) {

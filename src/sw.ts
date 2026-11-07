@@ -6,8 +6,9 @@ import { verifyOfflineHtml } from "./lib/offline/html";
 
 declare const self: ServiceWorkerGlobalScope;
 
-type Entry = { url: string; revision: string | null; integrity: string };
+type Entry = { url: string; revision: string | null; integrity: string; bytes: number };
 const entries = self.__WB_MANIFEST as Entry[];
+const totalBytes = entries.reduce((total, entry) => total + entry.bytes, 0);
 const byPath = new Map(entries.map((entry) => [entry.url, entry]));
 const cacheName = `${OFFLINE_CACHE_PREFIX}precache-v1`;
 const precache = new PrecacheController({
@@ -53,7 +54,7 @@ async function status(): Promise<OfflineStatus> {
   const cache = await caches.open(cacheName);
   const present = await Promise.all(entries.map((entry) => cache.match(precache.getCacheKeyForURL(entry.url)!)));
   const missing = present.filter((response) => !response).length;
-  return { type: OFFLINE_MESSAGE, release: await release, ready: missing === 0, count: entries.length, missing };
+  return { type: OFFLINE_MESSAGE, release: await release, ready: missing === 0, count: entries.length, missing, totalBytes };
 }
 
 async function notifyMissing() {

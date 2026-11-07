@@ -7,5 +7,6 @@ export type OfflineStatus = {
   ready: boolean;
   count: number;
   missing: number;
+  totalBytes?: number;
   windows?: number;
 };

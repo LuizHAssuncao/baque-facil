@@ -60,6 +60,7 @@ export function offlineManifest(directory = resolve("dist")) {
       files: inventory.map(({ entry, ...item }) => ({ ...item, ...entry })),
     }, null, 2)}\n`);
     console.info(`[offline] ${manifest.length} files, ${(totalBytes / 1_000_000).toFixed(2)} MB, release ${release}`);
-    return { manifest: inventory.map(({ entry, bytes }) => ({ ...entry, size: bytes })), warnings: [] };
+    // Workbox removes size before injection; retain bytes for the worker's status.
+    return { manifest: inventory.map(({ entry, bytes }) => ({ ...entry, size: bytes, bytes })), warnings: [] };
   };
 }

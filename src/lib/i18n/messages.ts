@@ -68,6 +68,7 @@ export const portuguese = {
   "Version:": "Versão:",
   "Unavailable": "Indisponível",
   "Offline access": "Acesso offline",
+  "Offline app size: {size} MB": "Tamanho do app offline: {size} MB",
   "Refresh offline app": "Atualizar app offline",
   "Refreshing…": "Atualizando…",
   "If something isn’t working, download a fresh copy of the app, rhythms, and sounds. Close other app tabs first. You’ll need an internet connection; your settings will be kept.": "Se algo não estiver funcionando, baixe uma nova cópia do app, dos ritmos e dos sons. Feche as outras abas do app primeiro. Você precisará de internet; suas configurações serão mantidas.",

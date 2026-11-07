@@ -16,7 +16,7 @@ let fixtures: string;
 let releaseB: string;
 let releaseC: string;
 
-type BuildReport = { release: string; files: { url: string; file: string; integrity: string }[] };
+type BuildReport = { release: string; totalBytes: number; files: { url: string; file: string; integrity: string }[] };
 const report = async (directory = join(project, "dist")): Promise<BuildReport> => JSON.parse(await readFile(join(directory, "offline-build.json"), "utf8"));
 
 async function server(request: APIRequestContext, options: Record<string, unknown>) {
@@ -40,7 +40,7 @@ async function workerStatus(page: Page, action = "status") {
   return page.evaluate(async (action) => {
     const registration = await navigator.serviceWorker.getRegistration();
     const worker = navigator.serviceWorker.controller ?? registration!.active!;
-    return new Promise<{ ready: boolean; missing: number; release: string }>((resolve) => {
+    return new Promise<{ ready: boolean; missing: number; release: string; totalBytes: number }>((resolve) => {
       const channel = new MessageChannel();
       channel.port1.onmessage = ({ data }) => { channel.port1.close(); resolve(data); };
       worker.postMessage({ type: "baque-facil-offline", action }, [channel.port2]);
@@ -327,7 +327,7 @@ test("static gestures support touch previews offline and unconfigured pages reta
     const animatedDialog = page.getByRole("dialog", { name: "Hand signal for Martelo break", exact: true });
     await expectAnimation(animatedDialog.locator("img"));
     await animatedDialog.getByRole("button", { name: "Close preview", exact: true }).tap();
-    await page.goto("/rhythms/afoxe/");
+    await page.goto("/rhythms/combo_entrada/");
     await expect(page.locator("[data-rhythm-gesture]")).toHaveCount(0);
     expect(await page.locator(".editorial-header").evaluate((element) => getComputedStyle(element, "::before").backgroundImage)).toContain("alfaia-editorial-hero.png");
   } finally {
@@ -611,6 +611,9 @@ test("missing saved resources are detected offline and repaired on reconnect", a
 test("Settings refresh replaces every saved file and a waiting release while keeping preferences", async ({ page, request, context }) => {
   await prepared(page);
   await page.locator("#settings summary").click();
+  const originalBytes = (await report()).totalBytes;
+  expect((await workerStatus(page)).totalBytes).toBe(originalBytes);
+  await expect(page.locator("[data-offline-size]")).toHaveText(`Offline app size: ${(originalBytes / 1_000_000).toFixed(1)} MB`);
   await page.getByRole("checkbox", { name: /Left-handed mode/ }).check();
   await page.evaluate(async (path) => {
     localStorage.setItem("baque-facil-radio-v1", "keep-radio-preferences");
@@ -623,11 +626,17 @@ test("Settings refresh replaces every saved file and a waiting release while kee
   await server(request, { directory: releaseB });
   await update(page);
   await expect(page.locator(footer)).toHaveAttribute("data-state", "update-ready");
+  expect((await workerStatus(page)).totalBytes).toBe(originalBytes);
+  await expect(page.locator("[data-offline-size]")).toHaveText(`Offline app size: ${(originalBytes / 1_000_000).toFixed(1)} MB`);
   await server(request, { reset: true });
   await page.getByRole("button", { name: "Refresh offline app", exact: true }).click();
   await expect(page.locator("[data-offline-refresh-message]")).toHaveText("Offline app refreshed.");
   await expect(page.locator(footer)).toHaveAttribute("data-ready", "true");
   await expect(page.locator(footer)).toHaveAttribute("data-release", (await report(releaseB)).release);
+  const updatedBytes = (await report(releaseB)).totalBytes;
+  expect(updatedBytes).not.toBe(originalBytes);
+  expect((await workerStatus(page)).totalBytes).toBe(updatedBytes);
+  await expect(page.locator("[data-offline-size]")).toHaveText(`Offline app size: ${(updatedBytes / 1_000_000).toFixed(1)} MB`);
   await expect(page.getByRole("checkbox", { name: /Left-handed mode/ })).toBeChecked();
   const storage = await page.evaluate(async (path) => ({
     caches: await caches.keys(),
@@ -654,9 +663,13 @@ test("Settings refresh replaces every saved file and a waiting release while kee
 test("Settings refresh stays translated and preserves the saved app when disconnected or unreachable", async ({ page, context, request }) => {
   await prepared(page);
   await page.locator("#settings summary").click();
+  const megabytes = ((await report()).totalBytes / 1_000_000).toFixed(1);
   for (const [locale, name, button] of [["pt-BR", "Português (Brasil)", "Atualizar app offline"], ["en-CA", "English (Canada)", "Refresh offline app"]]) {
     await page.locator(".language-settings").getByRole("button", { name, exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", locale);
+    await expect(page.locator("[data-offline-size]")).toHaveText(locale === "pt-BR"
+      ? `Tamanho do app offline: ${megabytes.replace(".", ",")} MB`
+      : `Offline app size: ${megabytes} MB`);
     await expect(page.getByRole("button", { name: button, exact: true })).toBeEnabled();
     await expect(page.getByRole("status", { name: locale === "pt-BR" ? "Acesso offline" : "Offline access", exact: true })).toHaveText(locale === "pt-BR" ? "Pronto para usar offline" : "Ready for offline use");
     for (const width of [1280, 500, 390]) {
@@ -666,6 +679,9 @@ test("Settings refresh stays translated and preserves the saved app when disconn
   }
   const release = (await workerStatus(page)).release;
   await context.setOffline(true);
+  await page.reload();
+  await page.locator("#settings summary").click();
+  await expect(page.locator("[data-offline-size]")).toHaveText(`Offline app size: ${megabytes} MB`);
   await expect(page.getByRole("button", { name: "Refresh offline app", exact: true })).toBeDisabled();
   await expect(page.locator("[data-offline-refresh-message]")).toHaveText("Connect to the internet to refresh the offline app.");
   expect((await workerStatus(page)).ready).toBe(true);
