@@ -114,10 +114,11 @@ export class RenderedPlayback {
   }
 
   private install(clip: Clip) {
+    const activeStep = this.snapshot.activeStep === null ? null : Math.min(this.snapshot.activeStep, clip.stepCount - 1);
     this.current = clip;
     this.pending = null;
-    this.offset = 0;
-    this.emit({ ready: true, preparing: false, pending: false, activeStep: null, playingTempo: clip.tempo, error: null });
+    this.offset = (activeStep ?? 0) * clip.cycleDuration / clip.stepCount;
+    this.emit({ ready: true, preparing: false, pending: false, activeStep, playingTempo: clip.tempo, error: null });
   }
 
   private createVoice(clip: Clip, when: number, offset = 0, volume = 1): Voice {
@@ -298,6 +299,21 @@ export class RenderedPlayback {
     this.play();
   };
 
+  seekToStep = (step: number) => {
+    if (this.disposed || !this.current || !Number.isInteger(step) || step < 0 || step >= this.current.stepCount) return;
+    this.syncTransition();
+    // A scheduled tempo/mute change belongs to the old position. Use its prepared
+    // buffer now so it cannot jump back to the beginning after the seek.
+    const replacement = this.pending ?? this.transition?.voice.clip;
+    this.cancelTransition();
+    this.releaseVoice(this.voice);
+    this.voice = null;
+    if (replacement) this.install(replacement);
+    this.offset = step * this.current.cycleDuration / this.current.stepCount;
+    this.emit({ activeStep: step });
+    if (this.wantsPlayback) this.play();
+  };
+
   private onEnded(voice: Voice) {
     this.syncTransition();
     if (this.voice !== voice || this.disposed) return;
@@ -310,7 +326,7 @@ export class RenderedPlayback {
     const interrupted = this.snapshot.playing && this.wantsPlayback && !playing;
     this.emit({
       playing,
-      ...(!playing ? { activeStep: null } : {}),
+      ...(!playing && this.wantsPlayback ? { activeStep: null } : {}),
       ...(interrupted ? { error: "Playback was interrupted. Tap Play to resume." } : playing ? { error: null } : {}),
     });
     if (playing) this.schedulePending();

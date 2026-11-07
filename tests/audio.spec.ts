@@ -103,6 +103,54 @@ async function setHidden(page: Page, hidden: boolean) {
   }, hidden);
 }
 
+test("header seeking cues the exact subdivision, preserves playback, and resets with Stop", async ({ page }) => {
+  await openPlayer(page);
+  const header = page.locator(".count-row .count-cell");
+  await header.nth(9).click();
+  await expect(header.nth(9)).toHaveClass(/active/);
+  expect(await page.evaluate(() => window.rhythmAudioProbe.contexts.length)).toBe(0);
+  await setHidden(page, true);
+  await setHidden(page, false);
+  await expect(header.nth(9)).toHaveClass(/active/);
+
+  // A tempo render must retain the selected musical position before Play.
+  await page.getByRole("slider", { name: "Tempo" }).fill("60");
+  await expect.poll(() => page.evaluate(() => window.rhythmAudioProbe.buffers.length)).toBe(2);
+  await expect(header.nth(9)).toHaveClass(/active/);
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  expect(await page.evaluate(() => window.rhythmAudioProbe.voices[0].offset)).toBeCloseTo(2.25, 4);
+
+  // Seek backward while a new tempo is waiting for the next loop boundary.
+  await page.getByRole("slider", { name: "Tempo" }).fill("30");
+  await expect.poll(() => page.evaluate(() => window.rhythmAudioProbe.voices.length)).toBe(2);
+  await header.nth(4).click();
+  await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => window.rhythmAudioProbe.voices.map((voice) => ({ offset: voice.offset, stopped: voice.stopped })))).toEqual([
+    { offset: 2.25, stopped: true }, { offset: 0, stopped: true }, { offset: 2, stopped: false },
+  ]);
+  await header.nth(13).click();
+  expect(await page.evaluate(() => window.rhythmAudioProbe.voices.at(-1)!.offset)).toBeCloseTo(6.5, 4);
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(page.locator(".count-cell.active")).toHaveCount(0);
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  expect(await page.evaluate(() => window.rhythmAudioProbe.voices.at(-1)!.offset)).toBe(0);
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+});
+
+test("seeking a one-shot plays the remaining steps and resets at the end", async ({ page }) => {
+  await openPlayer(page);
+  await page.getByRole("button", { name: "Disable loop", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.rhythmAudioProbe.buffers.length)).toBe(2);
+  await page.getByRole("button", { name: "Jump to beat 4", exact: true }).click();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  expect(await page.evaluate(() => ({ offset: window.rhythmAudioProbe.voices[0].offset, loop: window.rhythmAudioProbe.voices[0].source.loop }))).toEqual({ offset: 2, loop: false });
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible({ timeout: 8000 });
+  expect(await page.evaluate(() => window.rhythmAudioProbe.voices[0].ended)).toBe(true);
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  expect(await page.evaluate(() => window.rhythmAudioProbe.voices[1].offset)).toBe(0);
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+});
+
 test("native rhythm buffer repeats without replacing sources and preserves pitch on tempo change", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

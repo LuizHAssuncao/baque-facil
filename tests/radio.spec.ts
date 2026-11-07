@@ -32,6 +32,38 @@ async function prepare(page: Page) {
   ).toBeVisible({ timeout: 25_000 });
 }
 
+test("radio header seeks within the current repetition while paused, playing, and held", async ({ page }) => {
+  const audio = await openRadio(page, { ...preferences, slugs: ["marcacao"] });
+  await prepare(page);
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  // Start in the second repetition of a later group, rather than the first cycle.
+  const cycle = 4 * 60 / preferences.tempo;
+  await audio.evaluate((element: HTMLAudioElement, time) => { element.currentTime = time; }, cycle * 5 + 0.2);
+  await page.getByRole("button", { name: "Jump to beat 3, subdivision 2", exact: true }).click();
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(cycle * 5 + 1.5, 4);
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
+  await expect(page.locator(".count-cell").nth(9)).toHaveClass(/active/);
+  await expect(page.locator(".radio-pattern-heading")).toContainText("Repetition 2 of 4");
+  const pausedTime = await audio.evaluate((element: HTMLAudioElement) => element.currentTime);
+  await page.locator(".grid-row:not(.count-row) .step-cell").nth(8).click();
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBe(pausedTime);
+
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await page.getByRole("button", { name: "Jump to beat 1", exact: true }).click();
+  const playingTime = await audio.evaluate((element: HTMLAudioElement) => element.currentTime);
+  expect(playingTime).toBeGreaterThanOrEqual(cycle * 5);
+  expect(playingTime).toBeLessThan(cycle * 5 + 1);
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(false);
+
+  await page.getByRole("button", { name: "Stay on this rhythm", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Back to mix", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 0; });
+  await page.getByRole("button", { name: "Jump to beat 4", exact: true }).click();
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(2, 4);
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
+});
+
 test("radio plays, pauses, seeks, loops natively while hidden, and restores its visible grid", async ({
   page,
 }) => {

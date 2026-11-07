@@ -1,6 +1,6 @@
 import { useTranslation } from "../lib/i18n/useTranslation";
 import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
-import { countLabels, stepsPerBeat } from "../lib/countLabels";
+import { beatSeekMessage, countLabels, stepsPerBeat } from "../lib/countLabels";
 import {
   displayHandSymbol,
   HAND_SYMBOL_REVERSE_EVENT,
@@ -13,14 +13,16 @@ import type { Rhythm } from "../lib/rhythmTypes";
 export const RadioRhythmGrid = memo(function RadioRhythmGrid({
   rhythm,
   activeStep,
+  onSeek,
 }: {
   rhythm: Rhythm;
   activeStep: number | null;
+  onSeek: (step: number, slug: string) => void;
 }) {
   const { t, locale } = useTranslation();
   const [reverse, setReverse] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
-  const cells = useRef<(HTMLDivElement | null)[]>([]);
+  const cells = useRef<(HTMLButtonElement | null)[]>([]);
   const steps = rhythm.tracks[0].steps.length;
   const rowStyle: CSSProperties = {
     gridTemplateColumns: rhythmGridColumns(8, 9, steps),
@@ -57,17 +59,22 @@ export const RadioRhythmGrid = memo(function RadioRhythmGrid({
       <div className="rhythm-grid" style={shellStyle}>
         <div className="grid-row count-row" style={rowStyle}>
           <div className="track-name">{t("Count")}</div>
-          {countLabels(steps, rhythm.subdivision).map((label, index) => (
-            <div
+          {countLabels(steps, rhythm.subdivision).map((label, index) => {
+            const seekLabel = t(beatSeekMessage(index, rhythm.subdivision));
+            return <button
+              type="button"
               key={index}
               className={`step-cell count-cell ${activeStep === index ? "active" : ""}`}
+              aria-label={seekLabel}
+              title={seekLabel}
+              onClick={() => onSeek(index, rhythm.slug)}
               ref={(cell) => {
                 cells.current[index] = cell;
               }}
             >
               {label}
-            </div>
-          ))}
+            </button>;
+          })}
         </div>
         {rhythm.tracks.map((track) => (
           <div className="grid-row" style={rowStyle} key={track.name}>

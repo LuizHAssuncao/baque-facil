@@ -2000,6 +2000,19 @@ button.step-cell:focus-visible,
   font-size: 0.84rem;
 }
 
+.count-row button.count-cell:hover:not(:disabled):not(.active):not(.playhead) {
+  background: #c4e3dd;
+  color: var(--teal-deep);
+}
+
+.count-row button.count-cell:focus-visible {
+  outline-offset: -3px;
+}
+
+.count-row button.count-cell:disabled {
+  cursor: default;
+}
+
 .hit-cell {
   background:
     radial-gradient(circle at center, rgb(185 133 38 / 0.28) 0 0.55rem, transparent 0.6rem),

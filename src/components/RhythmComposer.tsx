@@ -1605,7 +1605,7 @@ export default function RhythmComposer({
             {t(countIn !== null ? "Cancel count-in" : isRecording ? "Stop recording" : showPads ? "Record" : "Record with pads")}
           </button>
         </div>}
-        renderEditor={({ activeStep, reversed, mutedTracks, toggleMute }) => <>
+        renderEditor={({ activeStep, reversed, mutedTracks, toggleMute, seekToStep, canSeek }) => <>
           <div className="composer-edit-toolbar">
             <span aria-live="polite" className={isRecording ? "recording-status" : "composer-record-status"}>{isRecordLocked ? t(recordStatus) : t("Your rhythm")}{isRecording ? ` · ${Math.floor(selectedStep / beatStepCount)} ${t("beats")}` : ""}</span>
             <div className="composer-history">
@@ -1628,7 +1628,7 @@ export default function RhythmComposer({
           <ComposerGrid tracks={isRecordLocked ? tracksWithComposerSteps(currentTracks, resizeSteps(recordingSteps, Math.max(recordingSteps.length, currentTracks[0]?.steps.length ?? DEFAULT_STEP_COUNT))) : currentTracks}
             subdivision={subdivision} selection={{ track: selectedTrack, step: selectedStep }} activeStep={isRecording ? selectedStep : activeStep}
             recording={isRecording} locked={isRecordLocked} reversed={reversed} mutedTracks={mutedTracks} onMute={toggleMute}
-            onSelect={selectCell} onChange={changeNote} onAddBeat={addBeat} />
+            onSelect={selectCell} onChange={changeNote} onAddBeat={addBeat} onSeek={seekToStep} canSeek={canSeek} />
           <div className="composer-record-panel" ref={recordPanelRef} hidden={!showPads}>
             <div className="composer-record-heading"><strong>{t("Record Alfaia")}</strong>
               <button type="button" className="metronome-toggle" aria-label={t(metronomeEnabled ? "Turn metronome off" : "Turn metronome on")} aria-pressed={metronomeEnabled} onClick={() => toggleMetronome(!metronomeEnabled)}>{t(metronomeEnabled ? "Metronome On" : "Metronome Off")}</button>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Check, ChevronLeft, ChevronRight, Plus, Volume2, VolumeX, X } from "lucide-react";
-import { countLabels, stepsPerBeat } from "../lib/countLabels";
+import { beatSeekMessage, countLabels, stepsPerBeat } from "../lib/countLabels";
 import { displayHandSymbol } from "../lib/handPreference";
 import { sampleMap } from "../lib/sampleMap";
 import { useTranslation } from "../lib/i18n/useTranslation";
@@ -23,6 +23,8 @@ type Props = {
   onSelect: (selection: ComposerSelection) => void;
   onChange: (selection: ComposerSelection, symbol: string) => void;
   onAddBeat: () => void;
+  onSeek: (step: number) => void;
+  canSeek: boolean;
 };
 
 function noteLabel(track: string, symbol: string): MessageKey {
@@ -33,7 +35,7 @@ function noteLabel(track: string, symbol: string): MessageKey {
 }
 
 export default function ComposerGrid(props: Props) {
-  const { tracks, subdivision, selection, activeStep, recording, locked, reversed, mutedTracks, onMute, onSelect, onChange, onAddBeat } = props;
+  const { tracks, subdivision, selection, activeStep, recording, locked, reversed, mutedTracks, onMute, onSelect, onChange, onAddBeat, onSeek, canSeek } = props;
   const { t, locale } = useTranslation();
   const scroll = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -133,7 +135,13 @@ export default function ComposerGrid(props: Props) {
           </div>
           <div className="grid-row count-row">
             <div className="track-name">{t("Count")}</div>
-            {labels.map((label, step) => <div key={step} data-count={step} className={`step-cell count-cell ${step % perBeat === 0 ? "beat-start" : ""} ${activeStep === step ? "playhead" : ""}`}>{label}</div>)}
+            {labels.map((label, step) => {
+              const seekLabel = t(beatSeekMessage(step, subdivision));
+              return <button type="button" key={step} data-count={step}
+                className={`step-cell count-cell ${step % perBeat === 0 ? "beat-start" : ""} ${activeStep === step ? "playhead" : ""}`}
+                aria-label={seekLabel} title={seekLabel} disabled={locked || !canSeek}
+                onClick={() => onSeek(step)}>{label}</button>;
+            })}
           </div>
           {tracks.map((track, trackIndex) => <div key={track.name} className={`grid-row composer-note-row ${mutedTracks.includes(track.name) ? "muted-row" : ""}`}>
             <div className="track-name"><span>{track.name}</span><button className="track-mute-button" type="button" disabled={locked} aria-label={t(mutedTracks.includes(track.name) ? "Unmute {track}" : "Mute {track}", { track: track.name })} aria-pressed={mutedTracks.includes(track.name)} onClick={() => onMute(track.name)}>{mutedTracks.includes(track.name) ? <VolumeX size={16} /> : <Volume2 size={16} />}</button></div>

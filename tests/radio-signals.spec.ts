@@ -54,6 +54,13 @@ test("the final repetition calls the next gesture while the current notes follow
   await page.locator(".radio-player").screenshot({ path: testInfo.outputPath("radio-signal-call.png") });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
+  await page.getByRole("button", { name: "Jump to beat 3, subdivision 2", exact: true }).click();
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(7.125, 4);
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
+  await expect(page.locator(".count-cell").nth(9)).toHaveClass(/active/);
+  await expect(cue).toHaveAttribute("data-phase", "call");
+  await expect(page.locator(".radio-pattern").getByText("Whistle", { exact: true })).toBeVisible();
+
   await seek(audio, 8);
   await expect(page.locator(".radio-now h2")).toHaveText(nextTitle);
   await expect(cue).toHaveAttribute("data-phase", "waiting");

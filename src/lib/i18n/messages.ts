@@ -53,6 +53,8 @@ export const portuguese = {
   "Add left, right or border hit": "Adicionar toque esquerdo, direito ou na borda",
   "Tap a space to add a hit.": "Toque em um espaço para adicionar uma nota.",
   "Beat {beat}": "Tempo {beat}",
+  "Jump to beat {beat}": "Ir para o tempo {beat}",
+  "Jump to beat {beat}, subdivision {subdivision}": "Ir para o tempo {beat}, subdivisão {subdivision}",
   "Previous beat": "Tempo anterior",
   "Next beat": "Próximo tempo",
   "Beat {beat} of {total}": "Tempo {beat} de {total}",

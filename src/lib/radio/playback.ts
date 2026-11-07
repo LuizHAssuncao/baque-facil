@@ -363,6 +363,21 @@ export class RadioPlayback {
     this.refresh();
   };
 
+  seekToStep = (step: number, slug: string) => {
+    if (!this.current || this.disposed) return;
+    const { segment, repetition } = radioPosition(this.current.timeline, this.pendingSeek || this.audio.currentTime);
+    if (segment.slug !== slug || !Number.isInteger(step) || step < 0 || step >= segment.stepCount) return;
+    const frame = segment.startFrame + (repetition - 1) * segment.cycleFrames
+      + Math.ceil(step * segment.cycleFrames / segment.stepCount);
+    const seconds = frame / RADIO_SAMPLE_RATE;
+    if (this.audio.readyState === 0) this.pendingSeek = seconds;
+    else {
+      this.pendingSeek = 0;
+      this.audio.currentTime = seconds;
+    }
+    this.refresh();
+  };
+
   private onPlaying = () => {
     if (this.audio.paused) return;
     this.wantsPlayback = true;

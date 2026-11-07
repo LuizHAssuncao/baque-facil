@@ -93,6 +93,9 @@ test("rhythm grids and copied transcriptions use the selected language's hand sy
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/rhythms/marcacao/");
   await chooseLanguage(page, portugueseLabel);
+  await expect(page.getByRole("button", { name: "Ir para o tempo 3", exact: true })).toHaveAttribute("title", "Ir para o tempo 3");
+  await page.getByRole("button", { name: "Ir para o tempo 3, subdivisão 2", exact: true }).click();
+  await expect(page.locator(".count-cell").nth(9)).toHaveClass(/active/);
   const notes = page.locator(".player-panel .grid-row:not(.count-row) .step-cell");
   const printed = page.locator(".content pre code");
   const summary = page.locator(".content summary");
@@ -109,6 +112,7 @@ test("rhythm grids and copied transcriptions use the selected language's hand sy
   await switchLanguage(page, english);
   await expect(summary.getByText("Transcription", { exact: true })).toBeVisible();
   await expect(printed).toBeVisible();
+  await expect(page.getByRole("button", { name: "Jump to beat 3, subdivision 2", exact: true })).toHaveClass(/active/);
   await expect(notes.first()).toHaveText("R");
   await expect(printed).toHaveText("Alfaia:\nR . . . | . . . . | L R . . | L R . .");
   await page.getByRole("button", { name: "Copy transcription" }).click();

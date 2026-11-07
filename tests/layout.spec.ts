@@ -161,7 +161,7 @@ test("built-in rhythm notes stay read-only while playback controls remain availa
   const player = page.locator(".player-panel");
   const firstStep = player.locator(".grid-row:not(.count-row) .step-cell").first();
 
-  await expect(player.locator("button.step-cell")).toHaveCount(0);
+  await expect(player.locator(".grid-row:not(.count-row) button.step-cell")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Reset pattern" })).toHaveCount(0);
   await expect(firstStep).toHaveText("R");
   await firstStep.click();
@@ -221,7 +221,7 @@ test("Customize opens an editable copy and reset restores its starting rhythm", 
   await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
   await page.getByRole("button", { name: "Copy transcription" }).click();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(marcacaoRhythmBlock);
-  await expect(page.locator(".player-panel button.step-cell")).toHaveCount(0);
+  await expect(page.locator(".player-panel .grid-row:not(.count-row) button.step-cell")).toHaveCount(0);
   expect(runtimeErrors).toEqual([]);
 });
 
@@ -237,7 +237,7 @@ test("Customize preserves every track, long patterns, and the source tempo", asy
   await expect(transcription).toHaveValue(/tempo: 95\nsubdivision: 16/);
   await expect(transcription).toHaveValue(/instruments:\n  - "Alfaia"\n  - "Caixa"/);
   await expect(page.locator(".composer-note-row").first().locator("button.step-cell")).toHaveCount(153);
-  await expect(page.locator(".player-panel button.step-cell")).toHaveCount(306);
+  await expect(page.locator(".composer-note-row button.step-cell")).toHaveCount(306);
   await expect(page.getByRole("button", { name: "Alfaia step 3: R", exact: true })).toBeVisible();
   await chooseNote(page, "Caixa step 1: X", "Rest");
   await expect(page.getByRole("button", { name: "Caixa step 1: .", exact: true })).toBeVisible();

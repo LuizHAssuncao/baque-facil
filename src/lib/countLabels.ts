@@ -1,7 +1,16 @@
 import type { Subdivision } from "./rhythmTypes";
+import type { Message } from "./i18n/messages";
 
 export function stepsPerBeat(subdivision: Subdivision) {
   return subdivision / 4;
+}
+
+export function beatSeekMessage(step: number, subdivision: Subdivision): Message {
+  const perBeat = stepsPerBeat(subdivision);
+  const beat = Math.floor(step / perBeat) + 1;
+  return step % perBeat === 0
+    ? { key: "Jump to beat {beat}", values: { beat } }
+    : { key: "Jump to beat {beat}, subdivision {subdivision}", values: { beat, subdivision: step % perBeat + 1 } };
 }
 
 export function countLabels(stepCount: number, subdivision: Subdivision, includeSubdivisions = false): string[] {

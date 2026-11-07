@@ -331,7 +331,8 @@ export default function RhythmRadio({
           </div>
           <RadioRhythmGrid
             rhythm={audibleRhythm}
-            activeStep={snapshot.playing ? snapshot.activeStep : null}
+            activeStep={snapshot.activeStep}
+            onSeek={(step, slug) => controller.current?.seekToStep(step, slug)}
           />
         </section>
       ) : null}

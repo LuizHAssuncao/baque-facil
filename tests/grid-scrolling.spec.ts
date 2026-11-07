@@ -76,6 +76,51 @@ for (const surface of ["lesson", "composer", "radio"] as const) {
 }
 
 for (const route of ["rhythms", "compose"]) {
+  test(`${route} header seeks with pointer and keyboard without changing notes`, async ({ page, isMobile }, testInfo) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(`/${route}/${longRhythm}/`);
+    await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
+    const grid = page.locator(".grid-scroll");
+    const headers = grid.locator(".count-cell");
+    const active = route === "compose" ? ".count-cell.playhead" : ".count-cell.active";
+    const notes = grid.locator(".grid-row:not(.count-row) .step-cell");
+    const original = await notes.allTextContents();
+    await page.getByRole("slider", { name: "Tempo", exact: true }).fill("30");
+    const beat19 = page.getByRole("button", { name: "Jump to beat 19", exact: true });
+    if (isMobile) await beat19.tap(); else await beat19.click();
+    await expect(grid.locator(active)).toHaveText("19");
+    await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
+    await headers.nth(73).focus();
+    await page.keyboard.press("Space");
+    await expect(headers.nth(73)).toHaveClass(/active|playhead/);
+    await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
+    await expectCellInView(grid, active);
+
+    // The note row keeps its existing behavior: only the header seeks.
+    if (route === "compose") {
+      await notes.nth(74).click();
+      await expect(page.getByRole("dialog", { name: "Change hit" })).toBeVisible();
+      await page.getByRole("button", { name: "Close note picker" }).click();
+    } else await notes.nth(74).click();
+    await expect(headers.nth(73)).toHaveClass(/active|playhead/);
+    expect(await notes.allTextContents()).toEqual(original);
+    await grid.screenshot({ path: testInfo.outputPath("header-seek.png") });
+
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    const activeIndex = () => headers.evaluateAll((cells) => cells.findIndex((cell) => cell.matches(".active, .playhead")));
+    await expect.poll(activeIndex).toBeGreaterThanOrEqual(73);
+    await expect.poll(activeIndex).toBeLessThan(78);
+    await page.getByRole("button", { name: "Jump to beat 2", exact: true }).click();
+    await expect.poll(activeIndex).toBeGreaterThanOrEqual(4);
+    await expect.poll(activeIndex).toBeLessThan(8);
+    await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Stop", exact: true }).click();
+    await expect(grid.locator(active)).toHaveCount(0);
+    expect(errors).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  });
+
   test(`${route} playback follows notes across the full scrolling viewport`, async ({ page }) => {
     await page.goto(`/${route}/${longRhythm}/`);
     await expect(page.locator("astro-island[ssr]")).toHaveCount(0);

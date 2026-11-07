@@ -27,7 +27,7 @@ import {
   X,
   ChevronDown,
 } from "lucide-react";
-import { countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
+import { beatSeekMessage, countLabels, stepsPerBeat as getStepsPerBeat } from "../lib/countLabels";
 import {
   HAND_SYMBOL_REVERSE_EVENT,
   HAND_SYMBOL_REVERSE_STORAGE_KEY,
@@ -72,6 +72,8 @@ type RhythmPlayerProps = {
     reversed: boolean;
     mutedTracks: string[];
     toggleMute: (track: string) => void;
+    seekToStep: (step: number) => void;
+    canSeek: boolean;
   }) => ReactNode;
 };
 
@@ -184,7 +186,7 @@ function markIosSilentModeHelpSeen() {
 
 function scrollPlayheadIntoView(
   container: HTMLDivElement,
-  cell: HTMLDivElement,
+  cell: HTMLElement,
   hasFutureSteps: boolean,
 ) {
   const containerRect = container.getBoundingClientRect();
@@ -279,11 +281,12 @@ function RhythmPlayer(
   const mutedTracksRef = useRef(new Set(defaultMutedTrackNames));
   const hasAutoPlayedRef = useRef(false);
   const playAttemptRef = useRef(0);
+  const startStepRef = useRef(0);
   const iosSilentModeButtonRef = useRef<HTMLButtonElement | null>(null);
   const shortcutHelpTriggerRef = useRef<HTMLButtonElement | null>(null);
   const shortcutHelpCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
-  const countCellRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const countCellRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const currentTracksRef = useRef<RhythmTrack[]>(cloneTracks(currentTracks));
   const copyFeedbackTimeoutRef = useRef<number | null>(null);
 
@@ -312,6 +315,7 @@ function RhythmPlayer(
     ? rendered.snapshot.ready ? "ready" : rendered.snapshot.preparing ? "loading" : "idle"
     : toneStatus;
   const error = useRenderedAudio ? rendered.snapshot.error : toneError;
+  const canSeek = !controlsLocked && stepCount > 0 && (useRenderedAudio ? rendered.snapshot.ready : status !== "loading");
   const labels = useMemo(
     () => countLabels(stepCount, rhythm.subdivision),
     [rhythm.subdivision, stepCount],
@@ -728,7 +732,7 @@ function RhythmPlayer(
 
     try {
       const Tone = await ensureAudio(options);
-      let nextStep = 0;
+      let nextStep = Math.min(startStepRef.current, Math.max(0, stepCountRef.current - 1));
 
       if (attemptId !== playAttemptRef.current) {
         return;
@@ -757,7 +761,9 @@ function RhythmPlayer(
           playersRef.current[`${track.name}.${symbol}`]?.start(time);
         });
 
-        Tone.Draw.schedule(() => setActiveStep(currentStep), time);
+        Tone.Draw.schedule(() => {
+          if (attemptId === playAttemptRef.current) setActiveStep(currentStep);
+        }, time);
         nextStep += 1;
 
         if (!loopRef.current && nextStep >= currentStepCount) {
@@ -765,6 +771,8 @@ function RhythmPlayer(
 
           Tone.Transport.stop(stopAt);
           Tone.Draw.schedule(() => {
+            if (attemptId !== playAttemptRef.current) return;
+            startStepRef.current = 0;
             setIsPlaying(false);
             setActiveStep(null);
           }, stopAt);
@@ -798,12 +806,14 @@ function RhythmPlayer(
       return;
     }
     playAttemptRef.current += 1;
+    startStepRef.current = 0;
 
     const Tone = toneRef.current;
 
     if (Tone) {
       Tone.Transport.stop();
       clearTransport(Tone);
+      Object.values(playersRef.current).forEach((player) => player.stop());
     }
 
     setIsPlaying(false);
@@ -813,6 +823,18 @@ function RhythmPlayer(
   async function restart() {
     stop();
     await play();
+  }
+
+  function seekToStep(step: number) {
+    if (!canSeek || !Number.isInteger(step) || step < 0 || step >= stepCount) return;
+    if (useRenderedAudio) {
+      rendered.controller.current?.seekToStep(step);
+      return;
+    }
+    stop();
+    startStepRef.current = step;
+    setActiveStep(step);
+    if (isPlaying) void play();
   }
 
   async function togglePlayback() {
@@ -921,21 +943,27 @@ function RhythmPlayer(
         </label>
       </div>
 
-      {renderEditor ? renderEditor({ activeStep, reversed: reverseHandSymbols, mutedTracks, toggleMute: toggleTrackMute }) : <div className="grid-scroll" aria-label={t("Parsed rhythm grid")} ref={gridScrollRef}>
+      {renderEditor ? renderEditor({ activeStep, reversed: reverseHandSymbols, mutedTracks, toggleMute: toggleTrackMute, seekToStep, canSeek }) : <div className="grid-scroll" aria-label={t("Parsed rhythm grid")} ref={gridScrollRef}>
         <div className="rhythm-grid" style={gridShellStyle}>
           <div className="grid-row count-row" style={gridStyle}>
             <div className="track-name">{t("Count")}</div>
-            {labels.map((label, index) => (
-              <div
+            {labels.map((label, index) => {
+              const seekLabel = t(beatSeekMessage(index, rhythm.subdivision));
+              return <button
+                type="button"
                 className={`step-cell count-cell ${activeStep === index ? "active" : ""}`}
                 key={`${label}-${index}`}
+                aria-label={seekLabel}
+                title={seekLabel}
+                disabled={!canSeek}
+                onClick={() => seekToStep(index)}
                 ref={(element) => {
                   countCellRefs.current[index] = element;
                 }}
               >
                 {label}
-              </div>
-            ))}
+              </button>;
+            })}
           </div>
 
           {currentTracks.map((track, trackIndex) => {

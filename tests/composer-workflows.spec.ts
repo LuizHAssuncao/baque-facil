@@ -67,9 +67,11 @@ test("recording captures Left, Right, Border and gaps; the previous composition 
   await page.getByRole("button", { name: "Record", exact: true }).click();
   await expect(page.locator(".count-in strong")).toHaveText("1");
   await expect(page.getByRole("button", { name: "Play", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Jump to beat 1", exact: true })).toBeDisabled();
   await expect(transcription).toBeDisabled();
   await page.clock.runFor(1500);
   await expect(page.locator(".recording-status")).toContainText("Recording");
+  await expect(page.getByRole("button", { name: "Jump to beat 1", exact: true })).toBeDisabled();
   for (const [label, delay] of [["Left hit", 250], ["Right hit", 125], ["Border hit", 0]] as const) {
     const pad = page.getByRole("button", { name: label, exact: true });
     if (isMobile) await pad.tap(); else await pad.click();
