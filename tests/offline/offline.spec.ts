@@ -1043,7 +1043,7 @@ test("a failed update preserves the saved app; changed inventory activates toget
   await expect(page.locator(updatePrompt)).toBeHidden();
   await context.setOffline(true);
   let next = await newSession(context, "/rhythms/afoxe/");
-  await expect(next.locator("h1")).toHaveText("Afoxé");
+  await expect(next.locator("h1")).toHaveText("# - Afoxé");
   expect((await workerStatus(next)).release).toBe((await report()).release);
   await server(request, { blocked: "" });
   await context.setOffline(false);

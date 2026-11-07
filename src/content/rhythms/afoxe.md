@@ -1,5 +1,5 @@
 ---
-title: "Afoxé"
+title: "# - Afoxé"
 slug: "afoxe"
 tempo: 90
 subdivision: 16
