@@ -13,8 +13,8 @@ export const sampleMap: SampleMap = {
 };
 
 export function sampleVolumeDb(sampleKey: string): number {
-  // Keep the whistle cue slightly behind the drums in every playback path.
-  return sampleKey.startsWith("Whistle.") ? -2 : 0;
+  // Keep the whistle cue behind the drums in every playback path.
+  return sampleKey.startsWith("Whistle.") ? -6 : 0;
 }
 
 export function sampleGain(sampleKey: string): number {
