@@ -132,6 +132,18 @@ and thumb on the viewer's right. Extend the index finger, curl the other three
 fingers and rest the thumb across them.
 ```
 
+The following static poses are available in `public/hand-signals/`. Each is a
+1024 × 1024 transparent PNG below 500 KB, with palms facing the viewer.
+
+| Rhythm | Pose | Asset |
+| --- | --- | --- |
+| Marcação | 1: index finger extended | [marcacao.png](public/hand-signals/marcacao.png) |
+| Imalê | 2: index and middle fingers extended | [imale.png](public/hand-signals/imale.png) |
+| Martelo | 3: index, middle and ring fingers extended | [martelo.png](public/hand-signals/martelo.png) |
+| Baque de Parada | 4: four fingers extended, thumb folded | [parada.png](public/hand-signals/parada.png) |
+| Trovão | 5: all five digits extended | [trovao.png](public/hand-signals/trovao.png) |
+| Arrasto | 7: two hands showing five plus two | [arrasto.png](public/hand-signals/arrasto.png) |
+
 The [generate-hand-animation skill](.agents/skills/generate-hand-animation/SKILL.md)
 creates moving signals as animated WebP files below 500 KB. It includes the
 approved concept and a file verifier. Add animated WebP reference examples to
