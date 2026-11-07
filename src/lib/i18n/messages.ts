@@ -65,6 +65,8 @@ export const portuguese = {
   "Language": "Idioma",
   "Main navigation": "Navegação principal",
   "Settings": "Configurações",
+  "Version:": "Versão:",
+  "Unavailable": "Indisponível",
   "Offline access": "Acesso offline",
   "Refresh offline app": "Atualizar app offline",
   "Refreshing…": "Atualizando…",

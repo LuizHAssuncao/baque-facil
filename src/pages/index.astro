@@ -11,6 +11,7 @@ import PwaHead from "../components/PwaHead.astro";
 import OfflineRefresh from "../components/OfflineRefresh.astro";
 import "../styles/global.css";
 
+const appCommit = import.meta.env.PUBLIC_APP_COMMIT;
 const difficultyOrder = new Map([
   ["beginner", 0],
   ["intermediate", 1],
@@ -185,6 +186,10 @@ const homeTools = [
           </span>
         </label>
         <OfflineRefresh />
+        <p class="app-version">
+          <T message="Version:" />{" "}
+          {appCommit ? <code title={appCommit}>{appCommit.slice(0, 7)}</code> : <T message="Unavailable" />}
+        </p>
       </details>
 
       <Disclaimer />

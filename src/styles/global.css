@@ -812,6 +812,14 @@ p {
   color: var(--teal);
 }
 
+.app-version {
+  margin: 1rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted-strong);
+  font-size: 0.82rem;
+}
+
 .hand-preference-toggle {
   display: inline-flex;
   align-items: flex-start;
