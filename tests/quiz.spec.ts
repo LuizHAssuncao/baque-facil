@@ -12,7 +12,7 @@ import { sampleMap } from "../src/lib/sampleMap";
 const rhythms: Rhythm[] = [
   { title: "Marcação", slug: "marcacao", tempo: 90, subdivision: 16, tracks: parseRhythm("Alfaia:\nR . . . | . . . . | L R . . | L R . .") },
   { title: "Imalê", slug: "imale", tempo: 100, subdivision: 16, tracks: parseRhythm("Alfaia:\nL . R . | L R . . | L R . . | R . . .") },
-  { title: "Trovão", slug: "trovao", tempo: 95, subdivision: 16, tracks: parseRhythm("Alfaia:\nR . L R | . R L . | R . L . | . . . .") },
+  { title: "Trovão", slug: "trovao", tempo: 95, subdivision: 16, tracks: parseRhythm("Alfaia:\n. . . . | R . L R | . R L . | R . L .") },
 ];
 const library: QuizLibrary = { rhythms, samples: sampleMap };
 
