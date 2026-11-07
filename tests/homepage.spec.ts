@@ -39,7 +39,6 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
       for (const sequence of await sequences.all()) await expect(sequence).toBeVisible();
       await expect(sequences.locator("strong")).toHaveText([
         "Parada + Arrasto",
-        locale === "pt-BR" ? "Transição" : "Transition",
         "Flying four",
         "Martelo break",
         "Three Crossed Break",
@@ -50,9 +49,14 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
         labels.calls,
       ], { useInnerText: true });
       const calls = page.getByRole("region", { name: labels.calls, exact: true });
-      await expect(calls.locator(".rhythm-link strong")).toHaveText(["Entrada"]);
+      await expect(calls.locator(".rhythm-link strong")).toHaveText([
+        "Entrada",
+        locale === "pt-BR" ? "Transição" : "Transition",
+      ]);
       await expect(calls.getByRole("link", { name: /Entrada/ })).toHaveAttribute("href", "/rhythms/combo_entrada/");
+      await expect(calls.getByRole("link", { name: /Transition|Transição/ })).toHaveAttribute("href", "/rhythms/combo-transition/");
       await expect(page.locator('.rhythm-link[href="/rhythms/combo_entrada/"]')).toHaveCount(1);
+      await expect(page.locator('.rhythm-link[href="/rhythms/combo-transition/"]')).toHaveCount(1);
       await page.screenshot({ path: testInfo.outputPath(`home-${locale}.png`) });
 
       await page.locator("#settings summary").scrollIntoViewIfNeeded();

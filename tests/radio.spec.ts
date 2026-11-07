@@ -69,15 +69,15 @@ test("radio plays, pauses, seeks, loops natively while hidden, and restores its 
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  const audio = await openRadio(page, { ...preferences, slugs: [...preferences.slugs, "combo_entrada"] });
+  const audio = await openRadio(page, { ...preferences, slugs: [...preferences.slugs, "combo_entrada", "combo-transition"] });
   await expect.poll(() => page.evaluate(() =>
     JSON.parse(localStorage.getItem("baque-facil-radio-v1")!).slugs,
   )).toEqual(preferences.slugs);
-  await expect(page.getByRole("checkbox", { name: /Entrada/ })).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: /Entrada|Transition/ })).toHaveCount(0);
   expect(await audio.getAttribute("src")).toBeNull();
   await expect(page.locator(".radio-next")).toHaveCount(0);
   await prepare(page);
-  await expect(page.locator(".radio-now h2")).not.toHaveText("Entrada");
+  await expect(page.locator(".radio-now h2")).not.toHaveText(/Entrada|Transition/);
   await expect
     .poll(() =>
       audio.evaluate((element: HTMLAudioElement) => element.currentTime),
@@ -333,11 +333,11 @@ test("preferences, optional sequences, and keyboard controls work without autopl
     .getByRole("checkbox", { name: "Include sequences", exact: true })
     .check();
   await expect(page.getByRole("checkbox", { name: /Parada \+ Arrasto/ })).toBeChecked();
-  await expect(page.getByRole("checkbox", { name: /Entrada/ })).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: /Entrada|Transition/ })).toHaveCount(0);
   await page
     .getByRole("checkbox", { name: "Include sequences", exact: true })
     .uncheck();
-  await expect(page.getByRole("checkbox", { name: /Entrada/ })).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: /Entrada|Transition/ })).toHaveCount(0);
   await page.getByRole("slider", { name: "Radio tempo" }).fill("100");
   await expect(
     page.getByRole("button", { name: "Play", exact: true }),

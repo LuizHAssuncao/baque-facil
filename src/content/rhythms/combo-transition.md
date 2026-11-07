@@ -1,6 +1,7 @@
 ---
 title: "Transition"
 slug: "combo-transition"
+category: "call"
 tempo: 90
 subdivision: 16
 difficulty: "beginner"
