@@ -30,7 +30,7 @@ async function seek(audio: Locator, seconds: number) {
   }, seconds);
 }
 
-test("the final repetition calls the next gesture while the current notes follow the recording", async ({ page }, testInfo) => {
+test("the last two repetitions call the next gesture while the current notes follow the recording", async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const audio = await openRadio(page);
@@ -40,19 +40,24 @@ test("the final repetition calls the next gesture while the current notes follow
   expect(nextTitle).not.toBe(currentTitle);
   const cue = page.getByRole("region", { name: "Next rhythm signal", exact: true });
 
-  await seek(audio, 5.999);
+  await seek(audio, 3.999);
   await expect(cue).toHaveAttribute("data-phase", "waiting");
   await expect(cue.locator("img")).toHaveCount(0);
-  await seek(audio, 6);
+  await seek(audio, 4);
   await expect(cue).toHaveAttribute("data-phase", "call");
   await expect(cue.locator("img")).toHaveAttribute("src", gestures[nextTitle]);
   await expect.poll(() => cue.locator("img").evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
   await expect(page.locator(".radio-now h2")).toHaveText(currentTitle);
+  await expect(page.locator(".radio-pattern")).toContainText("Repetition 3 of 4");
+  await expect(page.locator(".radio-pattern").getByText("Transition", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".radio-pattern").getByText("Whistle", { exact: true })).toHaveCount(0);
+  await page.locator(".radio-player").screenshot({ path: testInfo.outputPath("radio-signal-call.png") });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await seek(audio, 6);
+  await expect(cue).toHaveAttribute("data-phase", "call");
   await expect(page.locator(".radio-pattern")).toContainText("Repetition 4 of 4");
   await expect(page.locator(".radio-pattern").getByText("Transition", { exact: true })).toBeVisible();
   await expect(page.locator(".radio-pattern").getByText("Whistle", { exact: true })).toBeVisible();
-  await page.locator(".radio-player").screenshot({ path: testInfo.outputPath("radio-signal-call.png") });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   await page.getByRole("button", { name: "Jump to beat 3, subdivision 2", exact: true }).click();
   expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(7.125, 4);
@@ -65,7 +70,7 @@ test("the final repetition calls the next gesture while the current notes follow
   await expect(page.locator(".radio-now h2")).toHaveText(nextTitle);
   await expect(cue).toHaveAttribute("data-phase", "waiting");
   await expect(cue.locator("img")).toHaveCount(0);
-  await seek(audio, 126);
+  await seek(audio, 124);
   await expect(cue).toHaveAttribute("data-phase", "call");
   await expect(cue.locator("img")).toHaveAttribute("src", gestures[currentTitle]);
   await seek(audio, 0);
@@ -76,7 +81,7 @@ test("the final repetition calls the next gesture while the current notes follow
     Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await seek(audio, 6);
+  await seek(audio, 4);
   await expect(cue).toHaveAttribute("data-phase", "waiting");
   await page.evaluate(() => {
     delete (document as unknown as { hidden?: boolean }).hidden;
@@ -190,7 +195,7 @@ test("cue descriptions and visibility controls translate during practice", async
   await expect(page.locator(".radio-cue [role=status]")).toHaveText("Get ready for the next rhythm");
 });
 
-test("translated sequence titles stay translated when names are shown and concealed when hidden", async ({ page }) => {
+test("unavailable signals retain translated cue titles when names are hidden elsewhere", async ({ page }) => {
   const audio = await openRadio(page, ["marcacao", "combo-transition"]);
   if (await page.locator(".radio-now h2").innerText() !== "1 - Marcação") {
     await page.getByRole("button", { name: "Skip", exact: true }).click();
@@ -203,7 +208,10 @@ test("translated sequence titles stay translated when names are shown and concea
   await expect(page.locator(".radio-cue [role=status]")).toHaveText("Próximo ritmo: Transição");
   const names = page.getByRole("checkbox", { name: "Mostrar nomes dos ritmos", exact: true });
   await names.uncheck();
-  for (const selector of [".radio-cue", ".radio-selection", ".radio-now"]) {
+  await expect(page.locator(".radio-cue")).toContainText("Sinal indisponível");
+  await expect(page.locator(".radio-next strong")).toHaveText("Transição");
+  await expect(page.locator(".radio-cue [role=status]")).toHaveText("Próximo ritmo: Transição");
+  for (const selector of [".radio-selection", ".radio-now"]) {
     await expect(page.locator(selector)).not.toContainText(/Transição|Transition/);
   }
   await names.check();
@@ -234,18 +242,68 @@ test("the next sequence can use its animated gesture and a held rhythm clears th
   await expect(image).toHaveCount(0);
 });
 
-test("an unmapped signal has an honest fallback without revealing hidden names", async ({ page }) => {
+test("a sequence waits until seventy percent to call its next rhythm", async ({ page }, testInfo) => {
+  const audio = await openRadio(page, ["marcacao", "combo_martelo_break"]);
+  if (await page.locator(".radio-now h2").innerText() !== "Martelo break") {
+    await page.getByRole("button", { name: "Skip", exact: true }).click();
+    await expect(page.locator(".radio-now h2")).toHaveText("Martelo break");
+  }
+  const start = Math.floor(await audio.evaluate((element: HTMLAudioElement) => element.currentTime));
+  const source = await audio.getAttribute("src");
+  const cue = page.locator(".radio-cue");
+  const image = cue.locator("img");
+  await page.getByRole("checkbox", { name: "Show rhythm names", exact: true }).uncheck();
+  await expect(cue).toHaveAttribute("data-phase", "waiting");
+  await expect(image).toHaveCount(0);
+  // Martelo break has 144 sixteenth notes: 18 seconds at 120 BPM.
+  await seek(audio, start + 12.599);
+  await expect(cue).toHaveAttribute("data-phase", "waiting");
+  await seek(audio, start + 12.6);
+  await expect(cue).toHaveAttribute("data-phase", "call");
+  await expect(image).toHaveAttribute("src", "/hand-signals/marcacao.png");
+  await expect(page.locator(".radio-pattern")).toContainText("Repetition 1 of 1");
+  await expect(page.locator(".radio-studio")).not.toContainText("Marcação");
+  await page.locator(".radio-player").screenshot({ path: testInfo.outputPath("radio-sequence-call.png") });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  // Seeking back clears the call even within the same note subdivision.
+  await seek(audio, start + 12.599);
+  await expect(cue).toHaveAttribute("data-phase", "waiting");
+  await expect(image).toHaveCount(0);
+  await seek(audio, start + 17.999);
+  await expect(cue).toHaveAttribute("data-phase", "call");
+  await seek(audio, start + 18);
+  await expect(cue).toHaveAttribute("data-phase", "waiting");
+  await expect(image).toHaveCount(0);
+  await expect(page.locator(".radio-pattern")).toContainText("Repetition 1 of 4");
+  await expect(audio).toHaveAttribute("src", source!);
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
+});
+
+test("an unmapped signal reveals the next name only during the call when names are hidden", async ({ page }, testInfo) => {
   const audio = await openRadio(page, ["marcacao", "combo_entrada"]);
   if (await page.locator(".radio-now h2").innerText() !== "1 - Marcação") {
     await page.getByRole("button", { name: "Skip", exact: true }).click();
     await expect(page.locator(".radio-now h2")).toHaveText("1 - Marcação");
   }
   const start = Math.floor(await audio.evaluate((element: HTMLAudioElement) => element.currentTime));
-  await seek(audio, start + 6);
   await page.getByRole("checkbox", { name: "Show rhythm names", exact: true }).uncheck();
+  await page.getByRole("checkbox", { name: "Show notes", exact: true }).uncheck();
+  await expect(page.locator(".radio-cue")).not.toContainText("Entrada");
+  await seek(audio, start + 4);
   await expect(page.locator(".radio-cue")).toHaveAttribute("data-phase", "call");
   await expect(page.locator(".radio-cue")).toContainText("Signal unavailable");
-  await expect(page.locator(".radio-studio")).not.toContainText("Entrada");
+  await expect(page.locator(".radio-next strong")).toHaveText("Entrada");
+  await expect(page.locator(".radio-cue [role=status]")).toHaveText("Next rhythm: Entrada");
+  await expect(page.locator(".radio-now h2")).toHaveText("Rhythm names hidden");
+  await expect(page.locator(".radio-selection")).not.toContainText("Entrada");
+  await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.title)).toBe("Baque Radio");
+  await page.locator(".radio-player").screenshot({ path: testInfo.outputPath("radio-signal-unavailable.png") });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await seek(audio, start + 3.999);
+  await expect(page.locator(".radio-cue")).toHaveAttribute("data-phase", "waiting");
+  await expect(page.locator(".radio-cue")).not.toContainText("Entrada");
+  await seek(audio, start + 4);
+  await expect(page.locator(".radio-next strong")).toHaveText("Entrada");
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible();
 });
@@ -254,9 +312,14 @@ test("a failed gesture image falls back while the recording remains playable", a
   await page.route("**/hand-signals/*.png", (route) => route.abort());
   const audio = await openRadio(page);
   const source = await audio.getAttribute("src");
-  await seek(audio, 6);
+  const nextTitle = await page.locator(".radio-next strong").innerText();
+  await page.getByRole("checkbox", { name: "Show rhythm names", exact: true }).uncheck();
+  await page.getByRole("checkbox", { name: "Show notes", exact: true }).uncheck();
+  await seek(audio, 4);
   await expect(page.locator(".radio-cue")).toContainText("Signal unavailable");
   await expect(page.locator(".radio-cue img")).toHaveCount(0);
+  await expect(page.locator(".radio-next strong")).toHaveText(nextTitle);
+  await expect(page.locator(".radio-cue [role=status]")).toHaveText(`Next rhythm: ${nextTitle}`);
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(audio).toHaveAttribute("src", source!);
   await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible();

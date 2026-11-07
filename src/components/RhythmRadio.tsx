@@ -153,7 +153,7 @@ export default function RhythmRadio({
           currentSlug={snapshot.slug}
           ready={snapshot.ready}
           held={snapshot.held}
-          finalRepetition={snapshot.repetition === snapshot.repetitions}
+          signalDue={snapshot.signalDue}
           showRhythmNames={showRhythmNames}
         />
         <div className="radio-now" aria-live="polite" aria-atomic="true">

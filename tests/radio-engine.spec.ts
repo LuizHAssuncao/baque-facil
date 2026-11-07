@@ -165,6 +165,42 @@ test("next rhythm follows the complete sequence and wraps from the final group",
   ).toBe(timeline.segments[0].slug);
 });
 
+test("visual calls start with two repetitions remaining across tempos and pattern lengths", () => {
+  for (const tempo of [30, 90, 130]) {
+    for (const repetitions of [4, 8, 16]) {
+      const timeline = buildRadioTimeline(
+        [makeRhythm("a"), makeRhythm("b", 32)], tempo, repetitions, 1, () => 0.9,
+      );
+      for (const segment of timeline.segments) {
+        const callFrame = segment.endFrame - 2 * segment.cycleFrames;
+        expect(radioPosition(timeline, (callFrame - 1) / RADIO_SAMPLE_RATE).signalDue).toBe(false);
+        const call = radioPosition(timeline, callFrame / RADIO_SAMPLE_RATE);
+        expect(call.signalDue).toBe(true);
+        expect(call.repetition).toBe(repetitions - 1);
+        expect(radioPosition(timeline, (segment.endFrame - 1) / RADIO_SAMPLE_RATE).signalDue).toBe(true);
+        expect(radioPosition(timeline, segment.endFrame / RADIO_SAMPLE_RATE).signalDue).toBe(false);
+      }
+    }
+  }
+});
+
+test("single-pass sequences call at seventy percent and reset at the next item or file wrap", () => {
+  for (const tempo of [30, 90, 130]) {
+    const timeline = buildRadioTimeline(
+      [makeRhythm("combo_short"), makeRhythm("combo_long", 144)], tempo, 8, 1, () => 0.9,
+    );
+    for (const segment of timeline.segments) {
+      expect(segment.repetitions).toBe(1);
+      const callFrame = segment.startFrame + Math.ceil(segment.cycleFrames * 0.7);
+      expect(radioPosition(timeline, segment.startFrame / RADIO_SAMPLE_RATE).signalDue).toBe(false);
+      expect(radioPosition(timeline, (callFrame - 1) / RADIO_SAMPLE_RATE).signalDue).toBe(false);
+      expect(radioPosition(timeline, callFrame / RADIO_SAMPLE_RATE).signalDue).toBe(true);
+      expect(radioPosition(timeline, (segment.endFrame - 1) / RADIO_SAMPLE_RATE).signalDue).toBe(true);
+      expect(radioPosition(timeline, segment.endFrame / RADIO_SAMPLE_RATE).signalDue).toBe(false);
+    }
+  }
+});
+
 test("mixer carries tails across chunk boundaries and wraps the recording without clipping a hit", () => {
   const timeline = {
     tempo: 90,

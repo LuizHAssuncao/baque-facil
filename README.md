@@ -390,18 +390,21 @@ still get the cue when the next item is a sequence. Solo and held playback have
 no automatic cue. The grid, downloaded MP3, and recording's loop boundary all
 follow these rules.
 
-During the final repetition, a highlighted panel shows the next rhythm's hand
-signal. The current notes and step cursor continue following the audible rhythm,
+During the final two repetitions, a highlighted panel shows the next rhythm's
+hand signal. Sequences played once show the call at 70% of their completion.
+The current notes and step cursor continue following the audible rhythm,
 including its existing transition. The panel uses the lesson's `gesture`
 metadata and assets from `public/hand-signals/`. A rhythm without a mapped or
-loadable gesture shows “Signal unavailable”. Solo and held rhythms show a
+loadable gesture shows “Signal unavailable” and the next rhythm's name, even
+when names are hidden. Solo and held rhythms show a
 repeating state. Signals refresh after a skip, a recording loop or a return from
 the background.
 
 The **Show rhythm names** and **Show notes** controls apply immediately without
 replacing the recording. Both start enabled and persist separately from mix
 settings in `baque-facil-radio-display-v1`. Hiding names also removes them from
-the rhythm selector, lesson shortcuts, cue announcements and media titles.
+the rhythm selector, lesson shortcuts, cue announcements and media titles,
+except for the next name in an active call when its signal is unavailable.
 Gesture descriptions remain available in both languages. Switching both
 controls off leaves the signal and audio for recognition practice.
 

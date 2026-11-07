@@ -274,7 +274,7 @@ export const portuguese = {
   "Mestre's call": "Chamada do mestre",
   "Get ready for the next rhythm": "Prepare o próximo ritmo",
   "Listen for the next call": "Aguarde a próxima chamada",
-  "The signal appears during the final repetition.": "O sinal aparece durante a última repetição.",
+  "The signal appears in the last two repetitions, or after 70% of a sequence.": "O sinal aparece nas duas últimas repetições ou após 70% de uma sequência.",
   "Signal unavailable": "Sinal indisponível",
   "Next rhythm: {title}": "Próximo ritmo: {title}",
   "Rhythm names hidden": "Nomes dos ritmos ocultos",

@@ -9,14 +9,14 @@ export const RadioSignalCue = memo(function RadioSignalCue({
   currentSlug,
   ready,
   held,
-  finalRepetition,
+  signalDue,
   showRhythmNames,
 }: {
   next: RadioEntry | undefined;
   currentSlug: string | null;
   ready: boolean;
   held: boolean;
-  finalRepetition: boolean;
+  signalDue: boolean;
   showRhythmNames: boolean;
 }) {
   const { t, locale } = useTranslation();
@@ -24,15 +24,16 @@ export const RadioSignalCue = memo(function RadioSignalCue({
   const nextImage = next?.gesture?.src;
   useEffect(() => {
     if (!ready || !nextImage) return;
-    // Fetch before the final repetition so the call can appear on time.
+    // Fetch before the call so the gesture can appear on time.
     const image = new Image();
     image.src = nextImage;
   }, [ready, nextImage]);
   const repeating = ready && (held || next?.rhythm.slug === currentSlug);
-  const active = ready && !repeating && finalRepetition && Boolean(next);
+  const active = ready && !repeating && signalDue && Boolean(next);
   const phase = active ? "call" : repeating ? "repeating" : ready ? "waiting" : "idle";
   const gesture = active ? next?.gesture : undefined;
   const imageAvailable = gesture && failedSource !== gesture.src;
+  const showNextTitle = showRhythmNames || (active && !imageAvailable);
   const nextTitle = next ? t(next.rhythm.title as MessageKey) : "";
 
   return (
@@ -60,18 +61,18 @@ export const RadioSignalCue = memo(function RadioSignalCue({
         <p className="radio-cue-instruction">
           {t(active ? "Get ready for the next rhythm" : repeating ? "Repeating this pattern" : "Listen for the next call")}
         </p>
-        {ready && next && showRhythmNames ? (
+        {ready && next && showNextTitle ? (
           <p className="radio-next">
             {t(held ? "When you return to the mix" : "Next rhythm")}: <strong>{nextTitle}</strong>
           </p>
         ) : null}
         {!active && !repeating ? (
-          <p className="radio-cue-hint">{t("The signal appears during the final repetition.")}</p>
+          <p className="radio-cue-hint">{t("The signal appears in the last two repetitions, or after 70% of a sequence.")}</p>
         ) : null}
       </div>
       <span className="radio-sr-only" role="status" aria-atomic="true">
         {active && next
-          ? showRhythmNames
+          ? showNextTitle
             ? t("Next rhythm: {title}", { title: nextTitle })
             : t("Get ready for the next rhythm")
           : ""}

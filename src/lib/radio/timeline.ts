@@ -230,6 +230,11 @@ export function radioPosition(timeline: RadioTimeline, seconds: number) {
       ),
     ),
     repetition,
+    // Visual calls lead the existing audio transition. Sequences run once, so
+    // use their elapsed frames instead of showing the call for the whole pass.
+    signalDue: segment.repetitions === 1
+      ? offset >= Math.ceil(segment.cycleFrames * 0.7)
+      : repetition >= segment.repetitions - 1,
     transitionTracks:
       segment.transitionStartFrame !== undefined && frame >= segment.transitionStartFrame
         ? transitionTracksForRepetition(segment, repetition)
