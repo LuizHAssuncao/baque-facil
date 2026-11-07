@@ -88,10 +88,54 @@ for (const route of routes) {
   });
 }
 
-test("predefined rhythm player copies transcription", async ({ page }) => {
+test("rhythm transcription opens with the keyboard without starting playback", async ({ page }) => {
+  await page.goto("/rhythms/marcacao/");
+  await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
+
+  const disclosure = page.locator(".rhythm-content details");
+  const summary = disclosure.locator("summary");
+  const transcription = disclosure.locator("pre");
+  await expect(summary).toHaveAccessibleName("Transcription");
+  await expect(transcription).toBeHidden();
+
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  await expect(transcription).toBeVisible();
+  await expect(transcription).toHaveText(marcacaoRhythmBlock);
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
+  await expectNoBodyOverflow(page);
+
+  await page.keyboard.press("Space");
+  await expect(transcription).toBeHidden();
+  await expect(summary).toBeFocused();
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
+});
+
+test("sequence instructions stay visible while long transcription collapses", async ({ page }, testInfo) => {
+  await page.goto("/rhythms/combo_parada_arrasto/");
+  await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
+
+  const disclosure = page.locator(".rhythm-content details");
+  await expect(disclosure.locator("pre")).toBeHidden();
+  await expect(page.getByText("Pre-requisites:", { exact: true })).toBeVisible();
+  await expect(page.getByText("This sequence repeats Parada", { exact: false })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Rhythm pages" })).toBeVisible();
+
+  await disclosure.locator("summary").click();
+  await expect(disclosure.locator("pre")).toBeVisible();
+  await expectNoBodyOverflow(page);
+  await screenshotLayout(page, testInfo, "rhythm-transcription-expanded");
+
+  await disclosure.locator("summary").click();
+  await expect(disclosure.locator("pre")).toBeHidden();
+  await expect(page.getByText("Instructions:", { exact: true })).toBeVisible();
+});
+
+test("predefined rhythm player copies transcription while it is collapsed", async ({ page }) => {
   await page.goto("/rhythms/marcacao/");
   await grantClipboardPermissions(page);
   await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
+  await expect(page.locator(".rhythm-content pre")).toBeHidden();
 
   await page.getByRole("button", { name: "Copy transcription" }).click();
 
