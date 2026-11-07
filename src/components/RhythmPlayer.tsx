@@ -96,6 +96,7 @@ const NOTE_CYCLES: Record<string, string[]> = {
   Alfaia: ["L", "R", "B", "."],
   Caixa: ["X", "."],
   Gongue: ["X", "."],
+  Whistle: ["X", "."],
 };
 
 function cloneTracks(tracks: RhythmTrack[]) {

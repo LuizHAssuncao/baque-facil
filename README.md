@@ -209,6 +209,20 @@ A few example of sample keys are:
 - `Alfaia.R`
 - `Gongue.X`
 - `Gongue.x`
+- `Whistle.X` (whistle/apito, using the uploaded recording)
+
+The whistle sample is stored at `public/samples/whistle/whistle.wav`. To use it
+in a lesson or the composer's transcription, add a `Whistle:` track with `X`
+for a whistle and `.` for a rest. Keep its step count equal to the other tracks:
+
+```rhythm
+Whistle:
+X . . . | . . . .
+```
+
+The shared sample map makes the whistle available to rhythm playback, composer
+note editing and preview, MP3 exports, radio, and offline caching when used by a
+rhythm. Existing rhythms do not include it until a whistle track is added.
 
 When adding a new instrument or symbol, add the sample under `public/samples/`,
 update `src/lib/sampleMap.ts` and verify a rhythm page that uses it.

@@ -1647,7 +1647,7 @@ export default function RhythmComposer({
         <ShareRhythmControl rhythm={rhythm} disabledReason={isRecordLocked
           ? "Stop recording before sharing a rhythm."
           : hasTranscriptionErrors ? "Fix the transcription errors before sharing a rhythm." : undefined} />
-        <details className="composer-transcription">
+        <details className="composer-transcription transcription-disclosure">
           <summary>{t("Transcription")}</summary>
           <label className="markdown-output"><span className="sr-only">{t("Transcription")}</span><textarea value={localizeRhythmTranscription(transcription, locale)} rows={12} aria-invalid={hasTranscriptionErrors}
             aria-describedby={hasTranscriptionErrors ? "composer-transcription-errors" : undefined} disabled={isRecordLocked} suppressHydrationWarning onChange={handleTranscriptionChange} /></label>

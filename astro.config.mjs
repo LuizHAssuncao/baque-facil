@@ -2,8 +2,12 @@ import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import AstroPWA from "@vite-pwa/astro";
 import { offlineManifest } from "./scripts/offline-manifest.mjs";
+import { remarkRhythmTranscription } from "./src/lib/remarkRhythmTranscription";
 
 export default defineConfig({
+  markdown: {
+    remarkPlugins: [remarkRhythmTranscription],
+  },
   integrations: [
     react(),
     AstroPWA({
