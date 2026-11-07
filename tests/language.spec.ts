@@ -35,6 +35,7 @@ test("home difficulty tags keep a single border when switching languages", async
   ]) {
     await switchLanguage(page, language);
     await expect(page.locator("html")).toHaveAttribute("lang", locale);
+    await expect(page.getByRole("link", { name: locale === "pt-BR" ? "Transição iniciante" : "Transition beginner", exact: true })).toBeVisible();
 
     for (const tag of await tags.all()) {
       await expect(tag.locator("[data-language]:visible")).toHaveCount(1);
@@ -232,14 +233,16 @@ test("composer keeps edits and translates existing validation errors when langua
 });
 
 test("switching language preserves active rhythm playback and tempo", async ({ page }) => {
-  await page.goto("/rhythms/marcacao/");
+  await page.goto("/rhythms/combo-transition/");
   await chooseLanguage(page, english);
   await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
   await page.getByRole("slider", { name: "Tempo" }).fill("75");
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.title)).toBe("Transition");
   await switchLanguage(page, portugueseLabel);
   await expect(page.getByRole("button", { name: "Parar", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.title)).toBe("Transição");
   await expect(page.getByRole("slider", { name: "Tempo" })).toHaveValue("75");
   await expect.poll(() => page.locator(".step-cell.active").count()).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Parar", exact: true }).click();
@@ -345,7 +348,9 @@ test("all main pages render Portuguese without errors or horizontal overflow", a
     ["/radio/", "Rádio Baque"],
     ["/compose/", "Meu ritmo"],
     ["/compose/marcacao/", "1 - Marcação"],
+    ["/compose/combo-transition/", "Transição"],
     ["/rhythms/combo_parada_arrasto/", "Parada + Arrasto"],
+    ["/rhythms/combo-transition/", "Transição"],
     ["/help/ios-audio/", "Não está ouvindo o som?"],
     ["/diagnostics/background-audio/", "Teste de áudio em segundo plano"],
   ]) {
@@ -354,6 +359,17 @@ test("all main pages render Portuguese without errors or horizontal overflow", a
     await expect(page.getByRole("dialog")).not.toBeVisible();
     await expect(page.locator('[data-rendered-locale="en-CA"]')).toHaveCount(0);
     if (path === "/compose/") await expect(page).toHaveTitle("Compor | Baque Fácil");
+    if (path === "/compose/combo-transition/") {
+      await expect(page).toHaveTitle("Personalizar Transição | Baque Fácil");
+      await page.getByRole("button", { name: "Renomear ritmo", exact: true }).click();
+      const name = page.getByRole("textbox", { name: "Nome do ritmo", exact: true });
+      await expect(name).toHaveValue("Transição");
+      await name.press("Enter");
+      await switchLanguage(page, english);
+      await expect(page.getByRole("heading", { name: "Transition", exact: true })).toBeVisible();
+      await expect(page).toHaveTitle("Customize Transition | Baque Fácil");
+      await switchLanguage(page, portugueseLabel);
+    }
     if (path === "/radio/") {
       await expect(page).toHaveTitle("Rádio Baque | Baque Fácil");
       await expect(page.getByRole("slider", { name: "Tempo da rádio" })).toBeVisible();
@@ -368,6 +384,19 @@ test("all main pages render Portuguese without errors or horizontal overflow", a
       await expect(page.locator('.content > p[data-language="en-CA"]').last()).toContainText("This sequence repeats Parada");
       await expect(page.locator('.content summary [data-language="pt-BR"]')).toBeVisible();
       await expect(page.locator('.content pre')).toBeHidden();
+    }
+    if (path === "/rhythms/combo-transition/") {
+      await expect(page).toHaveTitle("Transição | Baque Fácil");
+      await expect(page.getByRole("region", { name: "Reprodutor de Transição", exact: true })).toBeVisible();
+      await expect(page.locator('.content > p[data-language="pt-BR"]:visible')).toHaveCount(2);
+      await expect(page.locator('.content > p[data-language="pt-BR"]').last()).toContainText("apenas na Marcação e no Imalê");
+      await switchLanguage(page, english);
+      await expect(page.getByRole("heading", { name: "Transition", exact: true })).toBeVisible();
+      await expect(page).toHaveTitle("Transition | Baque Fácil");
+      await expect(page.getByRole("region", { name: "Transition player", exact: true })).toBeVisible();
+      await expect(page.locator('.content > p[data-language="en-CA"]:visible')).toHaveCount(2);
+      await expect(page.locator('.content > p[data-language="en-CA"]').last()).toContainText("only in Marcação and Imalê");
+      await switchLanguage(page, portugueseLabel);
     }
     const overflow = await page.evaluate(() => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth);
     expect(overflow, path).toBeLessThanOrEqual(1);

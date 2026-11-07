@@ -261,6 +261,8 @@ export const portuguese = {
   "Take your time with this pattern": "Pratique este padrão com calma",
   "Repetition {current} of {total}": "Repetição {current} de {total}",
   "Transition": "Transição",
+  "Transition | Baque Fácil": "Transição | Baque Fácil",
+  "Customize Transition | Baque Fácil": "Personalizar Transição | Baque Fácil",
   "Whistle": "Apito",
   "Open rhythm lesson →": "Abrir lição do ritmo →",
   "Make it your practice": "Personalize sua prática",

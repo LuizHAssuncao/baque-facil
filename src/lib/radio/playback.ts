@@ -440,7 +440,7 @@ export class RadioPlayback {
           (entry) => entry.rhythm.slug === position.segment.slug,
         )?.rhythm.title ?? translate(locale, "Baque Radio");
       navigator.mediaSession.metadata = new MediaMetadata({
-        title,
+        title: translate(locale, title as Message),
         artist: "Baque Fácil",
         album: translate(locale, "Baque Radio"),
       });

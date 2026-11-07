@@ -298,8 +298,9 @@ function RhythmPlayer(
   const beatStepCount = getStepsPerBeat(rhythm.subdivision);
   const stepDuration = `${rhythm.subdivision}n` as "8n" | "16n" | "32n";
   const useRenderedAudio = playbackMode === "rendered";
+  const displayTitle = useRenderedAudio ? t(rhythm.title as Message) : rhythm.title;
   const rendered = useRenderedPlayback(useRenderedAudio, {
-    rhythm,
+    rhythm: { ...rhythm, title: displayTitle },
     samples,
     tempo,
     loop,
@@ -827,7 +828,7 @@ function RhythmPlayer(
     <section
       className={renderEditor ? "player-panel composer-player" : "player-panel"}
       data-rendered-locale={locale}
-      aria-label={t("{title} player", { title: rhythm.title })}
+      aria-label={t("{title} player", { title: displayTitle })}
       onClickCapture={(event) => blurPointerActivatedButton(event.target, event.detail)}
     >
       {showIosSilentModeHelp ? (

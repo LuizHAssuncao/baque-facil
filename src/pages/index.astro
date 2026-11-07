@@ -135,7 +135,7 @@ const homeTools = [
           {
             comboRhythms.map((rhythm) => (
               <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
-                <strong>{rhythm.data.title}</strong>
+                <strong data-i18n-text={JSON.stringify(rhythm.data.title)}>{rhythm.data.title}</strong>
                 <span><T message={rhythm.data.difficulty as Message} /></span>
                 <ChevronRight size={16} aria-hidden="true" />
               </a>

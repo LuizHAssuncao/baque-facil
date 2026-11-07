@@ -67,7 +67,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
     <meta charset="UTF-8" />
     <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{entry.data.title} | Baque Fácil</title>
+    <title data-i18n-text={JSON.stringify(`${entry.data.title} | Baque Fácil`)}>{entry.data.title} | Baque Fácil</title>
   </head>
   <body>
     <main class="page-shell">
@@ -80,7 +80,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
       <header class:list={["page-header compact editorial-header", { "has-gesture": Boolean(entry.data.gesture) }]}>
         <div class="rhythm-header-copy">
           <p class="eyebrow"><T message={entry.data.difficulty as Message} /></p>
-          <h1>{entry.data.title}</h1>
+          <h1 data-i18n-text={JSON.stringify(entry.data.title)}>{entry.data.title}</h1>
         </div>
         {entry.data.gesture && (
           <RhythmGesture id={`gesture-${entry.slug}`} title={entry.data.title} gesture={entry.data.gesture} />
@@ -118,7 +118,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
           previousRhythm ? (
             <a href={`/rhythms/${previousRhythm.slug}/`}>
               <span><T message="Previous" /></span>
-              <strong>{previousRhythm.data.title}</strong>
+              <strong data-i18n-text={JSON.stringify(previousRhythm.data.title)}>{previousRhythm.data.title}</strong>
             </a>
           ) : (
             <span></span>
@@ -128,7 +128,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
           nextRhythm ? (
             <a href={`/rhythms/${nextRhythm.slug}/`}>
               <span><T message="Next" /></span>
-              <strong>{nextRhythm.data.title}</strong>
+              <strong data-i18n-text={JSON.stringify(nextRhythm.data.title)}>{nextRhythm.data.title}</strong>
             </a>
           ) : (
             <span></span>

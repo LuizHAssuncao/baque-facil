@@ -150,11 +150,11 @@ export default function RhythmRadio({
                     ? "Ready to listen"
                     : "Your rhythm, on repeat")}
             </p>
-            <h2>{current?.rhythm.title ?? t("Settle into the baque")}</h2>
+            <h2>{current ? t(current.rhythm.title as MessageKey) : t("Settle into the baque")}</h2>
             {snapshot.ready && next ? (
               <p className="radio-next">
                 {t(snapshot.held ? "When you return to the mix" : "Next rhythm")}:{" "}
-                <strong>{next.rhythm.title}</strong>
+                <strong>{t(next.rhythm.title as MessageKey)}</strong>
               </p>
             ) : null}
           </div>
@@ -400,7 +400,7 @@ export default function RhythmRadio({
                   }
                 />
                 <span>
-                  <strong>{entry.rhythm.title}</strong>
+                  <strong>{t(entry.rhythm.title as MessageKey)}</strong>
                   <small>{t(entry.combo ? "Sequence" : entry.difficulty as MessageKey)}</small>
                 </span>
               </label>

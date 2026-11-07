@@ -48,6 +48,11 @@ const { entry, exampleRhythm } = Astro.props;
 let initialRhythm: Rhythm | undefined;
 let initialTranscription: string | undefined;
 let errors: Message[] = [];
+const pageTitle: Message = entry
+  ? entry.data.title === "Transition"
+    ? "Customize Transition | Baque Fácil"
+    : { key: "Customize {title} | Baque Fácil", values: { title: entry.data.title } }
+  : "Compose | Baque Fácil";
 
 if (entry) {
   const rhythmBlock = extractRhythmBlock(entry.body);
@@ -93,7 +98,7 @@ if (entry) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preload" href="/samples/alfaia/left-ghost.wav" as="audio" type="audio/wav" />
     <link rel="preload" href="/samples/alfaia/right-accent.wav" as="audio" type="audio/wav" />
-    <title data-i18n-text={JSON.stringify(entry ? { key: "Customize {title} | Baque Fácil", values: { title: entry.data.title } } : "Compose | Baque Fácil")}>{entry ? `Customize ${entry.data.title}` : "Compose"} | Baque Fácil</title>
+    <title data-i18n-text={JSON.stringify(pageTitle)}>{entry ? `Customize ${entry.data.title}` : "Compose"} | Baque Fácil</title>
   </head>
   <body>
     <main class="page-shell composer-page">

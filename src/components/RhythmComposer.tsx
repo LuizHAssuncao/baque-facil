@@ -318,7 +318,11 @@ export default function RhythmComposer({
   const initialTempo = clampTempo(initialRhythm?.tempo ?? DEFAULT_TEMPO);
   const subdivision = initialRhythm?.subdivision ?? exampleRhythm.subdivision;
   const [customTitle, setCustomTitle] = useState(initialRhythm?.title ?? "");
-  const displayTitle = customTitle || t(DEFAULT_TITLE);
+  const displayTitle = customTitle
+    ? !sharedSnapshot && customTitle === initialRhythm?.title
+      ? t(customTitle as Message)
+      : customTitle
+    : t(DEFAULT_TITLE);
   const titleRef = useRef(customTitle);
   const [renaming, setRenaming] = useState(false);
   const [showPads, setShowPads] = useState(false);
@@ -1585,8 +1589,8 @@ export default function RhythmComposer({
         composerHeading={<div className="composer-heading">
           <p className="eyebrow">{t("Composer")}</p>
           <div className="composer-title-row">
-            {renaming ? <input className="composer-title-input" aria-label={t("Rhythm name")} defaultValue={customTitle || t(DEFAULT_TITLE)} maxLength={200} autoFocus disabled={isRecordLocked}
-              onBlur={(event) => { renameTitle(event.target.value.trim()); setRenaming(false); }}
+            {renaming ? <input className="composer-title-input" aria-label={t("Rhythm name")} defaultValue={displayTitle} maxLength={200} autoFocus disabled={isRecordLocked}
+              onBlur={(event) => { const value = event.target.value.trim(); if (value !== displayTitle) renameTitle(value); setRenaming(false); }}
               onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") setRenaming(false); }} /> :
               <h1 aria-label={displayTitle}><button type="button" disabled={isRecordLocked} onClick={() => setRenaming(true)} aria-label={t("Rename rhythm")}>{displayTitle}<Pencil size={18} /></button></h1>}
             {!initialRhythm ? <button type="button" className="composer-example" disabled={isRecordLocked} onClick={useExample}>{t("Use an example")}</button> : null}

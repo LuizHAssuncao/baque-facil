@@ -97,9 +97,11 @@ test("radio translates existing errors and selection states when the language ch
   await expect(page.locator(".radio-section-heading")).toContainText("0 rhythms selected");
   await page.getByRole("checkbox", { name: "Include sequences", exact: true }).check();
   await expect(page.getByRole("checkbox", { name: "Entrada Sequence" })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Transition Sequence", exact: true })).toBeChecked();
   await expect(page.locator(".radio-footnote").first()).toContainText("Sequences play once per turn.");
   await switchLanguage(page, "Português (Brasil)");
   await expect(page.getByRole("checkbox", { name: "Incluir sequências", exact: true })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: "Entrada Sequência" })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Transição Sequência", exact: true })).toBeChecked();
   await expect(page.locator(".radio-footnote").first()).toContainText("As sequências tocam uma vez por rodada.");
 });
