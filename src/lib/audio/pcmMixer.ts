@@ -1,4 +1,5 @@
 import { TranslatableError } from "../i18n/messages";
+import { sampleGain } from "../sampleMap";
 
 export type PcmSample = { left: Float32Array; right: Float32Array };
 export type PcmHit = { frame: number; sample: string };
@@ -42,13 +43,14 @@ export class PcmMixer {
     }
     for (const hit of this.active) {
       const sample = this.samples[hit.sample];
+      const hitGain = sampleGain(hit.sample) * gain;
       const from = Math.max(startFrame, hit.frame);
       const to = Math.min(endFrame, hit.frame + sample.left.length);
       for (let frame = from; frame < to; frame += 1) {
         const source = frame - hit.frame;
         const target = frame - startFrame;
-        data[target] += sample.left[source] * gain;
-        data[frames + target] += sample.right[source] * gain;
+        data[target] += sample.left[source] * hitGain;
+        data[frames + target] += sample.right[source] * hitGain;
       }
     }
     this.active = this.active.filter(

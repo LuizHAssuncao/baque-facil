@@ -1,5 +1,6 @@
 import type { Rhythm } from "../rhythmTypes";
 import { TranslatableError } from "../i18n/messages";
+import { sampleGain } from "../sampleMap";
 import { clampTempo } from "../tempo";
 import { RENDER_SAMPLE_RATE, SampleCache } from "./sampleCache";
 
@@ -47,13 +48,17 @@ export async function renderRhythm(
     throw new TranslatableError("This rhythm is too long to prepare on this device.");
   }
 
-  const hits: { frame: number; buffer: AudioBuffer }[] = [];
+  const hits: { frame: number; buffer: AudioBuffer; gain: number }[] = [];
   await Promise.all(rhythm.tracks.filter((track) => !mutedTracks.includes(track.name)).map(async (track) => {
     await Promise.all(track.steps.map(async (symbol, index) => {
       if (symbol === "." || symbol === "-") return;
       const url = samples[`${track.name}.${symbol}`];
       if (!url) throw new TranslatableError({ key: "Missing sample for {sample}.", values: { sample: `${track.name}.${symbol}` } });
-      hits.push({ frame: Math.round(index * cycleFrames / stepCount), buffer: await cache.load(url) });
+      hits.push({
+        frame: Math.round(index * cycleFrames / stepCount),
+        buffer: await cache.load(url),
+        gain: sampleGain(`${track.name}.${symbol}`),
+      });
     }));
   }));
 
@@ -68,7 +73,10 @@ export async function renderRhythm(
       if (startTime + hit.buffer.duration <= 0) continue;
       const source = context.createBufferSource();
       source.buffer = hit.buffer;
-      source.connect(context.destination);
+      const gain = context.createGain();
+      gain.gain.value = hit.gain;
+      source.connect(gain);
+      gain.connect(context.destination);
       // Include the previous repetition's decay at the beginning of a loop.
       source.start(Math.max(0, startTime), Math.max(0, -startTime));
     }

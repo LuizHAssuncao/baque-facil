@@ -12,6 +12,15 @@ export const sampleMap: SampleMap = {
   "Whistle.X": "/samples/whistle/whistle.wav",
 };
 
+export function sampleVolumeDb(sampleKey: string): number {
+  // Keep the whistle cue slightly behind the drums in every playback path.
+  return sampleKey.startsWith("Whistle.") ? -2 : 0;
+}
+
+export function sampleGain(sampleKey: string): number {
+  return 10 ** (sampleVolumeDb(sampleKey) / 20);
+}
+
 export function allowedSymbolsForTrack(
   trackName: string,
   samples: SampleMap = sampleMap,

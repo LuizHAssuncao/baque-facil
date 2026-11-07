@@ -43,6 +43,7 @@ import { formatRhythmBlock } from "../lib/formatRhythmBlock";
 import { rhythmGridColumns, rhythmGridMinWidth } from "../lib/rhythmGridLayout";
 import { MAX_TEMPO, MIN_TEMPO, clampTempo } from "../lib/tempo";
 import type { Rhythm, RhythmTrack } from "../lib/rhythmTypes";
+import { sampleVolumeDb } from "../lib/sampleMap";
 import { useRenderedPlayback } from "../lib/audio/useRenderedPlayback";
 import { Mp3ExportControl } from "./Mp3ExportControl";
 
@@ -586,7 +587,7 @@ function RhythmPlayer(
 
     if (missingSamples.length > 0) {
       missingSamples.forEach(([key, url]) => {
-        playersRef.current[key] = new Tone.Player(url).toDestination();
+        playersRef.current[key] = new Tone.Player({ url, volume: sampleVolumeDb(key) }).toDestination();
       });
       playersLoadedRef.current = Tone.loaded();
     }
