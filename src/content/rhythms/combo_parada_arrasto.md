@@ -4,6 +4,11 @@ slug: "combo_parada_arrasto"
 tempo: 100
 subdivision: 16
 difficulty: "beginner"
+gesture:
+  src: "/hand-signals/combo_parada_arrasto.png"
+  description:
+    en-CA: "A right hand with four fingers extended together, the thumb folded inward and the back of the hand facing the viewer."
+    pt-BR: "Uma mão direita com quatro dedos estendidos e unidos, o polegar dobrado para dentro e o dorso da mão voltado para quem vê."
 instruments:
   - "Alfaia"
 ---
