@@ -32,6 +32,49 @@ async function prepare(page: Page) {
   ).toBeVisible({ timeout: 25_000 });
 }
 
+test("radio separates sequences through skips, the file loop, and a fresh shuffle", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  // The old unconstrained shuffle leaves the two sequences together in this order.
+  await page.addInitScript(() => { Math.random = () => 0.99; });
+  const audio = await openRadio(page, {
+    ...preferences,
+    slugs: ["marcacao", "imale", "combo_martelo_break", "combo_parada_arrasto"],
+  });
+  await prepare(page);
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  const title = page.locator(".radio-now h2");
+  const next = page.locator(".radio-next strong");
+  const sequenceTitles = new Set(["Martelo break", "Parada + Arrasto"]);
+  const visited = new Set<string>();
+  let wrapped = false;
+  for (let index = 0; index < 40; index += 1) {
+    const currentTitle = await title.innerText();
+    const nextTitle = await next.innerText();
+    visited.add(currentTitle);
+    expect(sequenceTitles.has(currentTitle) && sequenceTitles.has(nextTitle)).toBe(false);
+    await page.getByRole("button", { name: "Skip", exact: true }).click();
+    await expect(title).toHaveText(nextTitle);
+    if (await audio.evaluate((element: HTMLAudioElement) => element.currentTime === 0)) {
+      wrapped = true;
+      break;
+    }
+  }
+  expect(wrapped).toBe(true);
+  expect([...visited].sort()).toEqual(["1 - Marcação", "2 - Imalê", ...sequenceTitles].sort());
+
+  if (!sequenceTitles.has(await title.innerText())) {
+    await page.getByRole("button", { name: "Skip", exact: true }).click();
+    await expect(title).toHaveText(/Martelo break|Parada \+ Arrasto/);
+  }
+  const source = await audio.getAttribute("src");
+  await page.getByRole("button", { name: "Shuffle again", exact: true }).click();
+  await expect.poll(() => audio.getAttribute("src"), { timeout: 25_000 }).not.toBe(source);
+  await expect(title).toHaveText(/1 - Marcação|2 - Imalê/);
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test("radio header seeks within the current repetition while paused, playing, and held", async ({ page }) => {
   const audio = await openRadio(page, { ...preferences, slugs: ["marcacao"] });
   await prepare(page);

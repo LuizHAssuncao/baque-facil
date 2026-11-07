@@ -92,6 +92,29 @@ export function shuffleBag(
   return bag;
 }
 
+/** Separate sequences using every available regular rhythm in the round. */
+function interleaveSequences(
+  bag: string[],
+  sequenceSlugs: ReadonlySet<string>,
+  startsWithSequence: boolean,
+  random: () => number,
+): string[] {
+  const first = bag.filter((slug) => sequenceSlugs.has(slug) === startsWithSequence);
+  const last = bag.filter((slug) => sequenceSlugs.has(slug) !== startsWithSequence);
+  const groupCount = Math.min(first.length, last.length);
+  const groups = Array.from({ length: groupCount }, (_, index) => ({
+    first: [first[index]],
+    last: [last[index]],
+  }));
+  // Only the more numerous kind has extras. Distribute them among the gaps:
+  // sequences can touch only when there are too few regular rhythms to separate them.
+  for (const slug of first.slice(groupCount))
+    groups[Math.floor(random() * groupCount)].first.push(slug);
+  for (const slug of last.slice(groupCount))
+    groups[Math.floor(random() * groupCount)].last.push(slug);
+  return groups.flatMap((group) => [...group.first, ...group.last]);
+}
+
 export function buildRadioTimeline(
   rhythms: Rhythm[],
   tempo: number,
@@ -116,6 +139,9 @@ export function buildRadioTimeline(
   const actualTempo = clampTempo(tempo);
   const bySlug = new Map(rhythms.map((rhythm) => [rhythm.slug, rhythm]));
   const slugs = [...bySlug.keys()];
+  const sequenceSlugs = new Set(rhythms.filter(isRadioSequence).map((rhythm) => rhythm.slug));
+  const mixedSelection = sequenceSlugs.size > 0 && sequenceSlugs.size < slugs.length;
+  let startsWithSequence: boolean | undefined;
   let bag: string[] = [];
   const segments: RadioSegment[] = [];
   let totalFrames = 0;
@@ -144,7 +170,14 @@ export function buildRadioTimeline(
   while (segments.length < rounds * slugs.length) {
     if (!bag.length) {
       bag = shuffleBag(slugs, segments.at(-1)?.slug ?? previousSlug, random);
-      if (bag.length > 2 && bag.at(-1) === segments[0]?.slug) {
+      if (mixedSelection) {
+        // Keep opposite kinds at the two ends of every round, in the same order.
+        // This also separates sequences across rounds and the native file loop.
+        startsWithSequence ??= previousSlug
+          ? !(sequenceSlugs.has(previousSlug) || previousSlug.startsWith("combo"))
+          : sequenceSlugs.has(bag[0]);
+        bag = interleaveSequences(bag, sequenceSlugs, startsWithSequence, random);
+      } else if (bag.length > 2 && bag.at(-1) === segments[0]?.slug) {
         [bag[1], bag[bag.length - 1]] = [bag[bag.length - 1], bag[1]];
       }
     }

@@ -33,6 +33,9 @@ are pending.
   during preparation, which can be cancelled.
 - Shuffle without replacement, preventing adjacent repeats across bags and at
   the completed recording's loop boundary whenever multiple rhythms are chosen.
+- Separate sequences with regular rhythms, including across rounds and the
+  recording's loop boundary. If sequences outnumber regular rhythms, allow only
+  the unavoidable adjacent sequence pairs while preserving equal turns.
 - Start only following user interaction. If a browser requires a second Play tap
   after preparation, show that clearly.
 - Play/Pause preserves position. Skip seeks to the next recorded rhythm group.

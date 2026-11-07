@@ -106,6 +106,46 @@ test("radio handles a single rhythm, two rhythms, sequences, and invalid setting
   ).toEqual({ slugs: ["a"], tempo: 130, repetitions: 8, minutes: 20 });
 });
 
+for (const [regularCount, sequenceCount] of [[1, 1], [2, 2], [4, 2], [1, 4], [2, 4], [0, 3], [0, 1]]) {
+  test(`radio separates ${sequenceCount} sequences with ${regularCount} regular rhythms whenever possible`, () => {
+    const regulars = Array.from({ length: regularCount }, (_, index) => makeRhythm(`regular-${index}`));
+    const sequences = Array.from({ length: sequenceCount }, (_, index) => makeRhythm(`combo-${index}`));
+    // Sequence detection also supports legacy titles without a combo slug.
+    sequences[0] = { ...sequences[0], slug: "named-sequence", title: "Combo test" };
+    const rhythms = [...regulars, ...sequences];
+    const expectedSlugs = rhythms.map((rhythm) => rhythm.slug).sort();
+    const sequenceSlugs = new Set(sequences.map((rhythm) => rhythm.slug));
+    for (const duration of [1, 1200]) {
+      for (const previous of [undefined, regulars[0]?.slug, sequences[0].slug, "combo-unselected"]) {
+        for (let seed = 0; seed < 10; seed += 1) {
+          const timeline = buildRadioTimeline(rhythms, 90, 4, duration, random(seed), previous);
+          const slugs = timeline.segments.map((segment) => segment.slug);
+          const rounds = slugs.length / rhythms.length;
+          const bags = Array.from({ length: rounds }, (_, index) =>
+            slugs.slice(index * rhythms.length, (index + 1) * rhythms.length).sort(),
+          );
+          expect(bags).toEqual(Array.from({ length: rounds }, () => expectedSlugs));
+          if (rhythms.length > 1) {
+            expect(slugs[0]).not.toBe(previous);
+            expect(slugs.every((slug, index) => slug !== slugs[(index + 1) % slugs.length])).toBe(true);
+          }
+          if (regularCount > 0 && previous && (sequenceSlugs.has(previous) || previous.startsWith("combo"))) {
+            expect(sequenceSlugs.has(slugs[0])).toBe(false);
+          }
+          const adjacentSequences = slugs.filter((slug, index) =>
+            sequenceSlugs.has(slug) && sequenceSlugs.has(slugs[(index + 1) % slugs.length]),
+          ).length;
+          // In a circular mix each regular rhythm can separate one sequence pair.
+          expect(adjacentSequences).toBe(Math.max(0, sequenceCount - regularCount) * rounds);
+          expect(timeline.segments.every((segment) =>
+            segment.repetitions === (sequenceSlugs.has(segment.slug) ? 1 : 4),
+          )).toBe(true);
+        }
+      }
+    }
+  });
+}
+
 test("radio positions use the media clock across different pattern lengths and repeats", () => {
   const timeline = buildRadioTimeline(
     [makeRhythm("a"), makeRhythm("b", 32)],
@@ -152,13 +192,13 @@ test("next rhythm follows the complete sequence and wraps from the final group",
     120,
     () => 0.9,
   );
-  const sequence = timeline.segments[1];
+  const sequence = timeline.segments[2];
   expect(sequence.slug).toBe("combo_long");
   expect(sequence.repetitions).toBe(1);
   expect(
     radioPosition(timeline, (sequence.endFrame - 1) / RADIO_SAMPLE_RATE)
       .nextSegment.slug,
-  ).toBe("c");
+  ).toBe("a");
   expect(
     radioPosition(timeline, (timeline.totalFrames - 1) / RADIO_SAMPLE_RATE)
       .nextSegment.slug,
