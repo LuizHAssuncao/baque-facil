@@ -25,7 +25,10 @@ function whistleHitCount(rhythm: Rhythm): number {
   return rhythm.tracks.find((track) => track.name === "Whistle")?.steps.filter((symbol) => symbol === "X").length ?? 0;
 }
 
-const alfaiaTransition = "R . . . . . . . L R . R L . R .".split(" ");
+const alfaiaTransitions: Record<string, string[]> = {
+  marcacao: "R . . . . . . . L R . R L . R .".split(" "),
+  imale: "R . . . L . R . L R . R L . R .".split(" "),
+};
 const whistleTransition = "X . . . . . . . X X . X X . X .".split(" ");
 
 test("radio renders the exact six-bar alfaia and whistle example", () => {
@@ -37,7 +40,7 @@ R . . . | . . . . | L R . . | L R . .
 R . . . | . . . . | L R . R | L . R .
 R . . . | L . R . | L R . . | L R . .
 R . . . | L . R . | L R . . | L R . .
-R . . . | . . . . | L R . R | L . R .
+R . . . | L . R . | L R . R | L . R .
 
 Whistle:
 . . . . | . . . . | . . . . | . . . .
@@ -53,6 +56,8 @@ X . . . | . . . . | X X . X | X . X .`);
   expect(timeline.segments.map((segment) => segment.slug)).toEqual(["marcacao", "imale"]);
   expect(timeline.totalFrames).toBe(12 * RADIO_SAMPLE_RATE);
   expect(buildRadioHits(timeline, rhythms)).toEqual(expectedHits);
+  const sequence = libraryRhythm("combo-transition");
+  expect(sequence.tracks.map((track) => ({ ...track, steps: track.steps.slice(0, 96) }))).toEqual(expected);
   expect(rhythms).toEqual(original);
 });
 
@@ -71,7 +76,7 @@ test("only the final repetition changes across tempo bounds and repetition setti
         expect(position.repetition).toBe(repetitions);
         expect(position.activeStep).toBe(0);
         expect(position.transitionTracks).toEqual([
-          { name: "Alfaia", steps: alfaiaTransition },
+          { name: "Alfaia", steps: alfaiaTransitions[segment.slug] },
           { name: "Whistle", steps: whistleTransition },
         ]);
         expect(radioPosition(timeline, (segment.endFrame - 1) / RADIO_SAMPLE_RATE).transitionTracks).not.toBeNull();
@@ -126,7 +131,7 @@ test("every regular library rhythm gets the whistle while only marcação and im
     const rhythm = regularRhythms.find((entry) => entry.slug === segment.slug)!;
     expect(segment.transitionTracks).toBeDefined();
     const expectedAlfaia = rhythm.slug === "marcacao" || rhythm.slug === "imale"
-      ? [{ name: "Alfaia", steps: alfaiaTransition }]
+      ? [{ name: "Alfaia", steps: alfaiaTransitions[rhythm.slug] }]
       : rhythm.tracks;
     expect(segment.transitionTracks!.filter((track) => track.name !== "Whistle")).toEqual(expectedAlfaia);
     expect(hits.filter((hit) => hit.sample === "Whistle.X" && hit.frame >= segment.startFrame && hit.frame < segment.endFrame))
@@ -233,6 +238,8 @@ test("the grid follows exit cues through seeking, language changes, holds, skips
   const audio = await openMix(page);
   const source = await audio.getAttribute("src");
   const firstTitle = await page.locator(".radio-now h2").textContent();
+  const firstRhythm = rhythms.find((rhythm) => rhythm.title === firstTitle)!;
+  const alfaiaTransition = alfaiaTransitions[firstRhythm.slug];
   const grid = page.locator(".radio-pattern");
   const alfaia = grid.locator(".grid-row").filter({ has: page.locator(".track-name", { hasText: /^Alfaia$/ }) }).locator(".step-cell");
   const whistle = grid.locator(".grid-row").filter({ has: page.locator(".track-name", { hasText: /^(Whistle|Apito)$/ }) }).locator(".step-cell");
@@ -268,6 +275,12 @@ test("the grid follows exit cues through seeking, language changes, holds, skips
   await expect(audio).toHaveAttribute("src", source!);
   await expect(page.locator(".radio-now h2")).not.toHaveText(firstTitle!);
   await expect(grid.getByText("Transition", { exact: true })).toHaveCount(0);
+
+  const secondRhythm = rhythms.find((rhythm) => rhythm.slug !== firstRhythm.slug)!;
+  await seek(7 * 4 * 60 / 90); // Final bar of the second rhythm.
+  await expect(page.locator(".radio-now h2")).toHaveText(secondRhythm.title);
+  await expect(alfaia).toHaveText(alfaiaTransitions[secondRhythm.slug]);
+  await expect(whistle).toHaveText(whistleTransition);
 
   await seek(8);
   await expect(grid.getByText("Transition", { exact: true })).toBeVisible();

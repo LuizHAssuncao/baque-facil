@@ -379,7 +379,9 @@ not survive a page reload, and restored preferences never start playback.
 
 Before a regular rhythm changes to a different item, its final bar includes the
 whistle cue `X . . . | . . . . | X X . X | X . X .`. Marcação and Imalê also
-replace that bar's alfaia notes with `R . . . | . . . . | L R . R | L . R .`.
+change beats 3 and 4 of that bar's alfaia pattern, keeping their first two beats.
+Marcação uses `R . . . | . . . . | L R . R | L . R .`.
+Imalê uses `R . . . | L . R . | L R . R | L . R .`.
 Other rhythms keep their drum notes. For longer patterns such as Parada, the cue
 occupies the last bar of the final repetition.
 
