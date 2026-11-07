@@ -10,3 +10,4 @@ Items are listed in priority order, highest first.
 6. Add new rhythm: marcacao transition.
 7. Add new rhythm: pao com manteiga.
 8. Composer: add a way to add built-in instruments besides alfaia.
+9. Add a popup asking users if they want to install the app on iOS, Android, Windows, macOS and Linux, with installation instructions when a native install prompt is unavailable.
