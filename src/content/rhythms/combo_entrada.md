@@ -16,9 +16,9 @@ instruments:
 
 ```rhythm
 Alfaia:
-. . . . | R . . . | . . . . | R . . . |
-. . . . | L R . . | L R . . | . R . L | . R . L |
-R . R L | . R L R | . . . |
+. . . . | R . . . | . . . . | R . . .
+. . . . | L R . . | L R . . | . . R .
+L . R . | L R . R | L . R L | R . . .
 . . . . | L R . . | L R . . | R . . .
 . . . . | L R . . | L R . . | R . . .
 . . . . | L R . . | L R . . | R . . .

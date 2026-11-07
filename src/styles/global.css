@@ -225,6 +225,129 @@ a {
   max-width: 36rem;
 }
 
+.editorial-header.has-gesture {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(7rem, 24vw, 11rem);
+  align-items: center;
+  gap: clamp(0.75rem, 2vw, 2rem);
+  min-height: 0;
+  padding: 1rem 1.25rem 1.25rem;
+  background: var(--paper-strong);
+}
+
+.editorial-header.has-gesture::before {
+  content: none;
+}
+
+.editorial-header.has-gesture > * {
+  min-width: 0;
+  max-width: none;
+}
+
+.editorial-header.has-gesture h1 {
+  font-size: clamp(1.75rem, 5vw, 4.2rem);
+  line-height: 1.08;
+}
+
+.rhythm-gesture-trigger {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.rhythm-gesture-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  border-radius: inherit;
+}
+
+.rhythm-gesture-expand {
+  position: absolute;
+  right: 0.3rem;
+  bottom: 0.3rem;
+  display: grid;
+  place-items: center;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-strong);
+  color: var(--teal);
+}
+
+.rhythm-gesture-trigger:hover .rhythm-gesture-expand {
+  border-color: var(--teal);
+}
+
+.rhythm-gesture-trigger:focus-visible,
+.rhythm-gesture-dialog button:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+html:has(.rhythm-gesture-dialog[open]) {
+  overflow: hidden;
+}
+
+.rhythm-gesture-dialog {
+  width: min(34rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+}
+
+.rhythm-gesture-dialog::backdrop {
+  background: rgb(20 24 22 / 0.65);
+}
+
+.rhythm-gesture-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.rhythm-gesture-dialog-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.rhythm-gesture-dialog-heading button {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-strong);
+  color: var(--teal);
+  cursor: pointer;
+}
+
+.rhythm-gesture-preview-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 7rem);
+  object-fit: contain;
+  object-position: center;
+}
+
 .home-page {
   container: homepage / inline-size;
 }
@@ -2153,6 +2276,38 @@ kbd {
   color: inherit;
 }
 
+.rhythm-content {
+  margin-top: 1rem;
+}
+
+.transcription-disclosure {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.transcription-disclosure > summary {
+  min-height: 44px;
+  padding: 0.9rem;
+  border-radius: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.transcription-disclosure > summary:hover {
+  background: var(--paper-soft);
+}
+
+.transcription-disclosure > summary:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.content .transcription-disclosure pre {
+  max-width: calc(100% - 1.5rem);
+  margin: 0 0.75rem 0.75rem;
+}
+
 .error-panel {
   border-color: #f3b6ad;
   background: var(--danger-soft);
@@ -2532,6 +2687,13 @@ kbd {
   margin: 0;
   font-size: clamp(1.35rem, 3.5vw, 2rem);
   line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.radio-next {
+  margin: 0.6rem 0 0;
+  color: var(--muted-strong);
+  font-size: 0.95rem;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .radio-signal {
@@ -3015,8 +3177,6 @@ kbd {
 .composer-page .count-in span { font: 500 0.85rem Inter, sans-serif; }
 .composer-page .count-in strong { font-size: 2rem; }
 .composer-bottom-row { margin-top: 0.75rem; }
-.composer-transcription { background: var(--paper-strong); border: 1px solid var(--line); border-radius: 8px; }
-.composer-transcription summary { padding: 0.9rem; cursor: pointer; min-height: 44px; font-size: 0.85rem; }
 .composer-transcription .markdown-output { margin: 0 0.75rem 0.75rem; }
 .composer-transcription .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .composer-page .shortcut-help-trigger { position: static; display: inline-flex; margin-top: 0.75rem; box-shadow: none; }

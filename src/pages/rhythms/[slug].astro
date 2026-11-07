@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import Disclaimer from "../../components/Disclaimer.astro";
 import PwaHead from "../../components/PwaHead.astro";
 import RhythmPlayer from "../../components/RhythmPlayer";
+import RhythmGesture from "../../components/RhythmGesture.astro";
 import { extractRhythmBlock } from "../../lib/extractRhythmBlock";
 import { parseRhythm } from "../../lib/parseRhythm";
 import { sampleEntriesForRhythm } from "../../lib/sampleMap";
@@ -76,9 +77,14 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
         <T message="All rhythms" />
       </a>
 
-      <header class="page-header compact editorial-header">
-        <p class="eyebrow"><T message={entry.data.difficulty as Message} /></p>
-        <h1>{entry.data.title}</h1>
+      <header class:list={["page-header compact editorial-header", { "has-gesture": Boolean(entry.data.gesture) }]}>
+        <div class="rhythm-header-copy">
+          <p class="eyebrow"><T message={entry.data.difficulty as Message} /></p>
+          <h1>{entry.data.title}</h1>
+        </div>
+        {entry.data.gesture && (
+          <RhythmGesture id={`gesture-${entry.slug}`} title={entry.data.title} gesture={entry.data.gesture} />
+        )}
       </header>
 
       {
@@ -103,7 +109,7 @@ const sampleEntries = rhythm ? sampleEntriesForRhythm(rhythm) : {};
         ) : null
       }
 
-      <article class="content" data-rhythm-transcription={rhythmBlock}>
+      <article class="content rhythm-content" data-rhythm-transcription={rhythmBlock}>
         <Content />
       </article>
 

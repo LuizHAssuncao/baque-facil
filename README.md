@@ -120,6 +120,27 @@ tests explicitly select English through saved storage.
 
 ## Rhythm Content
 
+The [generate-hand-pose skill](.agents/skills/generate-hand-pose/SKILL.md)
+creates static hand signal illustrations using its bundled
+[approved visual concept](.agents/skills/generate-hand-pose/assets/visual-concept.png).
+With this repository open in Codex, invoke `$generate-hand-pose` and describe the
+finger positions and viewing direction, or supply a pose reference. For example:
+
+```text
+Use $generate-hand-pose to create Marcação with one hand, palm facing the viewer
+and thumb on the viewer's right. Extend the index finger, curl the other three
+fingers and rest the thumb across them.
+```
+
+The [generate-hand-animation skill](.agents/skills/generate-hand-animation/SKILL.md)
+creates moving signals as animated WebP files below 500 KB. It includes the
+approved concept and a file verifier. Add animated WebP reference examples to
+its `assets/` folder or provide their paths with the request. For example:
+
+```text
+Use $generate-hand-animation to create Martelo break from [path to reference video].
+```
+
 Rhythms are Markdown files in `src/content/rhythms/`. Each file needs validated
 frontmatter:
 
@@ -133,6 +154,33 @@ instruments:
   - "Alfaia"
 ---
 ```
+
+To replace the header's decorative alfaia with a hand signal, save the original
+asset in `public/hand-signals/` and add optional `gesture` frontmatter. Static PNG,
+SVG and WebP files and animated WebP files use the same header and enlarged
+preview. Animated WebP files must encode infinite looping; they play directly
+in the browser without conversion. Both the thumbnail and preview preserve the
+whole image with `object-fit: contain`. Referenced public assets are precached
+with the rest of the site.
+
+Martelo break uses the original animation at
+`public/hand-signals/martelo-break.webp`, configured in
+`src/content/rhythms/martelo_break.md`:
+
+```yaml
+gesture:
+  src: "/hand-signals/martelo-break.webp"
+  description:
+    en-CA: "A closed fist moves up and down."
+    pt-BR: "Um punho fechado se move para cima e para baixo."
+```
+
+Keep the asset's descriptive text in both supported languages. The original
+Martelo animation is 480 × 480 pixels, 54 frames over three seconds, 18 FPS,
+481,168 bytes and loops infinitely. A matching copy is bundled as a reference
+in the animation skill's `assets/` directory. The offline browser tests verify
+this actual animation's playback, previews, responsive layout and caching;
+a separate static fixture checks reuse with PNG files.
 
 The rhythm itself goes in a fenced `rhythm` block:
 
@@ -161,6 +209,20 @@ A few example of sample keys are:
 - `Alfaia.R`
 - `Gongue.X`
 - `Gongue.x`
+- `Whistle.X` (whistle/apito, using the uploaded recording)
+
+The whistle sample is stored at `public/samples/whistle/whistle.wav`. To use it
+in a lesson or the composer's transcription, add a `Whistle:` track with `X`
+for a whistle and `.` for a rest. Keep its step count equal to the other tracks:
+
+```rhythm
+Whistle:
+X . . . | . . . .
+```
+
+The shared sample map makes the whistle available to rhythm playback, composer
+note editing and preview, MP3 exports, radio, and offline caching when used by a
+rhythm. Existing rhythms do not include it until a whistle track is added.
 
 When adding a new instrument or symbol, add the sample under `public/samples/`,
 update `src/lib/sampleMap.ts` and verify a rhythm page that uses it.

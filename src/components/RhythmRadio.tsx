@@ -58,6 +58,7 @@ export default function RhythmRadio({
       ? { ...current.rhythm, tracks: snapshot.transitionTracks }
       : current.rhythm;
   }, [current, snapshot.transitionTracks]);
+  const next = entries.find((entry) => entry.rhythm.slug === snapshot.nextSlug);
   const changed =
     snapshot.ready && snapshot.settingsKey !== radioSettingsKey(settings);
   const combos = entries.filter((entry) => entry.combo);
@@ -150,6 +151,12 @@ export default function RhythmRadio({
                     : "Your rhythm, on repeat")}
             </p>
             <h2>{current?.rhythm.title ?? t("Settle into the baque")}</h2>
+            {snapshot.ready && next ? (
+              <p className="radio-next">
+                {t(snapshot.held ? "When you return to the mix" : "Next rhythm")}:{" "}
+                <strong>{next.rhythm.title}</strong>
+              </p>
+            ) : null}
           </div>
         </div>
         <p className="radio-caption">

@@ -94,6 +94,11 @@ test("rhythm grids and copied transcriptions use the selected language's hand sy
   await chooseLanguage(page, portugueseLabel);
   const notes = page.locator(".player-panel .grid-row:not(.count-row) .step-cell");
   const printed = page.locator(".content pre code");
+  const summary = page.locator(".content summary");
+  await expect(summary.getByText("Transcrição", { exact: true })).toBeVisible();
+  await expect(printed).toBeHidden();
+  await summary.click();
+  await expect(printed).toBeVisible();
   await expect(notes.first()).toHaveText("D");
   await expect(notes.filter({ hasText: /^[LR]$/ })).toHaveCount(0);
   await expect(printed).toHaveText("Alfaia:\nD . . . | . . . . | E D . . | E D . .");
@@ -101,6 +106,8 @@ test("rhythm grids and copied transcriptions use the selected language's hand sy
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Alfaia:\nD . . . | . . . . | E D . . | E D . .");
 
   await switchLanguage(page, english);
+  await expect(summary.getByText("Transcription", { exact: true })).toBeVisible();
+  await expect(printed).toBeVisible();
   await expect(notes.first()).toHaveText("R");
   await expect(printed).toHaveText("Alfaia:\nR . . . | . . . . | L R . . | L R . .");
   await page.getByRole("button", { name: "Copy transcription" }).click();
@@ -355,10 +362,12 @@ test("all main pages render Portuguese without errors or horizontal overflow", a
       await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Conheça os ritmos de maracatu/);
     }
     if (path === "/rhythms/combo_parada_arrasto/") {
-      await expect(page.locator('.content [data-language="pt-BR"]').last()).toBeVisible();
-      await expect(page.locator('.content [data-language="pt-BR"]').last()).toContainText("Esta sequência repete Parada");
-      await expect(page.locator('.content [data-language="en-CA"]').last()).toBeHidden();
-      await expect(page.locator('.content [data-language="en-CA"]').last()).toContainText("This sequence repeats Parada");
+      await expect(page.locator('.content > p[data-language="pt-BR"]').last()).toBeVisible();
+      await expect(page.locator('.content > p[data-language="pt-BR"]').last()).toContainText("Esta sequência repete Parada");
+      await expect(page.locator('.content > p[data-language="en-CA"]').last()).toBeHidden();
+      await expect(page.locator('.content > p[data-language="en-CA"]').last()).toContainText("This sequence repeats Parada");
+      await expect(page.locator('.content summary [data-language="pt-BR"]')).toBeVisible();
+      await expect(page.locator('.content pre')).toBeHidden();
     }
     const overflow = await page.evaluate(() => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth);
     expect(overflow, path).toBeLessThanOrEqual(1);

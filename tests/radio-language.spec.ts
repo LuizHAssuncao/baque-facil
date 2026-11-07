@@ -39,9 +39,11 @@ test("radio translates preparation and active playback without replacing the rec
   await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible({ timeout: 30_000 });
   const audio = page.locator("audio[data-radio-player]");
   const source = await audio.getAttribute("src");
+  await expect(page.locator(".radio-next")).toContainText("Next rhythm:");
   await expect.poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeGreaterThan(0);
   await switchLanguage(page, "Português (Brasil)");
   await expect(page.getByRole("button", { name: "Pausar", exact: true })).toBeVisible();
+  await expect(page.locator(".radio-next")).toContainText("Próximo ritmo:");
   await expect(audio).toHaveAttribute("src", source!);
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(false);
   await expect(page.locator('.grid-scroll[aria-label="Grade do ritmo atual"]')).toBeVisible();
@@ -50,12 +52,15 @@ test("radio translates preparation and active playback without replacing the rec
   await expect.poll(() => notes.filter({ hasText: /^[ED]$/ }).count()).toBeGreaterThan(0);
   await expect(page.getByRole("slider", { name: "Tempo da rádio" })).toHaveValue("90");
   await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.album)).toBe("Rádio Baque");
+  const returnTitle = await page.locator(".radio-next strong").textContent();
   await page.getByRole("button", { name: "Ficar neste ritmo", exact: true }).click();
   await expect(page.getByRole("button", { name: "Voltar à sequência", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".radio-next")).toHaveText(`Quando voltar à sequência: ${returnTitle}`);
   const heldSource = await audio.getAttribute("src");
   expect(heldSource).not.toBe(source);
   await switchLanguage(page, "English (Canada)");
   await expect(page.getByRole("button", { name: "Back to mix", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".radio-next")).toHaveText(`When you return to the mix: ${returnTitle}`);
   const englishNotes = page.locator('.grid-scroll[aria-label="Current rhythm grid"] .grid-row:not(.count-row) .step-cell');
   await expect(englishNotes.filter({ hasText: /^[ED]$/ })).toHaveCount(0);
   await expect.poll(() => englishNotes.filter({ hasText: /^[LR]$/ }).count()).toBeGreaterThan(0);
@@ -63,6 +68,8 @@ test("radio translates preparation and active playback without replacing the rec
   await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.album)).toBe("Baque Radio");
   await page.getByRole("button", { name: "Back to mix", exact: true }).click();
   await expect(audio).toHaveAttribute("src", source!);
+  await expect(page.locator(".radio-now h2")).toHaveText(returnTitle!);
+  await expect(page.locator(".radio-next")).toContainText("Next rhythm:");
   await page.getByRole("slider", { name: "Radio tempo" }).fill("75");
   await switchLanguage(page, "Português (Brasil)");
   await expect(page.getByRole("slider", { name: "Tempo da rádio" })).toHaveValue("75");

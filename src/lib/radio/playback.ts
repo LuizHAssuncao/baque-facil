@@ -28,6 +28,7 @@ export type RadioSnapshot = {
   progress: number;
   held: boolean;
   slug: string | null;
+  nextSlug: string | null;
   activeStep: number | null;
   transitionTracks: RhythmTrack[] | null;
   repetition: number;
@@ -48,6 +49,7 @@ export const INITIAL_RADIO: RadioSnapshot = {
   progress: 0,
   held: false,
   slug: null,
+  nextSlug: null,
   activeStep: null,
   transitionTracks: null,
   repetition: 1,
@@ -415,6 +417,10 @@ export class RadioPlayback {
     const position = radioPosition(recording.timeline, seconds);
     this.emit({
       slug: position.segment.slug,
+      nextSlug:
+        this.hold && this.mix
+          ? radioPosition(this.mix.timeline, this.returnTime).segment.slug
+          : position.nextSegment.slug,
       activeStep: position.activeStep,
       transitionTracks: position.transitionTracks,
       repetition: position.repetition,

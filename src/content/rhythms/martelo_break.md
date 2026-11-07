@@ -4,6 +4,11 @@ slug: "combo_martelo_break"
 tempo: 100
 subdivision: 16
 difficulty: "intermediate"
+gesture:
+  src: "/hand-signals/martelo-break.webp"
+  description:
+    en-CA: "A closed fist moves up and down."
+    pt-BR: "Um punho fechado se move para cima e para baixo."
 instruments:
   - "Alfaia"
 ---
