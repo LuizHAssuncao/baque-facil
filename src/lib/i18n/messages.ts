@@ -153,7 +153,7 @@ export const portuguese = {
   "The patterns here are based on personal class notes and should be treated as draft practice material. Baques can vary between groups and nações so the patterns here reflect only one way they may be played.": "Os padrões apresentados aqui se baseiam em anotações pessoais de aulas e devem ser tratados como rascunhos para prática. Os baques podem variar entre grupos e nações, então os padrões aqui refletem apenas uma das formas como eles podem ser tocados.",
   "Source code": "Código-fonte",
   "Rhythm text files": "Arquivos de texto dos ritmos",
-  "The code is open source.": "O código é aberto.",
+  "This application will always be free and open source.": "Este aplicativo será sempre gratuito e de código aberto.",
   "Play": "Reproduzir",
   "Stop": "Parar",
   "Restart": "Reiniciar",
