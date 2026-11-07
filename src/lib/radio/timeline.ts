@@ -1,6 +1,7 @@
 import { TranslatableError } from "../i18n/messages";
-import type { Rhythm } from "../rhythmTypes";
+import type { Rhythm, RhythmTrack } from "../rhythmTypes";
 import { clampTempo } from "../tempo";
+import { radioTransitionTracks } from "./transitions";
 
 import { MP3_SAMPLE_RATE as RADIO_SAMPLE_RATE } from "../audio/mp3Constants";
 export { MP3_SAMPLE_RATE as RADIO_SAMPLE_RATE, MP3_BITRATE as RADIO_BITRATE, PCM_CHUNK_FRAMES as RADIO_CHUNK_FRAMES } from "../audio/mp3Constants";
@@ -20,6 +21,7 @@ export type RadioSegment = {
   cycleFrames: number;
   stepCount: number;
   repetitions: number;
+  transitionTracks?: RhythmTrack[];
 };
 export type RadioTimeline = {
   segments: RadioSegment[];
@@ -176,7 +178,24 @@ export function buildRadioTimeline(
     });
     totalFrames = endFrame;
   }
+  // Resolve exits after the shuffle is complete, including the native file loop.
+  // A solo/held rhythm has no change to announce, even across repeated segments.
+  segments.forEach((segment, index) => {
+    const next = segments[(index + 1) % segments.length];
+    if (next.slug !== segment.slug) {
+      const tracks = radioTransitionTracks(bySlug.get(segment.slug)!);
+      if (tracks) segment.transitionTracks = tracks;
+    }
+  });
   return { segments, totalFrames, tempo: actualTempo };
+}
+
+/** Repetitions are one-based, matching the position shown by the player. */
+export function transitionTracksForRepetition(
+  segment: RadioSegment,
+  repetition: number,
+): RhythmTrack[] | null {
+  return repetition === segment.repetitions ? segment.transitionTracks ?? null : null;
 }
 
 export function radioPosition(timeline: RadioTimeline, seconds: number) {
@@ -194,6 +213,7 @@ export function radioPosition(timeline: RadioTimeline, seconds: number) {
   }
   const segment = timeline.segments[low];
   const offset = frame - segment.startFrame;
+  const repetition = Math.floor(offset / segment.cycleFrames) + 1;
   return {
     index: low,
     segment,
@@ -204,6 +224,7 @@ export function radioPosition(timeline: RadioTimeline, seconds: number) {
           segment.cycleFrames,
       ),
     ),
-    repetition: Math.floor(offset / segment.cycleFrames) + 1,
+    repetition,
+    transitionTracks: transitionTracksForRepetition(segment, repetition),
   };
 }

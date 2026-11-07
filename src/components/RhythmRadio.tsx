@@ -52,6 +52,12 @@ export default function RhythmRadio({
     settings.slugs.includes(entry.rhythm.slug),
   );
   const current = entries.find((entry) => entry.rhythm.slug === snapshot.slug);
+  const audibleRhythm = useMemo(() => {
+    if (!current) return null;
+    return snapshot.transitionTracks
+      ? { ...current.rhythm, tracks: snapshot.transitionTracks }
+      : current.rhythm;
+  }, [current, snapshot.transitionTracks]);
   const changed =
     snapshot.ready && snapshot.settingsKey !== radioSettingsKey(settings);
   const combos = entries.filter((entry) => entry.combo);
@@ -266,18 +272,19 @@ export default function RhythmRadio({
         )}
       </div>
 
-      {current ? (
+      {current && audibleRhythm ? (
         <section className="radio-pattern" aria-label={t("Now playing pattern")}>
           <div className="radio-pattern-heading">
             <p>
               {snapshot.held
                 ? t("Take your time with this pattern")
                 : t("Repetition {current} of {total}", { current: snapshot.repetition, total: snapshot.repetitions })}
+              {snapshot.transitionTracks ? <> · <span>{t("Transition")}</span></> : null}
             </p>
             <a href={`/rhythms/${current.rhythm.slug}/`}>{t("Open rhythm lesson →")}</a>
           </div>
           <RadioRhythmGrid
-            rhythm={current.rhythm}
+            rhythm={audibleRhythm}
             activeStep={snapshot.playing ? snapshot.activeStep : null}
           />
         </section>

@@ -1,6 +1,6 @@
 import { TranslatableError } from "../i18n/messages";
 import type { Rhythm } from "../rhythmTypes";
-import type { RadioTimeline } from "./timeline";
+import { transitionTracksForRepetition, type RadioTimeline } from "./timeline";
 
 import type { PcmHit as RadioHit } from "../audio/pcmMixer";
 export { PcmMixer as RadioMixer } from "../audio/pcmMixer";
@@ -16,7 +16,8 @@ export function buildRadioHits(
     const rhythm = bySlug.get(segment.slug);
     if (!rhythm) throw new TranslatableError("A selected rhythm is no longer available.");
     for (let repeat = 0; repeat < segment.repetitions; repeat += 1) {
-      for (const track of rhythm.tracks) {
+      const tracks = transitionTracksForRepetition(segment, repeat + 1) ?? rhythm.tracks;
+      for (const track of tracks) {
         track.steps.forEach((symbol, step) => {
           if (symbol !== "." && symbol !== "-") {
             hits.push({

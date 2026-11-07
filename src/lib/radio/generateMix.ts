@@ -13,14 +13,16 @@ export async function generateMix(
   onProgress: (progress: number) => void,
 ): Promise<Blob> {
   const cache = new SampleCache();
+  const tracks = [
+    ...rhythms.flatMap((rhythm) => rhythm.tracks),
+    ...timeline.segments.flatMap((segment) => segment.transitionTracks ?? []),
+  ];
   const keys = [
     ...new Set(
-      rhythms.flatMap((rhythm) =>
-        rhythm.tracks.flatMap((track) =>
-          track.steps
-            .filter((symbol) => symbol !== "." && symbol !== "-")
-            .map((symbol) => `${track.name}.${symbol}`),
-        ),
+      tracks.flatMap((track) =>
+        track.steps
+          .filter((symbol) => symbol !== "." && symbol !== "-")
+          .map((symbol) => `${track.name}.${symbol}`),
       ),
     ),
   ];

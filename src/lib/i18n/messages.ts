@@ -257,6 +257,8 @@ export const portuguese = {
   "Now playing pattern": "Padrão em reprodução",
   "Take your time with this pattern": "Pratique este padrão com calma",
   "Repetition {current} of {total}": "Repetição {current} de {total}",
+  "Transition": "Transição",
+  "Whistle": "Apito",
   "Open rhythm lesson →": "Abrir lição do ritmo →",
   "Make it your practice": "Personalize sua prática",
   "{count} rhythm selected": "{count} ritmo selecionado",

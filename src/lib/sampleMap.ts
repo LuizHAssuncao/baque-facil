@@ -9,6 +9,7 @@ export const sampleMap: SampleMap = {
   "Caixa.X": "/samples/caixa/snare-hit.wav",
   "Gongue.X": "/samples/gongue/high-loud.wav",
   "Gongue.x": "/samples/gongue/low-light.wav",
+  "Whistle.X": "/samples/whistle/short.wav",
 };
 
 export function allowedSymbolsForTrack(

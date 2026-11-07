@@ -1,6 +1,7 @@
 import { errorMessage, translate, type Message } from "../i18n/messages";
 import { getLocale } from "../i18n/preference";
 import type { SampleMap } from "../sampleMap";
+import type { RhythmTrack } from "../rhythmTypes";
 import { generateMix } from "./generateMix";
 import { mp3Filename, type Mp3Download } from "../audio/downloadMp3";
 import {
@@ -28,6 +29,7 @@ export type RadioSnapshot = {
   held: boolean;
   slug: string | null;
   activeStep: number | null;
+  transitionTracks: RhythmTrack[] | null;
   repetition: number;
   repetitions: number;
   tempo: number;
@@ -47,6 +49,7 @@ export const INITIAL_RADIO: RadioSnapshot = {
   held: false,
   slug: null,
   activeStep: null,
+  transitionTracks: null,
   repetition: 1,
   repetitions: 8,
   tempo: 90,
@@ -413,6 +416,7 @@ export class RadioPlayback {
     this.emit({
       slug: position.segment.slug,
       activeStep: position.activeStep,
+      transitionTracks: position.transitionTracks,
       repetition: position.repetition,
       repetitions: position.segment.repetitions,
       seconds: Math.floor(seconds),

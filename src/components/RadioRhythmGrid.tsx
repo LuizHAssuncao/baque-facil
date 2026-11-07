@@ -71,7 +71,7 @@ export const RadioRhythmGrid = memo(function RadioRhythmGrid({
         </div>
         {rhythm.tracks.map((track) => (
           <div className="grid-row" style={rowStyle} key={track.name}>
-            <div className="track-name">{track.name}</div>
+            <div className="track-name">{track.name === "Whistle" ? t("Whistle") : track.name}</div>
             {track.steps.map((symbol, index) => (
               <div
                 key={index}

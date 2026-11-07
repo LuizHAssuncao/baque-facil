@@ -292,6 +292,15 @@ test("player, composer, quiz, and fresh radio encoding work on first use offline
   await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible({ timeout: 30_000 });
   const audio = page.locator("audio[data-radio-player]");
   await expect.poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeGreaterThan(0.1);
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 8; });
+  await expect(page.locator(".radio-pattern").getByText("Transition", { exact: true })).toBeVisible();
+  await expect(page.locator(".radio-pattern").getByText("Whistle", { exact: true })).toBeVisible();
+  expect(await page.evaluate(async () => {
+    const response = await fetch("/samples/whistle/short.wav");
+    return response.ok && (await response.arrayBuffer()).byteLength > 44;
+  })).toBe(true);
+  await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.getByRole("button", { name: "Skip", exact: true }).click();
   await page.getByRole("button", { name: "Stay on this rhythm", exact: true }).click();
   await expect(page.getByRole("button", { name: "Back to mix", exact: true })).toBeVisible();
