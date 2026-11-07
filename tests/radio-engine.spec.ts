@@ -83,6 +83,7 @@ test("radio handles a single rhythm, two rhythms, sequences, and invalid setting
   const solo = buildRadioTimeline([makeRhythm("a")], 30, 16, 1);
   expect(solo.segments).toHaveLength(1);
   expect(solo.totalFrames / RADIO_SAMPLE_RATE).toBe(128);
+  expect(radioPosition(solo, 127).nextSegment.slug).toBe("a");
   const combo = buildRadioTimeline([makeRhythm("combo_long", 144)], 90, 16, 1);
   expect(combo.segments[0].repetitions).toBe(1);
   expect(() => buildRadioTimeline([], 90, 8, 120)).toThrow("Select");
@@ -115,11 +116,17 @@ test("radio positions use the media clock across different pattern lengths and r
   );
   const second = timeline.segments[1];
   expect(radioPosition(timeline, 0).activeStep).toBe(0);
+  expect(radioPosition(timeline, 0).nextSegment.slug).toBe(second.slug);
   expect(radioPosition(timeline, 2.125).repetition).toBe(2);
   expect(radioPosition(timeline, 2.125).activeStep).toBe(1);
+  expect(radioPosition(timeline, 2.125).nextSegment.slug).toBe(second.slug);
   expect(
     radioPosition(timeline, second.startFrame / RADIO_SAMPLE_RATE).segment.slug,
   ).toBe(second.slug);
+  expect(
+    radioPosition(timeline, second.startFrame / RADIO_SAMPLE_RATE).nextSegment
+      .slug,
+  ).toBe(timeline.segments[0].slug);
   const fractional = buildRadioTimeline(
     [makeRhythm("a"), makeRhythm("b")],
     90,
@@ -134,6 +141,27 @@ test("radio positions use the media clock across different pattern lengths and r
   expect(
     radioPosition(timeline, timeline.totalFrames / RADIO_SAMPLE_RATE).segment
       .slug,
+  ).toBe(timeline.segments[0].slug);
+});
+
+test("next rhythm follows the complete sequence and wraps from the final group", () => {
+  const timeline = buildRadioTimeline(
+    [makeRhythm("a"), makeRhythm("combo_long", 144), makeRhythm("c")],
+    90,
+    4,
+    120,
+    () => 0.9,
+  );
+  const sequence = timeline.segments[1];
+  expect(sequence.slug).toBe("combo_long");
+  expect(sequence.repetitions).toBe(1);
+  expect(
+    radioPosition(timeline, (sequence.endFrame - 1) / RADIO_SAMPLE_RATE)
+      .nextSegment.slug,
+  ).toBe("c");
+  expect(
+    radioPosition(timeline, (timeline.totalFrames - 1) / RADIO_SAMPLE_RATE)
+      .nextSegment.slug,
   ).toBe(timeline.segments[0].slug);
 });
 

@@ -197,6 +197,7 @@ export function radioPosition(timeline: RadioTimeline, seconds: number) {
   return {
     index: low,
     segment,
+    nextSegment: timeline.segments[(low + 1) % timeline.segments.length],
     activeStep: Math.min(
       segment.stepCount - 1,
       Math.floor(

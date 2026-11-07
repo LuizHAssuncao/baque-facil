@@ -231,6 +231,7 @@ export const portuguese = {
   "Enable JavaScript to prepare and play your radio mix.": "Ative o JavaScript para preparar e reproduzir sua seleção de ritmos.",
   "Baque Radio player": "Reprodutor da Rádio Baque",
   "Staying on this rhythm": "Repetindo este ritmo",
+  "When you return to the mix": "Quando voltar à sequência",
   "Now playing": "Tocando agora",
   "Ready to listen": "Pronto para ouvir",
   "Your rhythm, on repeat": "Seu ritmo, em repetição",

@@ -39,6 +39,7 @@ test("radio plays, pauses, seeks, loops natively while hidden, and restores its 
   page.on("pageerror", (error) => errors.push(error.message));
   const audio = await openRadio(page);
   expect(await audio.getAttribute("src")).toBeNull();
+  await expect(page.locator(".radio-next")).toHaveCount(0);
   await prepare(page);
   await expect
     .poll(() =>
@@ -46,8 +47,12 @@ test("radio plays, pauses, seeks, loops natively while hidden, and restores its 
     )
     .toBeGreaterThan(0.1);
   const title = page.locator(".radio-now h2");
+  const next = page.locator(".radio-next strong");
   const firstTitle = await title.textContent();
+  const firstNextTitle = await next.textContent();
+  await expect(page.locator(".radio-next")).toHaveText(`Next rhythm: ${firstNextTitle}`);
   await page.getByRole("button", { name: "Pause", exact: true }).click();
+  await expect(next).toHaveText(firstNextTitle!);
   const pausedTime = await audio.evaluate(
     (element: HTMLAudioElement) => element.currentTime,
   );
@@ -56,12 +61,29 @@ test("radio plays, pauses, seeks, loops natively while hidden, and restores its 
     await audio.evaluate((element: HTMLAudioElement) => element.paused),
   ).toBe(true);
   await page.getByRole("button", { name: "Skip", exact: true }).click();
-  await expect(title).not.toHaveText(firstTitle!);
+  await expect(title).toHaveText(firstNextTitle!);
+  const secondNextTitle = await next.textContent();
   expect(
     await audio.evaluate((element: HTMLAudioElement) => element.paused),
   ).toBe(true);
+  const boundary = await audio.evaluate(
+    (element: HTMLAudioElement) => element.currentTime,
+  );
+  await audio.evaluate((element: HTMLAudioElement, seconds) => {
+    element.currentTime = seconds - 0.5;
+    element.dispatchEvent(new Event("timeupdate"));
+  }, boundary);
+  await expect(title).toHaveText(firstTitle!);
+  await expect(next).toHaveText(firstNextTitle!);
   await page.getByRole("button", { name: "Play", exact: true }).click();
+  await expect(title).toHaveText(firstNextTitle!);
+  await expect(next).toHaveText(secondNextTitle!);
   const source = await audio.getAttribute("src");
+  await audio.evaluate((element: HTMLAudioElement) => {
+    element.currentTime = element.duration - 2;
+    element.dispatchEvent(new Event("timeupdate"));
+  });
+  await expect(next).toHaveText(firstTitle!);
   await audio.evaluate((element: HTMLAudioElement) => {
     element.currentTime = element.duration - 0.2;
     Object.defineProperty(document, "hidden", {
@@ -86,6 +108,7 @@ test("radio plays, pauses, seeks, loops natively while hidden, and restores its 
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect(title).toHaveText(firstTitle!);
+  await expect(next).toHaveText(firstNextTitle!);
   await expect(page.locator(".radio-pattern .count-cell.active")).toHaveCount(
     1,
   );
@@ -99,12 +122,14 @@ test("Stay uses a native looping recording and Back to mix restores the original
   await prepare(page);
   const original = await audio.getAttribute("src");
   const heldTitle = await page.locator(".radio-now h2").textContent();
+  const returnTitle = await page.locator(".radio-next strong").textContent();
   await page
     .getByRole("button", { name: "Stay on this rhythm", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Back to mix", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".radio-next")).toHaveText(`When you return to the mix: ${returnTitle}`);
   const holdSource = await audio.getAttribute("src");
   expect(holdSource).not.toBe(original);
   await audio.evaluate((element: HTMLAudioElement) => {
@@ -116,9 +141,11 @@ test("Stay uses a native looping recording and Back to mix restores the original
     )
     .toBeLessThan(2);
   await expect(page.locator(".radio-now h2")).toHaveText(heldTitle!);
+  await expect(page.locator(".radio-next strong")).toHaveText(returnTitle!);
   await page.getByRole("button", { name: "Back to mix", exact: true }).click();
   await expect(audio).toHaveAttribute("src", original!);
-  await expect(page.locator(".radio-now h2")).not.toHaveText(heldTitle!);
+  await expect(page.locator(".radio-now h2")).toHaveText(returnTitle!);
+  await expect(page.locator(".radio-next")).toContainText("Next rhythm:");
   await expect(
     page.getByRole("button", { name: "Pause", exact: true }),
   ).toBeVisible();
@@ -176,6 +203,56 @@ test("Pause during preparation wins, and cancelling another shuffle retains the 
   ).toBeVisible();
 });
 
+test("next rhythm stays with the installed mix until new settings finish preparing", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const audio = await openRadio(page, {
+    ...preferences,
+    slugs: ["imale", "martelo"],
+  });
+  await prepare(page);
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  const original = await audio.getAttribute("src");
+  const next = page.locator(".radio-next strong");
+  const originalNext = await next.textContent();
+
+  await page.getByRole("checkbox", { name: /^1 - Marcação/ }).check();
+  await page.getByRole("checkbox", { name: /^2 - Imalê/ }).uncheck();
+  await page.getByRole("checkbox", { name: /^3 - Martelo/ }).uncheck();
+  await expect(next).toHaveText(originalNext!);
+
+  await page.route("**/samples/**", (route) =>
+    route.fulfill({ status: 503, body: "Unavailable" }),
+  );
+  await page.getByRole("button", { name: "Apply settings", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Unable to load a drum sample");
+  await expect(audio).toHaveAttribute("src", original!);
+  await expect(next).toHaveText(originalNext!);
+  await page.unroute("**/samples/**");
+
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/samples/**", async (route) => {
+    await gate;
+    await route.continue().catch(() => {});
+  });
+  await page.getByRole("button", { name: "Apply settings", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
+  await expect(next).toHaveText(originalNext!);
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  release();
+  await page.unroute("**/samples/**");
+  await expect(audio).toHaveAttribute("src", original!);
+  await expect(next).toHaveText(originalNext!);
+
+  await page.getByRole("button", { name: "Apply settings", exact: true }).click();
+  await expect(audio).not.toHaveAttribute("src", original!, { timeout: 25_000 });
+  await expect(page.locator(".radio-now h2")).toHaveText("1 - Marcação");
+  await expect(next).toHaveText("1 - Marcação");
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
+});
+
 test("failed sample preparation can be retried, and a single selection disables Skip", async ({
   page,
 }) => {
@@ -192,6 +269,7 @@ test("failed sample preparation can be retried, and a single selection disables 
   await expect(
     page.getByRole("button", { name: "Skip", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".radio-next strong")).toHaveText("1 - Marcação");
   await page.evaluate(() => {
     localStorage.setItem("baque-facil-reverse-hand-symbols", "true");
     window.dispatchEvent(new Event("baque-facil-hand-symbol-reverse-change"));

@@ -2534,6 +2534,13 @@ kbd {
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
+.radio-next {
+  margin: 0.6rem 0 0;
+  color: var(--muted-strong);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 .radio-signal {
   display: grid;
   place-items: center;
