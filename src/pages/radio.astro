@@ -22,7 +22,7 @@ const entries: RadioEntry[] = (await getCollection("rhythms")).sort((a, b) => a.
   const rhythm = { title: entry.data.title, slug: entry.slug, tempo: entry.data.tempo, subdivision: entry.data.subdivision, tracks: parseRhythm(block) };
   const errors = validateRhythm(rhythm);
   if (errors.length) throw new Error(`Radio: ${entry.slug}: ${errors.join(" ")}`);
-  return { rhythm, difficulty: entry.data.difficulty, combo: isRadioSequence(rhythm) };
+  return { rhythm, difficulty: entry.data.difficulty, combo: isRadioSequence(rhythm), gesture: entry.data.gesture };
 });
 ---
 <!doctype html>

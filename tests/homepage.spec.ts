@@ -40,6 +40,7 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
       await expect(sequences.locator("strong")).toHaveText([
         "Entrada",
         "Parada + Arrasto",
+        locale === "pt-BR" ? "Transição" : "Transition",
         "Flying four",
         "Martelo break",
         "Three Crossed Break",

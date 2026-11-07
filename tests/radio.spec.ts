@@ -270,6 +270,8 @@ test("failed sample preparation can be retried, and a single selection disables 
     page.getByRole("button", { name: "Skip", exact: true }),
   ).toBeDisabled();
   await expect(page.locator(".radio-next strong")).toHaveText("1 - Marcação");
+  await expect(page.locator(".radio-cue")).toHaveAttribute("data-phase", "repeating");
+  await expect(page.locator(".radio-cue img")).toHaveCount(0);
   await page.evaluate(() => {
     localStorage.setItem("baque-facil-reverse-hand-symbols", "true");
     window.dispatchEvent(new Event("baque-facil-hand-symbol-reverse-change"));

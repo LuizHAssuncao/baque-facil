@@ -26,6 +26,12 @@ import {
   type RadioEntry,
 } from "../lib/radio/timeline";
 import { RadioRhythmGrid } from "./RadioRhythmGrid";
+import { RadioSignalCue } from "./RadioSignalCue";
+import {
+  normalizeRadioDisplayPreferences,
+  readRadioDisplayPreferences,
+  writeRadioDisplayPreferences,
+} from "../lib/radio/displayPreferences";
 import { Mp3SaveActions } from "./Mp3SaveActions";
 import { formatAudioDuration } from "../lib/audio/downloadMp3";
 
@@ -44,7 +50,10 @@ export default function RhythmRadio({
   const { t, locale } = useTranslation();
   const sizeFormat = useMemo(() => new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), [locale]);
   const [settings, setSettings] = useState(() => defaultRadioSettings(entries));
+  const [displayPreferences, setDisplayPreferences] = useState(() => normalizeRadioDisplayPreferences(null));
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const showRhythmNames = preferencesLoaded && displayPreferences.showRhythmNames;
+  const showNotes = preferencesLoaded && displayPreferences.showNotes;
   const { audioRef, controller, snapshot } = useRadioPlayback(entries, samples);
   const latest = useRef({ settings, snapshot });
   latest.current = { settings, snapshot };
@@ -99,6 +108,7 @@ export default function RhythmRadio({
     } catch {
       /* Defaults work without storage. */
     }
+    setDisplayPreferences(readRadioDisplayPreferences());
     setPreferencesLoaded(true);
   }, [entries]);
   useEffect(() => {
@@ -109,6 +119,11 @@ export default function RhythmRadio({
       /* Storage is optional. */
     }
   }, [settings, preferencesLoaded]);
+  useEffect(() => {
+    if (!preferencesLoaded) return;
+    writeRadioDisplayPreferences(displayPreferences);
+    controller.current?.setShowRhythmNames(displayPreferences.showRhythmNames);
+  }, [displayPreferences, preferencesLoaded, controller]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (
@@ -133,9 +148,17 @@ export default function RhythmRadio({
     <section className="radio-studio" data-rendered-locale={locale} aria-label={t("Baque Radio player")}>
       <audio ref={audioRef} data-radio-player hidden />
       <div className="radio-player">
+        <RadioSignalCue
+          next={next}
+          currentSlug={snapshot.slug}
+          ready={snapshot.ready}
+          held={snapshot.held}
+          finalRepetition={snapshot.repetition === snapshot.repetitions}
+          showRhythmNames={showRhythmNames}
+        />
         <div className="radio-now" aria-live="polite" aria-atomic="true">
           <span
-            className={`radio-signal ${snapshot.playing ? "is-playing" : ""}`}
+            className="radio-signal"
             aria-hidden="true"
           >
             <Radio size={26} />
@@ -150,13 +173,9 @@ export default function RhythmRadio({
                     ? "Ready to listen"
                     : "Your rhythm, on repeat")}
             </p>
-            <h2>{current ? t(current.rhythm.title as MessageKey) : t("Settle into the baque")}</h2>
-            {snapshot.ready && next ? (
-              <p className="radio-next">
-                {t(snapshot.held ? "When you return to the mix" : "Next rhythm")}:{" "}
-                <strong>{t(next.rhythm.title as MessageKey)}</strong>
-              </p>
-            ) : null}
+            <h2>{current
+              ? showRhythmNames ? t(current.rhythm.title as MessageKey) : t("Rhythm names hidden")
+              : t("Settle into the baque")}</h2>
           </div>
         </div>
         <p className="radio-caption">
@@ -215,6 +234,26 @@ export default function RhythmRadio({
             {t(changed ? "Apply settings" : "Shuffle again")}
           </button>
         </div>
+        <fieldset className="radio-display-options" disabled={!preferencesLoaded}>
+          <legend>{t("Practice view")}</legend>
+          <label>
+            <input
+              type="checkbox"
+              checked={displayPreferences.showRhythmNames}
+              onChange={(event) => setDisplayPreferences({ ...displayPreferences, showRhythmNames: event.target.checked })}
+            />
+            {t("Show rhythm names")}
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={displayPreferences.showNotes}
+              onChange={(event) => setDisplayPreferences({ ...displayPreferences, showNotes: event.target.checked })}
+            />
+            {t("Show notes")}
+          </label>
+          <p>{t("Hide names and notes to practise recognising the signals.")}</p>
+        </fieldset>
         <div className="radio-download">
           {snapshot.download ? <>
             <Mp3SaveActions download={snapshot.download} label="Download mix MP3" />
@@ -279,7 +318,7 @@ export default function RhythmRadio({
         )}
       </div>
 
-      {current && audibleRhythm ? (
+      {showNotes && current && audibleRhythm ? (
         <section className="radio-pattern" aria-label={t("Now playing pattern")}>
           <div className="radio-pattern-heading">
             <p>
@@ -288,7 +327,7 @@ export default function RhythmRadio({
                 : t("Repetition {current} of {total}", { current: snapshot.repetition, total: snapshot.repetitions })}
               {snapshot.transitionTracks ? <> · <span>{t("Transition")}</span></> : null}
             </p>
-            <a href={`/rhythms/${current.rhythm.slug}/`}>{t("Open rhythm lesson →")}</a>
+            {showRhythmNames ? <a href={`/rhythms/${current.rhythm.slug}/`}>{t("Open rhythm lesson →")}</a> : null}
           </div>
           <RadioRhythmGrid
             rhythm={audibleRhythm}
@@ -379,7 +418,7 @@ export default function RhythmRadio({
             {t("Include sequences")}
           </label>
         </div>
-        <fieldset className="radio-selection">
+        <fieldset className="radio-selection" disabled={!preferencesLoaded}>
           <legend className="radio-sr-only">{t("Rhythms in the recording")}</legend>
           {entries
             .filter((entry) => !entry.combo || includeCombos)
@@ -399,8 +438,11 @@ export default function RhythmRadio({
                     })
                   }
                 />
+                {!showRhythmNames && entry.gesture ? (
+                  <img className="radio-choice-gesture" src={entry.gesture.src} alt={entry.gesture.description[locale]} width={44} height={44} loading="lazy" />
+                ) : null}
                 <span>
-                  <strong>{t(entry.rhythm.title as MessageKey)}</strong>
+                  <strong>{showRhythmNames ? t(entry.rhythm.title as MessageKey) : t("Rhythm {number}", { number: entries.indexOf(entry) + 1 })}</strong>
                   <small>{t(entry.combo ? "Sequence" : entry.difficulty as MessageKey)}</small>
                 </span>
               </label>

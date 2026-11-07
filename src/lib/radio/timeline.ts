@@ -1,4 +1,4 @@
-import { TranslatableError } from "../i18n/messages";
+import { TranslatableError, type Locale } from "../i18n/messages";
 import type { Rhythm, RhythmTrack } from "../rhythmTypes";
 import { clampTempo } from "../tempo";
 import { RADIO_TRANSITION_STEPS, radioTransitionTracks } from "./transitions";
@@ -8,7 +8,12 @@ import { MP3_SAMPLE_RATE as RADIO_SAMPLE_RATE } from "../audio/mp3Constants";
 export { MP3_SAMPLE_RATE as RADIO_SAMPLE_RATE, MP3_BITRATE as RADIO_BITRATE, PCM_CHUNK_FRAMES as RADIO_CHUNK_FRAMES } from "../audio/mp3Constants";
 export const RADIO_PREFERENCES_KEY = "baque-facil-radio-v1";
 
-export type RadioEntry = { rhythm: Rhythm; difficulty: string; combo: boolean };
+export type RadioEntry = {
+  rhythm: Rhythm;
+  difficulty: string;
+  combo: boolean;
+  gesture?: { src: string; description: Record<Locale, string> };
+};
 export type RadioSettings = {
   slugs: string[];
   tempo: number;

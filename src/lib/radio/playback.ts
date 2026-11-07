@@ -83,6 +83,7 @@ export class RadioPlayback {
   private snapshot = { ...INITIAL_RADIO };
   private mediaActions: MediaSessionAction[] = [];
   private metadataKey: string | null = null;
+  private showRhythmNames = true;
 
   constructor(
     private audio: HTMLAudioElement,
@@ -428,24 +429,32 @@ export class RadioPlayback {
       seconds: Math.floor(seconds),
       playing: !this.audio.paused,
     });
+    this.updateMediaMetadata(position.segment.slug);
+  };
+
+  setShowRhythmNames = (show: boolean) => {
+    this.showRhythmNames = show;
+    this.updateMediaMetadata(this.snapshot.slug);
+  };
+
+  private updateMediaMetadata(slug: string | null) {
     const locale = getLocale();
-    const metadataKey = `${locale}:${position.segment.slug}`;
+    const metadataKey = `${locale}:${this.showRhythmNames}:${slug}`;
     if (
       this.mediaActions.length &&
       this.metadataKey !== metadataKey
     ) {
       this.metadataKey = metadataKey;
-      const title =
-        this.entries.find(
-          (entry) => entry.rhythm.slug === position.segment.slug,
-        )?.rhythm.title ?? translate(locale, "Baque Radio");
+      const title = (this.showRhythmNames
+        ? this.entries.find((entry) => entry.rhythm.slug === slug)?.rhythm.title
+        : null) ?? translate(locale, "Baque Radio");
       navigator.mediaSession.metadata = new MediaMetadata({
         title: translate(locale, title as Message),
         artist: "Baque Fácil",
         album: translate(locale, "Baque Radio"),
       });
     }
-  };
+  }
 
   private configureMediaSession() {
     if (!("mediaSession" in navigator)) return;
