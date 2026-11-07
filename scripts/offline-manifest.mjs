@@ -3,7 +3,7 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 
 const extensions = new Set([
-  ".html", ".js", ".css", ".json", ".webmanifest", ".ico", ".png", ".svg",
+  ".html", ".js", ".css", ".json", ".webmanifest", ".ico", ".png", ".svg", ".webp",
   ".wav", ".wasm", ".woff", ".woff2",
 ]);
 

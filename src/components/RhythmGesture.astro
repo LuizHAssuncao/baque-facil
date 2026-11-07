@@ -1,0 +1,98 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { Expand, X } from "lucide-react";
+import T from "./TranslatedText.astro";
+import { translatedAttributes } from "../lib/i18n/messages";
+
+interface Props {
+  id: string;
+  title: string;
+  gesture: NonNullable<CollectionEntry<"rhythms">["data"]["gesture"]>;
+}
+
+const { id, title, gesture } = Astro.props;
+---
+
+<div class="rhythm-gesture" data-rhythm-gesture data-gesture-description={JSON.stringify(gesture.description)}>
+  <button
+    class="rhythm-gesture-trigger"
+    type="button"
+    aria-haspopup="dialog"
+    aria-controls={id}
+    {...translatedAttributes({ "aria-label": { key: "Enlarge hand signal for {title}", values: { title } } })}
+  >
+    <img
+      class="rhythm-gesture-image"
+      data-gesture-image
+      src={gesture.src}
+      alt={gesture.description["en-CA"]}
+      width="480"
+      height="480"
+      decoding="async"
+    />
+    <span class="rhythm-gesture-expand" aria-hidden="true"><Expand size={16} /></span>
+  </button>
+
+  <dialog
+    class="rhythm-gesture-dialog"
+    id={id}
+    {...translatedAttributes({ "aria-label": { key: "Hand signal for {title}", values: { title } } })}
+  >
+    <div class="rhythm-gesture-dialog-heading">
+      <h2><T message={{ key: "Hand signal for {title}", values: { title } }} /></h2>
+      <button type="button" data-close-gesture {...translatedAttributes({ "aria-label": "Close preview" })}>
+        <X size={22} aria-hidden="true" />
+      </button>
+    </div>
+    <img
+      class="rhythm-gesture-preview-image"
+      data-gesture-image
+      src={gesture.src}
+      alt={gesture.description["en-CA"]}
+      width="480"
+      height="480"
+      decoding="async"
+    />
+  </dialog>
+</div>
+
+<script>
+  import type { Locale } from "../lib/i18n/messages";
+  import { getLocale, subscribeLocale } from "../lib/i18n/preference";
+
+  document.querySelectorAll<HTMLElement>("[data-rhythm-gesture]").forEach((root) => {
+    const trigger = root.querySelector<HTMLButtonElement>(".rhythm-gesture-trigger")!;
+    const dialog = root.querySelector<HTMLDialogElement>("dialog")!;
+    const close = root.querySelector<HTMLButtonElement>("[data-close-gesture]")!;
+    const description = JSON.parse(root.dataset.gestureDescription!) as Record<Locale, string>;
+    const images = root.querySelectorAll<HTMLImageElement>("[data-gesture-image]");
+    const updateDescription = () => images.forEach((image) => { image.alt = description[getLocale()]; });
+
+    updateDescription();
+    subscribeLocale(updateDescription);
+    trigger.addEventListener("click", () => dialog.showModal());
+    close.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => trigger.focus({ preventScroll: true }));
+    // The close button is the preview's only control. Keep focus here so modal
+    // key presses cannot reach the page's music shortcuts.
+    dialog.addEventListener("keydown", (event) => {
+      event.stopPropagation();
+      if (event.key === "Tab") {
+        event.preventDefault();
+        close.focus();
+      }
+    });
+
+    const outsideDialog = (event: MouseEvent) => {
+      const bounds = dialog.getBoundingClientRect();
+      return event.clientX < bounds.left || event.clientX > bounds.right
+        || event.clientY < bounds.top || event.clientY > bounds.bottom;
+    };
+    let startedOutside = false;
+    dialog.addEventListener("pointerdown", (event) => { startedOutside = outsideDialog(event); });
+    dialog.addEventListener("click", (event) => {
+      if (startedOutside && outsideDialog(event)) dialog.close();
+      startedOutside = false;
+    });
+  });
+</script>

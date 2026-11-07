@@ -1,5 +1,5 @@
 import { openTranscription, openPads } from "../composer-helpers";
-import { expect, test, chromium, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, chromium, type APIRequestContext, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { cp, copyFile, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -23,7 +23,7 @@ async function server(request: APIRequestContext, options: Record<string, unknow
   expect(response.ok()).toBeTruthy();
 }
 
-async function prepared(page: Page) {
+async function prepared(page: Page, directory = join(project, "dist")) {
   await page.goto("/");
   await expect(page.locator(footer)).toHaveAttribute("data-state", "saved");
   const language = page.getByRole("dialog");
@@ -31,7 +31,7 @@ async function prepared(page: Page) {
   expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(false);
   await page.reload();
   await expect(page.locator(footer)).toHaveAttribute("data-ready", "true");
-  await expect(page.locator(footer)).toHaveAttribute("data-release", (await report()).release);
+  await expect(page.locator(footer)).toHaveAttribute("data-release", (await report(directory)).release);
   await expect(page.locator(updatePrompt)).toBeHidden();
 }
 
@@ -120,6 +120,46 @@ test.beforeAll(async () => {
   await writeFile(home, (await readFile(home, "utf8")).replace('class="home-hero-copy"', 'class="home-hero-copy" data-test-layout="updated"'));
   const styles = join(fixtures, "src/styles/global.css");
   await writeFile(styles, `${await readFile(styles, "utf8")}\n.home-hero-copy[data-test-layout="updated"] { border-top: 3px solid rgb(12, 34, 56); }\n`);
+  // Exercise the real production component with clearly labeled test art.
+  // Keep fixtures out of the shipped rhythm library and public assets.
+  await copyFile(join(project, "tests/fixtures/gesture-animation.webp"), join(fixtures, "public/gesture-animation.webp"));
+  await copyFile(join(project, "tests/fixtures/gesture-static.png"), join(fixtures, "public/gesture-static.png"));
+  const martelo = join(fixtures, "src/content/rhythms/martelo_break.md");
+  await writeFile(martelo, (await readFile(martelo, "utf8")).replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, [
+    "---",
+    'title: "Martelo break"',
+    'slug: "combo_martelo_break"',
+    "tempo: 100",
+    "subdivision: 16",
+    'difficulty: "intermediate"',
+    'instruments: ["Alfaia"]',
+    "gesture:",
+    '  src: "/gesture-animation.webp"',
+    "  description:",
+    '    en-CA: "Animated test square."',
+    '    pt-BR: "Quadrado animado de teste."',
+    "---",
+    "",
+  ].join("\n")));
+  await writeFile(join(fixtures, "src/content/rhythms/gesture-fixture.md"), [
+    "---",
+    'title: "Static gesture fixture"',
+    "tempo: 90",
+    "subdivision: 16",
+    'difficulty: "beginner"',
+    'instruments: ["Alfaia"]',
+    "gesture:",
+    '  src: "/gesture-static.png"',
+    "  description:",
+    '    en-CA: "Static test square."',
+    '    pt-BR: "Quadrado estático de teste."',
+    "---",
+    "```rhythm",
+    "Alfaia:",
+    "R . . .",
+    "```",
+    "",
+  ].join("\n"));
   const build = () => execFileSync(process.execPath, [join(project, "node_modules/astro/astro.js"), "build"], {
     cwd: fixtures, env: { ...process.env, ASTRO_TELEMETRY_DISABLED: "1" }, stdio: "pipe", maxBuffer: 5_000_000,
   });
@@ -143,6 +183,126 @@ test.beforeEach(async ({ request, context }) => {
     if (!localStorage.getItem("baque-facil-language")) localStorage.setItem("baque-facil-language", "en-CA");
   });
   await server(request, { directory: join(project, "dist"), blocked: "", corrupt: "", hold: "", reset: true });
+});
+
+async function expectAnimation(image: Locator) {
+  await expect(image).toBeVisible();
+  await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(480);
+  const firstFrame = await image.screenshot();
+  await expect.poll(async () => (await image.screenshot()).equals(firstFrame), {
+    message: "The browser must render different animation frames without interaction",
+    intervals: [100, 170, 230],
+    timeout: 5000,
+  }).toBe(false);
+}
+
+test("gesture headers and enlarged previews remain responsive and animated offline", async ({ page, context, request }, testInfo) => {
+  await server(request, { directory: releaseB });
+  await prepared(page, releaseB);
+  expect((await report(releaseB)).files.map((file) => file.url)).toContain("/gesture-animation.webp");
+  await context.setOffline(true);
+  const lesson = await context.newPage();
+  const imageResponse = lesson.waitForResponse((response) => new URL(response.url()).pathname === "/gesture-animation.webp");
+  await lesson.goto("/rhythms/combo_martelo_break/");
+  expect((await imageResponse).fromServiceWorker()).toBe(true);
+  expect((await imageResponse).headers()["content-type"]).toContain("image/webp");
+  await expect(lesson.locator(footer)).toHaveAttribute("data-ready", "true");
+  await expect(lesson.locator("astro-island[ssr]")).toHaveCount(0);
+
+  const header = lesson.locator(".editorial-header");
+  const trigger = lesson.getByRole("button", { name: "Enlarge hand signal for Martelo break", exact: true });
+  const image = trigger.locator("img");
+  const dialog = lesson.getByRole("dialog", { name: "Hand signal for Martelo break", exact: true });
+  const tempo = await lesson.getByRole("slider", { name: "Tempo", exact: true }).inputValue();
+  for (const width of [1280, 500, 390, 320]) {
+    await lesson.setViewportSize({ width, height: 900 });
+    const titleBox = (await lesson.locator("h1").boundingBox())!;
+    const imageBox = (await image.boundingBox())!;
+    const headerBox = (await header.boundingBox())!;
+    expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(imageBox.x);
+    expect(imageBox.width).toBeGreaterThanOrEqual(100);
+    expect(imageBox.x + imageBox.width).toBeLessThan(headerBox.x + headerBox.width);
+    expect(imageBox.y).toBeGreaterThanOrEqual(headerBox.y);
+    expect(imageBox.y + imageBox.height).toBeLessThan(headerBox.y + headerBox.height);
+    expect(headerBox.height).toBeLessThan(240);
+    expect(await lesson.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await header.evaluate((element) => getComputedStyle(element, "::before").content)).toBe("none");
+    expect(await image.evaluate((element) => getComputedStyle(element).objectFit)).toBe("contain");
+    await expectAnimation(image);
+    await header.screenshot({ path: testInfo.outputPath(`gesture-header-${width}.png`) });
+
+    await trigger.click();
+    await expect(dialog).toBeVisible();
+    const preview = dialog.locator("img");
+    expect((await preview.boundingBox())!.width).toBeGreaterThan(imageBox.width);
+    await expectAnimation(preview);
+    await lesson.screenshot({ path: testInfo.outputPath(`gesture-preview-${width}.png`) });
+    await lesson.keyboard.press("Tab");
+    expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+    await lesson.keyboard.press("+");
+    await lesson.keyboard.press("l");
+    await lesson.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+    await expect(lesson.getByRole("slider", { name: "Tempo", exact: true })).toHaveValue(tempo);
+    await expect(lesson.getByRole("button", { name: "Disable loop", exact: true })).toBeVisible();
+  }
+  await trigger.click();
+  await dialog.getByRole("button", { name: "Close preview", exact: true }).click();
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await lesson.mouse.click(5, 5);
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await lesson.reload();
+  await expectAnimation(image);
+});
+
+test("gesture descriptions and preview controls update with the selected language", async ({ page, request }) => {
+  await server(request, { directory: releaseB });
+  await page.goto("/rhythms/combo_martelo_break/");
+  await page.getByRole("button", { name: "Português (Brasil)", exact: true }).click();
+  await expect(page.locator(".rhythm-gesture-trigger img")).toHaveAttribute("alt", "Quadrado animado de teste.");
+  await page.getByRole("button", { name: "Ampliar sinal de Martelo break", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Sinal de Martelo break", exact: true });
+  await expect(dialog.getByRole("heading", { name: "Sinal de Martelo break", exact: true })).toBeVisible();
+  await expect(dialog.locator("img")).toHaveAttribute("alt", "Quadrado animado de teste.");
+  await dialog.getByRole("button", { name: "Fechar prévia", exact: true }).click();
+  await page.getByRole("button", { name: "English (Canada)", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Enlarge hand signal for Martelo break", exact: true })).toBeVisible();
+  await expect(page.locator(".rhythm-gesture-trigger img")).toHaveAttribute("alt", "Animated test square.");
+});
+
+test("static gestures support touch previews offline and unconfigured pages retain the alfaia", async ({ browser, request }) => {
+  await server(request, { directory: releaseB });
+  const touch = await browser.newContext({
+    baseURL: origin, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+  });
+  try {
+    await touch.addInitScript(() => localStorage.setItem("baque-facil-language", "en-CA"));
+    await touch.route("https://static.cloudflareinsights.com/**", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
+    const page = await touch.newPage();
+    await prepared(page, releaseB);
+    await touch.setOffline(true);
+    await page.goto("/rhythms/gesture-fixture/");
+    const trigger = page.getByRole("button", { name: "Enlarge hand signal for Static gesture fixture", exact: true });
+    await expect.poll(() => trigger.locator("img").evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(480);
+    await trigger.tap();
+    const dialog = page.getByRole("dialog", { name: "Hand signal for Static gesture fixture", exact: true });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Close preview", exact: true }).tap();
+    await expect(dialog).toBeHidden();
+    await page.goto("/rhythms/combo_martelo_break/");
+    await page.getByRole("button", { name: "Enlarge hand signal for Martelo break", exact: true }).tap();
+    const animatedDialog = page.getByRole("dialog", { name: "Hand signal for Martelo break", exact: true });
+    await expectAnimation(animatedDialog.locator("img"));
+    await animatedDialog.getByRole("button", { name: "Close preview", exact: true }).tap();
+    await page.goto("/rhythms/marcacao/");
+    await expect(page.locator("[data-rhythm-gesture]")).toHaveCount(0);
+    expect(await page.locator(".editorial-header").evaluate((element) => getComputedStyle(element, "::before").backgroundImage)).toContain("alfaia-editorial-hero.png");
+  } finally {
+    await touch.close();
+  }
 });
 
 test("shared snapshots open, play and reload offline after the app is saved", async ({ page, context }) => {

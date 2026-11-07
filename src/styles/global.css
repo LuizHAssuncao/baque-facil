@@ -225,6 +225,129 @@ a {
   max-width: 36rem;
 }
 
+.editorial-header.has-gesture {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(7rem, 24vw, 11rem);
+  align-items: center;
+  gap: clamp(0.75rem, 2vw, 2rem);
+  min-height: 0;
+  padding: 1rem 1.25rem 1.25rem;
+  background: var(--paper-strong);
+}
+
+.editorial-header.has-gesture::before {
+  content: none;
+}
+
+.editorial-header.has-gesture > * {
+  min-width: 0;
+  max-width: none;
+}
+
+.editorial-header.has-gesture h1 {
+  font-size: clamp(1.75rem, 5vw, 4.2rem);
+  line-height: 1.08;
+}
+
+.rhythm-gesture-trigger {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.rhythm-gesture-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  border-radius: inherit;
+}
+
+.rhythm-gesture-expand {
+  position: absolute;
+  right: 0.3rem;
+  bottom: 0.3rem;
+  display: grid;
+  place-items: center;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-strong);
+  color: var(--teal);
+}
+
+.rhythm-gesture-trigger:hover .rhythm-gesture-expand {
+  border-color: var(--teal);
+}
+
+.rhythm-gesture-trigger:focus-visible,
+.rhythm-gesture-dialog button:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+html:has(.rhythm-gesture-dialog[open]) {
+  overflow: hidden;
+}
+
+.rhythm-gesture-dialog {
+  width: min(34rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+}
+
+.rhythm-gesture-dialog::backdrop {
+  background: rgb(20 24 22 / 0.65);
+}
+
+.rhythm-gesture-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.rhythm-gesture-dialog-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.rhythm-gesture-dialog-heading button {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-strong);
+  color: var(--teal);
+  cursor: pointer;
+}
+
+.rhythm-gesture-preview-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 7rem);
+  object-fit: contain;
+  object-position: center;
+}
+
 .home-page {
   container: homepage / inline-size;
 }

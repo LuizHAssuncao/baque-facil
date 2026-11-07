@@ -14,7 +14,7 @@ export default defineConfig({
       registerType: "prompt",
       manifest: false,
       injectManifest: {
-        globPatterns: ["**/*.{html,js,css,json,webmanifest,ico,png,svg,wav,wasm,woff,woff2}"],
+        globPatterns: ["**/*.{html,js,css,json,webmanifest,ico,png,svg,webp,wav,wasm,woff,woff2}"],
         globIgnores: ["**/sw.js", "**/offline-build.json"],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         manifestTransforms: [offlineManifest()],

@@ -120,6 +120,27 @@ tests explicitly select English through saved storage.
 
 ## Rhythm Content
 
+The [generate-hand-pose skill](.agents/skills/generate-hand-pose/SKILL.md)
+creates static hand signal illustrations using its bundled
+[approved visual concept](.agents/skills/generate-hand-pose/assets/visual-concept.png).
+With this repository open in Codex, invoke `$generate-hand-pose` and describe the
+finger positions and viewing direction, or supply a pose reference. For example:
+
+```text
+Use $generate-hand-pose to create Marcação with one hand, palm facing the viewer
+and thumb on the viewer's right. Extend the index finger, curl the other three
+fingers and rest the thumb across them.
+```
+
+The [generate-hand-animation skill](.agents/skills/generate-hand-animation/SKILL.md)
+creates moving signals as animated WebP files below 500 KB. It includes the
+approved concept and a file verifier. Add animated WebP reference examples to
+its `assets/` folder or provide their paths with the request. For example:
+
+```text
+Use $generate-hand-animation to create Martelo break from [path to reference video].
+```
+
 Rhythms are Markdown files in `src/content/rhythms/`. Each file needs validated
 frontmatter:
 
@@ -133,6 +154,32 @@ instruments:
   - "Alfaia"
 ---
 ```
+
+To replace the header's decorative alfaia with a hand signal, save the original
+asset in `public/hand-signals/` and add optional `gesture` frontmatter. Static PNG,
+SVG and WebP files and animated WebP files use the same header and enlarged
+preview. Animated WebP files must encode infinite looping; they play directly
+in the browser without conversion. Both the thumbnail and preview preserve the
+whole image with `object-fit: contain`. Referenced public assets are precached
+with the rest of the site.
+
+For Martelo break, once the original animation is available at
+`public/hand-signals/martelo-break.webp`, add this to
+`src/content/rhythms/martelo_break.md`:
+
+```yaml
+gesture:
+  src: "/hand-signals/martelo-break.webp"
+  description:
+    en-CA: "A closed fist moves up and down."
+    pt-BR: "Um punho fechado se move para cima e para baixo."
+```
+
+Keep the asset's descriptive text in both supported languages. The production
+Martelo entry currently has no gesture configured because its original WebP
+attachment has not been made available in the repository. The offline browser
+tests use a synthetic moving-square fixture to verify image playback, previews,
+responsive layout and caching; it is not the Martelo artwork.
 
 The rhythm itself goes in a fenced `rhythm` block:
 
