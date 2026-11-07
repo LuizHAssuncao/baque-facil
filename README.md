@@ -132,8 +132,9 @@ and thumb on the viewer's right. Extend the index finger, curl the other three
 fingers and rest the thumb across them.
 ```
 
-The following static poses are available in `public/hand-signals/`. Each is a
-1024 × 1024 transparent PNG below 500 KB, with palms facing the viewer.
+The following rhythm pages use static poses from `public/hand-signals/` in their
+headers, with tap or click to enlarge. Each is a 1024 × 1024 transparent PNG
+below 500 KB, with palms facing the viewer and descriptions in both languages.
 
 | Rhythm | Pose | Asset |
 | --- | --- | --- |

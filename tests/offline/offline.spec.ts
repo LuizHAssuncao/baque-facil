@@ -255,6 +255,54 @@ test("gesture descriptions and preview controls update with the selected languag
   await expect(page.locator(".rhythm-gesture-trigger img")).toHaveAttribute("alt", "A closed fist moves up and down.");
 });
 
+test("numbered static gestures stay beside the title and enlarge offline", async ({ page, context }, testInfo) => {
+  await prepared(page);
+  await context.setOffline(true);
+  const assets = (await report()).files.map((file) => file.url);
+  for (const slug of ["marcacao", "imale", "martelo", "parada", "trovao", "arrasto"]) {
+    const src = `/hand-signals/${slug}.png`;
+    expect(assets).toContain(src);
+    const response = page.waitForResponse((response) => new URL(response.url()).pathname === src);
+    await page.goto(`/rhythms/${slug}/`);
+    const cached = await response;
+    expect(cached.fromServiceWorker()).toBe(true);
+    expect(cached.headers()["content-type"]).toContain("image/png");
+    const header = page.locator(".editorial-header");
+    const trigger = header.getByRole("button", { name: /^Enlarge hand signal for / });
+    const image = header.locator(".rhythm-gesture-image");
+    await expect(image).toHaveAttribute("src", src);
+    await expect.poll(() => image.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(1024);
+    const englishDescription = await image.getAttribute("alt");
+    expect(englishDescription).toBeTruthy();
+    for (const width of [1280, 390, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      const titleBox = (await page.locator("h1").boundingBox())!;
+      const imageBox = (await image.boundingBox())!;
+      expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(imageBox.x);
+      expect((await header.boundingBox())!.height).toBeLessThan(240);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      expect(await image.evaluate((element) => getComputedStyle(element).objectFit)).toBe("contain");
+      await header.screenshot({ path: testInfo.outputPath(`${slug}-header-${width}.png`) });
+      await trigger.click();
+      const dialog = page.getByRole("dialog", { name: /^Hand signal for / });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.locator("img")).toHaveAttribute("src", src);
+      expect((await dialog.locator("img").boundingBox())!.width).toBeGreaterThan(imageBox.width);
+      await dialog.screenshot({ path: testInfo.outputPath(`${slug}-preview-${width}.png`) });
+      await dialog.getByRole("button", { name: "Close preview", exact: true }).click();
+      await expect(trigger).toBeFocused();
+    }
+    await page.getByRole("button", { name: "Português (Brasil)", exact: true }).click();
+    await expect(image).toHaveAttribute("alt", /mão|mãos/);
+    expect(await image.getAttribute("alt")).not.toBe(englishDescription);
+    await page.getByRole("button", { name: "Ampliar sinal", exact: false }).click();
+    const translatedDialog = page.getByRole("dialog", { name: /^Sinal de / });
+    await expect(translatedDialog.locator("img")).toHaveAttribute("alt", (await image.getAttribute("alt"))!);
+    await translatedDialog.getByRole("button", { name: "Fechar prévia", exact: true }).click();
+    await page.getByRole("button", { name: "English (Canada)", exact: true }).click();
+  }
+});
+
 test("static gestures support touch previews offline and unconfigured pages retain the alfaia", async ({ browser, request }) => {
   await server(request, { directory: releaseB });
   const touch = await browser.newContext({
@@ -279,7 +327,7 @@ test("static gestures support touch previews offline and unconfigured pages reta
     const animatedDialog = page.getByRole("dialog", { name: "Hand signal for Martelo break", exact: true });
     await expectAnimation(animatedDialog.locator("img"));
     await animatedDialog.getByRole("button", { name: "Close preview", exact: true }).tap();
-    await page.goto("/rhythms/marcacao/");
+    await page.goto("/rhythms/afoxe/");
     await expect(page.locator("[data-rhythm-gesture]")).toHaveCount(0);
     expect(await page.locator(".editorial-header").evaluate((element) => getComputedStyle(element, "::before").backgroundImage)).toContain("alfaia-editorial-hero.png");
   } finally {
