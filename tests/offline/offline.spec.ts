@@ -426,6 +426,39 @@ test("home-only setup saves all routes and lazy assets, with a discreet responsi
   expect(errors).toEqual([]);
 });
 
+test("gesture quiz loads saved signals and plays matching choices offline", async ({ page, context }) => {
+  await audioProbe(page);
+  await prepared(page);
+  await context.setOffline(true);
+  expect((await page.goto("/quiz/"))!.fromServiceWorker()).toBe(true);
+  await expect(page.getByRole("button", { name: "Choose option A" })).toBeEnabled();
+  const signalResponse = page.waitForResponse((response) => new URL(response.url()).pathname.startsWith("/hand-signals/"));
+  await page.getByRole("radio", { name: "Hand gesture", exact: true }).check();
+  expect((await signalResponse).fromServiceWorker()).toBe(true);
+  const image = page.locator(".quiz-hand-gesture img");
+  await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
+  const source = await image.getAttribute("src");
+  const title = await page.evaluate(async (source) => {
+    const library = await (await fetch("/quiz/rhythms.json")).json();
+    return library.rhythms.find((rhythm: { title: string; gesture?: { src: string } }) => rhythm.gesture?.src === source).title as string;
+  }, source);
+  await expect(page.locator(".quiz-practice")).not.toContainText(title);
+  await page.getByRole("button", { name: "Play audio A" }).click();
+  await expect(page.getByRole("button", { name: "Stop audio A" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { offlineVoices: { hasSound: boolean }[] }).offlineVoices.some((voice) => voice.hasSound))).toBe(true);
+  const feedback = page.getByRole("status", { name: "Answer feedback" });
+  for (const label of ["A", "B", "C"]) {
+    await page.getByRole("button", { name: `Choose option ${label}` }).click();
+    if (await feedback.getAttribute("data-result") === "correct") break;
+  }
+  await expect(feedback).toHaveAttribute("data-result", "correct");
+  await expect(feedback).toContainText(title);
+  await page.getByRole("button", { name: "Next rhythm", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Choose option A" })).toBeEnabled();
+  await expect(image).not.toHaveAttribute("src", source!);
+  await expect(page.locator(footer)).toHaveAttribute("data-ready", "true");
+});
+
 test("player, composer, quiz, and fresh radio encoding work on first use offline", async ({ page, context }) => {
   test.setTimeout(90_000);
   const errors: string[] = [];

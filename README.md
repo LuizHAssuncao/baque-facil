@@ -12,11 +12,13 @@ React rhythm grids, audio playback, and an Alfaia composer.
 - Generated rhythm pages from Markdown content in `src/content/rhythms/`.
 - Baque Radio at `/radio/`: a locally generated, shuffled MP3 mix with continuous
   native playback, rhythm selection, tempo, Skip, and Stay on this rhythm.
-- A listening quiz at `/quiz/`: match a rhythm name to one of three audio options,
+- A listening quiz at `/quiz/`: match a rhythm name or hand gesture to one of three audio options,
   with unlimited replay and practice, clear answer feedback, no notation, and no
   scoring. Correct answers advance automatically after a two-second confirmation;
   incorrect answers identify the selected rhythm and stay on the same question
   for another try.
+  Choose **Show first → Hand gesture** to use the lesson's hand signal instead
+  of its name. Switching modes stops playback and starts a new question.
 - Fixed-note rhythm player with tempo control, looping, mute controls, restart,
   keyboard support, and background media playback. The composer preview remains editable.
 - Composer with one editable playback grid, an explicit note picker, Alfaia
@@ -254,6 +256,13 @@ and each round needs three distinct sounds. All options use the existing drum
 samples at 90 BPM, with anonymous media controls and no automatic playback. Each
 Play or Replay runs the complete sequence twice in succession, then stops after
 the final drum decay.
+
+Hand gesture mode uses the same `gesture` frontmatter and original files in
+`public/hand-signals/` as the lessons, including the animated Martelo break.
+Only rhythms with a gesture enter this mode, and each round still needs three
+distinct sounds. The prompt and audio controls hide rhythm names until answer
+feedback. Gesture descriptions follow the selected language. If an image cannot
+load, answer selection stays disabled; learners can skip or return to name mode.
 
 ## Offline practice
 

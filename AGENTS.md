@@ -43,6 +43,14 @@ Core user flows:
   and composer layouts.
 - `public/`: static images and audio samples. Audio samples are grouped under
   `public/samples/<instrument>/`.
+- `public/hand-signals/`: the existing hand signal images and animations. Use
+  these assets for gesture features; browser URLs start with `/hand-signals/`.
+  Each lesson's `gesture.src` and bilingual `gesture.description` frontmatter
+  map its rhythm to the correct asset. Check this directory and the lesson
+  metadata before asking the user for hand signals. If they are absent from a
+  stale checkout, fetch and inspect the latest `origin/main`. Reuse the original
+  files, including animated WebP, rather than inventing number-to-gesture mappings
+  or generating replacement artwork unless the user requests it.
 - `tests/layout.spec.ts`: Playwright smoke and interaction tests.
 - `tests/radio*.spec.ts`: radio timeline/mixer, real encoding, controls, and
   generation benchmark. Emulated mobile tests do not verify physical phone locking.

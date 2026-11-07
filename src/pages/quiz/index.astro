@@ -17,7 +17,7 @@ import "../../styles/global.css";
     <meta charset="UTF-8" />
     <LanguageHead />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" {...translatedAttributes({ "content": "Get to know Maracatu rhythms by ear. Read a rhythm name, listen, and find its sound." })} />
+    <meta name="description" {...translatedAttributes({ "content": "Get to know Maracatu rhythms by ear. Start with a name or hand gesture, listen, and find its sound." })} />
     <title data-i18n-text={JSON.stringify("Quiz | Baque Fácil")}>{"Quiz | Baque Fácil"}</title>
   </head>
   <body>
@@ -30,7 +30,7 @@ import "../../styles/global.css";
       <header class="page-header quiz-header">
         <p class="eyebrow"><T message="Quiz" /></p>
         <h1><T message="Quiz" /></h1>
-        <p><T message="Read the name, listen to the options, and find the matching rhythm." /></p>
+        <p><T message="Start with a name or hand gesture, listen to the options, and find the matching rhythm." /></p>
       </header>
       <RhythmQuiz client:load />
       <noscript><p><T message="Enable JavaScript to listen to the options and practice." /></p></noscript>

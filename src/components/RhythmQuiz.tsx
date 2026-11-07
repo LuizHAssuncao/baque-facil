@@ -1,9 +1,9 @@
 import { useTranslation } from "../lib/i18n/useTranslation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Check, Headphones, Play, RotateCcw, SkipForward, Square, X } from "lucide-react";
+import { ArrowRight, Check, Hand, Headphones, Play, RotateCcw, SkipForward, Square, Type, X } from "lucide-react";
 import { useRenderedPlayback } from "../lib/audio/useRenderedPlayback";
 import type { RenderedPlayback } from "../lib/audio/renderedPlayback";
-import { createQuizRound, QUIZ_PLAY_COUNT, QUIZ_TEMPO, type QuizLibrary, type QuizRound } from "../lib/rhythmQuiz";
+import { createQuizRound, QUIZ_PLAY_COUNT, QUIZ_TEMPO, type QuizLibrary, type QuizMode, type QuizRound } from "../lib/rhythmQuiz";
 import type { Rhythm } from "../lib/rhythmTypes";
 import type { SampleMap } from "../lib/sampleMap";
 
@@ -82,8 +82,9 @@ function AudioOption({ rhythm, samples, label, answered, result, onPlay, onChoos
   );
 }
 
-function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: {
+function PracticeRound({ round, mode, samples, focusPrompt, onNext, onPlay, onStop }: {
   round: QuizRound;
+  mode: QuizMode;
   samples: SampleMap;
   focusPrompt: boolean;
   onNext: () => void;
@@ -92,6 +93,7 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
 }) {
   const { t, locale } = useTranslation();
   const [selected, setSelected] = useState<string | null>(null);
+  const [gestureStatus, setGestureStatus] = useState(mode === "gesture" ? "loading" : "ready");
   const prompt = useRef<HTMLHeadingElement>(null);
   const feedback = useRef<HTMLDivElement>(null);
   const answered = selected === round.prompt.slug;
@@ -116,9 +118,24 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
   return (
     <section data-rendered-locale={locale} className="quiz-practice" aria-labelledby="quiz-prompt">
       <div className="quiz-prompt-panel">
-        <Headphones size={24} aria-hidden="true" />
+        {mode === "name" && <Headphones size={24} aria-hidden="true" />}
         <p className="eyebrow">{t("Which audio matches?")}</p>
-        <h2 id="quiz-prompt" ref={prompt} tabIndex={-1}>{round.prompt.title}</h2>
+        <h2 id="quiz-prompt" ref={prompt} tabIndex={-1}>{mode === "gesture" ? t("Watch the hand gesture") : round.prompt.title}</h2>
+        {mode === "gesture" && round.prompt.gesture && (
+          <div className="quiz-hand-gesture">
+            {gestureStatus !== "error" && <img
+              src={round.prompt.gesture.src}
+              alt={round.prompt.gesture.description[locale]}
+              width={240}
+              height={240}
+              decoding="async"
+              onLoad={() => setGestureStatus("ready")}
+              onError={() => setGestureStatus("error")}
+            />}
+            {gestureStatus === "loading" && <p role="status">{t("Loading hand gesture…")}</p>}
+            {gestureStatus === "error" && <p role="alert">{t("The hand gesture couldn’t load. Skip this rhythm or practice with rhythm names.")}</p>}
+          </div>
+        )}
       </div>
       <p className="quiz-listen-hint">{t("Each option plays twice. Replay as often as you like.")}</p>
       <ol className="quiz-options" aria-label={t("Audio options")}>
@@ -128,7 +145,7 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
             rhythm={rhythm}
             samples={samples}
             label={String.fromCharCode(65 + index)}
-            answered={answered}
+            answered={answered || gestureStatus !== "ready"}
             result={selected === rhythm.slug ? answered ? "correct" : "retry" : undefined}
             onPlay={onPlay}
             onChoose={() => { onStop(); setSelected(rhythm.slug); }}
@@ -168,6 +185,7 @@ function PracticeRound({ round, samples, focusPrompt, onNext, onPlay, onStop }: 
 
 export default function RhythmQuiz() {
   const { t, locale } = useTranslation();
+  const [mode, setMode] = useState<QuizMode>("name");
   const [round, setRound] = useState<QuizRound | null>(null);
   const [samples, setSamples] = useState<SampleMap>({});
   const [loading, setLoading] = useState(true);
@@ -198,7 +216,7 @@ export default function RhythmQuiz() {
       if (!response.ok) throw new Error("Unable to load rhythms.");
       const library: QuizLibrary = await response.json();
       if (request.current !== controller) return;
-      const nextRound = createQuizRound(library, previousSlug.current);
+      const nextRound = createQuizRound(library, previousSlug.current, mode);
       setSamples(library.samples);
       setRound(nextRound);
       previousSlug.current = nextRound?.prompt.slug;
@@ -208,12 +226,12 @@ export default function RhythmQuiz() {
       clearTimeout(timeout);
       if (request.current === controller) setLoading(false);
     }
-  }, [stopPlayback]);
+  }, [mode, stopPlayback]);
 
   const nextRound = useCallback(() => { void loadRound(true); }, [loadRound]);
 
   useEffect(() => {
-    void loadRound();
+    void loadRound(focusNextPrompt.current);
     return () => {
       const controller = request.current;
       request.current = null;
@@ -222,26 +240,49 @@ export default function RhythmQuiz() {
     };
   }, [loadRound, stopPlayback]);
 
-  if (loading) return <div data-rendered-locale={locale} className="quiz-empty" role="status">{t("Finding a rhythm…")}</div>;
-  if (error || !round) return (
-    <section data-rendered-locale={locale} className="quiz-empty">
-      <Headphones size={28} aria-hidden="true" />
-      <h2>{t(error ? "The rhythms couldn’t load" : "More rhythms needed")}</h2>
-      <p role="status">{t(error ? "Try again when you’re connected." : "This practice needs at least three different playable rhythms in the library.")}</p>
-      <button className="quiz-button" type="button" onClick={() => void loadRound(true)}>
-        <RotateCcw size={18} aria-hidden="true" />{t("Try again")}</button>
-    </section>
-  );
-
   return (
-    <PracticeRound
-      key={round.prompt.slug}
-      round={round}
-      samples={samples}
-      focusPrompt={focusNextPrompt.current}
-      onNext={nextRound}
-      onStop={stopPlayback}
-      onPlay={(player) => { stopPlayback(); activePlayer.current = player; }}
-    />
+    <div data-rendered-locale={locale}>
+      <fieldset className="quiz-mode">
+        <legend>{t("Show first")}</legend>
+        <div className="quiz-mode-options">
+          {(["name", "gesture"] as const).map((value) => (
+            <label key={value} className="quiz-mode-option" data-selected={mode === value || undefined}>
+              <input type="radio" name="quiz-mode" value={value} checked={mode === value}
+                onChange={() => {
+                  stopPlayback();
+                  setLoading(true);
+                  focusNextPrompt.current = true;
+                  setMode(value);
+                }} />
+              {value === "name" ? <Type size={20} aria-hidden="true" /> : <Hand size={20} aria-hidden="true" />}
+              <span>{t(value === "name" ? "Rhythm name" : "Hand gesture")}</span>
+            </label>
+          ))}
+        </div>
+        {mode === "gesture" && <p className="quiz-mode-hint">{t("Look at the hand gesture, then choose the audio that matches. The rhythm name is revealed after a correct answer.")}</p>}
+      </fieldset>
+      {loading ? <div className="quiz-empty" role="status">{t("Finding a rhythm…")}</div> : error || !round ? (
+        <section className="quiz-empty">
+          <Headphones size={28} aria-hidden="true" />
+          <h2>{t(error ? "The rhythms couldn’t load" : mode === "gesture" ? "More hand gestures needed" : "More rhythms needed")}</h2>
+          <p role="status">{t(error ? "Try again when you’re connected." : mode === "gesture"
+            ? "This practice needs at least three different playable rhythms with hand gestures. You can still practice with rhythm names."
+            : "This practice needs at least three different playable rhythms in the library.")}</p>
+          <button className="quiz-button" type="button" onClick={() => void loadRound(true)}>
+            <RotateCcw size={18} aria-hidden="true" />{t("Try again")}</button>
+        </section>
+      ) : (
+        <PracticeRound
+          key={`${mode}-${round.prompt.slug}`}
+          round={round}
+          mode={mode}
+          samples={samples}
+          focusPrompt={focusNextPrompt.current}
+          onNext={nextRound}
+          onStop={stopPlayback}
+          onPlay={(player) => { stopPlayback(); activePlayer.current = player; }}
+        />
+      )}
+    </div>
   );
 }

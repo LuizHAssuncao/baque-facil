@@ -1,5 +1,6 @@
 import { extractRhythmBlock } from "./extractRhythmBlock";
 import { parseRhythm } from "./parseRhythm";
+import type { Locale } from "./i18n/messages";
 import type { Rhythm } from "./rhythmTypes";
 import type { SampleMap } from "./sampleMap";
 import { validateRhythm } from "./validateRhythm";
@@ -7,34 +8,40 @@ import { validateRhythm } from "./validateRhythm";
 export const QUIZ_TEMPO = 90;
 export const QUIZ_PLAY_COUNT = 2;
 
+export type QuizMode = "name" | "gesture";
+export type QuizRhythm = Rhythm & {
+  gesture?: { src: string; description: Record<Locale, string> };
+};
+
 export type QuizLibrary = {
-  rhythms: Rhythm[];
+  rhythms: QuizRhythm[];
   samples: SampleMap;
 };
 
 export type QuizRound = {
-  prompt: Rhythm;
-  options: Rhythm[];
+  prompt: QuizRhythm;
+  options: QuizRhythm[];
 };
 
 type LibraryEntry = {
   slug: string;
   body: string;
-  data: Pick<Rhythm, "title" | "tempo" | "subdivision">;
+  data: Pick<QuizRhythm, "title" | "tempo" | "subdivision" | "gesture">;
 };
 
 /** Derive eligibility from the same content and validation used by rhythm pages. */
-export function buildQuizRhythms(entries: LibraryEntry[]): Rhythm[] {
+export function buildQuizRhythms(entries: LibraryEntry[]): QuizRhythm[] {
   return entries.flatMap((entry) => {
     const block = extractRhythmBlock(entry.body);
     if (!entry.data.title.trim() || !block) return [];
 
     try {
-      const rhythm: Rhythm = {
+      const rhythm: QuizRhythm = {
         title: entry.data.title,
         slug: entry.slug,
         tempo: entry.data.tempo,
         subdivision: entry.data.subdivision,
+        gesture: entry.data.gesture,
         tracks: parseRhythm(block),
       };
       if (validateRhythm(rhythm).length > 0) return [];
@@ -67,8 +74,8 @@ function soundKey(rhythm: Rhythm, samples: SampleMap): string {
   return JSON.stringify([rhythm.tracks[0].steps.length * stepSize, events]);
 }
 
-export function createQuizRound(library: QuizLibrary, previousSlug?: string): QuizRound | null {
-  const rhythms = shuffled(library.rhythms);
+export function createQuizRound(library: QuizLibrary, previousSlug?: string, mode: QuizMode = "name"): QuizRound | null {
+  const rhythms = shuffled(library.rhythms.filter((rhythm) => mode === "name" || rhythm.gesture?.src));
   const keys = new Map(rhythms.map((rhythm) => [rhythm.slug, soundKey(rhythm, library.samples)]));
   if (new Set(keys.values()).size < 3) return null;
 
