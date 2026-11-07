@@ -305,7 +305,8 @@ test("the generated MP3 contains whistle bursts only in the final bar", async ({
   const normal = levels.filter((_, bar) => bar !== 3 && bar !== 7);
   for (const bar of [3, 7]) {
     expect(levels[bar]).toBeGreaterThan(0.01);
-    expect(levels[bar]).toBeGreaterThan(Math.max(...normal) * 5);
+    // Detect the quieter cue above drum bleed without requiring it to dominate.
+    expect(levels[bar]).toBeGreaterThan(Math.max(...normal) * 2);
   }
 });
 
@@ -345,7 +346,7 @@ for (const slug of ["martelo", "parada"]) {
     await expect(alfaia).toHaveText(sequence.tracks[0].steps);
     const levels = await whistleLevels(page, [cueStart - bar + bar / 2 + 0.12, cueStart + bar / 2 + 0.12, sequenceCueStart + bar / 2 + 0.12]);
     expect(levels[1]).toBeGreaterThan(0.01);
-    expect(levels[1]).toBeGreaterThan(Math.max(levels[0], levels[2]) * 5);
+    expect(levels[1]).toBeGreaterThan(Math.max(levels[0], levels[2]) * 2);
   });
 }
 

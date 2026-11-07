@@ -54,6 +54,7 @@ test("the whistle recording renders with its decay, loops, mutes and exports to 
     };
     const samples = sampleEntriesForRhythm(rhythm);
     const cache = new SampleCache();
+    const original = await cache.load(samples["Whistle.X"]);
     const request = { rhythm, samples, tempo: 120, loop: false, mutedTracks: [] };
     const finite = await renderRhythm(request, cache);
     const loop = await renderRhythm({ ...request, loop: true }, cache);
@@ -64,24 +65,25 @@ test("the whistle recording renders with its decay, loops, mutes and exports to 
     return {
       duration: finite.buffer.duration,
       cycle: loop.buffer.duration,
-      peak: peak(finite.buffer.getChannelData(0)),
+      reductionDb: 20 * Math.log10(peak(finite.buffer.getChannelData(0)) / peak(original.getChannelData(0))),
       leadingRest: peak(finite.buffer.getChannelData(0).slice(0, 38000)),
       loopStart: peak(loop.buffer.getChannelData(0).slice(0, 10000)),
       muted: peak(muted.buffer.getChannelData(0)),
       mp3Type: exported.blob.type,
       mp3Frames: decoded.length,
       renderedFrames: finite.buffer.length,
-      mp3Peak: peak(decoded.getChannelData(0)),
+      mp3ReductionDb: 20 * Math.log10(peak(decoded.getChannelData(0)) / peak(original.getChannelData(0))),
     };
   });
   expect(result.duration).toBeGreaterThan(1.4);
   expect(result.duration).toBeLessThan(1.5);
   expect(result.cycle).toBe(1);
-  expect(result.peak).toBeGreaterThan(0.1);
+  expect(result.reductionDb).toBeCloseTo(-18, 3);
   expect(result.leadingRest).toBe(0);
-  expect(result.loopStart).toBeGreaterThan(0.1);
+  expect(result.loopStart).toBeGreaterThan(0.01);
   expect(result.muted).toBe(0);
   expect(result.mp3Type).toBe("audio/mpeg");
   expect(result.mp3Frames).toBe(result.renderedFrames);
-  expect(result.mp3Peak).toBeGreaterThan(0.1);
+  expect(result.mp3ReductionDb).toBeGreaterThan(-19);
+  expect(result.mp3ReductionDb).toBeLessThan(-17);
 });
