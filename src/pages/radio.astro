@@ -14,9 +14,10 @@ import { validateRhythm } from "../lib/validateRhythm";
 import { sampleMap } from "../lib/sampleMap";
 import type { RadioEntry } from "../lib/radio/timeline";
 import { isRadioSequence } from "../lib/radio/sequence";
+import { getRhythmCategory } from "../lib/rhythmCategory";
 import "../styles/global.css";
 
-const entries: RadioEntry[] = (await getCollection("rhythms")).sort((a, b) => a.data.title.localeCompare(b.data.title)).map((entry) => {
+const entries: RadioEntry[] = (await getCollection("rhythms")).filter((entry) => getRhythmCategory(entry) !== "call").sort((a, b) => a.data.title.localeCompare(b.data.title)).map((entry) => {
   const block = extractRhythmBlock(entry.body);
   if (!block) throw new Error(`Radio: ${entry.slug} has no rhythm block.`);
   const rhythm = { title: entry.data.title, slug: entry.slug, tempo: entry.data.tempo, subdivision: entry.data.subdivision, tracks: parseRhythm(block) };

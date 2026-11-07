@@ -19,7 +19,7 @@ function libraryRhythm(filename: string): Rhythm {
 
 const rhythms = ["marcacao", "imale"].map(libraryRhythm);
 const regularRhythms = ["marcacao", "imale", "martelo", "parada", "trovao", "arrasto", "afoxe"].map(libraryRhythm);
-const sequences = ["combo_entrada", "combo_parada_arrasto", "combo_three_crossed_break", "flying_four", "martelo_break", "combo-transition"].map(libraryRhythm);
+const sequences = ["combo_parada_arrasto", "combo_three_crossed_break", "flying_four", "martelo_break", "combo-transition"].map(libraryRhythm);
 
 function whistleHitCount(rhythm: Rhythm): number {
   return rhythm.tracks.find((track) => track.name === "Whistle")?.steps.filter((symbol) => symbol === "X").length ?? 0;
@@ -314,7 +314,7 @@ for (const slug of ["martelo", "parada"]) {
   test(`${slug} keeps its notes under the whistle, then the sequence exits without a cue`, async ({ page }) => {
     test.setTimeout(60_000);
     const rhythm = libraryRhythm(slug);
-    const sequence = libraryRhythm("combo_entrada");
+    const sequence = libraryRhythm("combo_parada_arrasto");
     const audio = await openMix(page, [slug, sequence.slug]);
     const title = page.locator(".radio-now h2");
     if (await title.textContent() !== rhythm.title) {

@@ -1,6 +1,7 @@
 ---
 title: "Entrada"
 slug: "combo_entrada"
+category: "call"
 tempo: 90
 subdivision: 16
 difficulty: "beginner"

@@ -69,10 +69,15 @@ test("radio plays, pauses, seeks, loops natively while hidden, and restores its 
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  const audio = await openRadio(page);
+  const audio = await openRadio(page, { ...preferences, slugs: [...preferences.slugs, "combo_entrada"] });
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(localStorage.getItem("baque-facil-radio-v1")!).slugs,
+  )).toEqual(preferences.slugs);
+  await expect(page.getByRole("checkbox", { name: /Entrada/ })).toHaveCount(0);
   expect(await audio.getAttribute("src")).toBeNull();
   await expect(page.locator(".radio-next")).toHaveCount(0);
   await prepare(page);
+  await expect(page.locator(".radio-now h2")).not.toHaveText("Entrada");
   await expect
     .poll(() =>
       audio.evaluate((element: HTMLAudioElement) => element.currentTime),
@@ -327,7 +332,8 @@ test("preferences, optional sequences, and keyboard controls work without autopl
   await page
     .getByRole("checkbox", { name: "Include sequences", exact: true })
     .check();
-  await expect(page.getByRole("checkbox", { name: /Entrada/ })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /Parada \+ Arrasto/ })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /Entrada/ })).toHaveCount(0);
   await page
     .getByRole("checkbox", { name: "Include sequences", exact: true })
     .uncheck();

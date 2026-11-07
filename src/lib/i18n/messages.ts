@@ -108,6 +108,7 @@ export const portuguese = {
   "Learn, listen and compose alfaia patterns.": "Aprenda, ouça e crie ritmos de alfaia.",
   "Rhythms": "Ritmos",
   "Sequences": "Sequências",
+  "Calls": "Chamadas",
   "Jump to sequences": "Ir para sequências",
   "All rhythms": "Todos os ritmos",
   "Enlarge hand signal for {title}": "Ampliar sinal de {title}",

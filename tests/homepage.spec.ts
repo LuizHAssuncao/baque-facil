@@ -12,8 +12,8 @@ async function expectBelowNavigation(page: Page, target: Locator) {
 for (const locale of ["en-CA", "pt-BR"] as const) {
   test.describe(`homepage in ${locale}`, () => {
     const labels = locale === "pt-BR"
-      ? { navigation: "Navegação principal", rhythms: "Ritmos", sequences: "Sequências", radio: "Rádio", compose: "Compor", jump: "Ir para sequências", settings: "Configurações", return: "Todos os ritmos" }
-      : { navigation: "Main navigation", rhythms: "Rhythms", sequences: "Sequences", radio: "Radio", compose: "Compose", jump: "Jump to sequences", settings: "Settings", return: "All rhythms" };
+      ? { navigation: "Navegação principal", rhythms: "Ritmos", sequences: "Sequências", calls: "Chamadas", radio: "Rádio", compose: "Compor", jump: "Ir para sequências", settings: "Configurações", return: "Todos os ritmos" }
+      : { navigation: "Main navigation", rhythms: "Rhythms", sequences: "Sequences", calls: "Calls", radio: "Radio", compose: "Compose", jump: "Jump to sequences", settings: "Settings", return: "All rhythms" };
 
     test.beforeEach(async ({ page }) => {
       await page.addInitScript((language) => localStorage.setItem("baque-facil-language", language), locale);
@@ -38,13 +38,21 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
       expect(await sequences.count()).toBeGreaterThan(0);
       for (const sequence of await sequences.all()) await expect(sequence).toBeVisible();
       await expect(sequences.locator("strong")).toHaveText([
-        "Entrada",
         "Parada + Arrasto",
         locale === "pt-BR" ? "Transição" : "Transition",
         "Flying four",
         "Martelo break",
         "Three Crossed Break",
       ]);
+      await expect(page.locator(".home-page > .home-section h2")).toHaveText([
+        labels.rhythms,
+        labels.sequences,
+        labels.calls,
+      ], { useInnerText: true });
+      const calls = page.getByRole("region", { name: labels.calls, exact: true });
+      await expect(calls.locator(".rhythm-link strong")).toHaveText(["Entrada"]);
+      await expect(calls.getByRole("link", { name: /Entrada/ })).toHaveAttribute("href", "/rhythms/combo_entrada/");
+      await expect(page.locator('.rhythm-link[href="/rhythms/combo_entrada/"]')).toHaveCount(1);
       await page.screenshot({ path: testInfo.outputPath(`home-${locale}.png`) });
 
       await page.locator("#settings summary").scrollIntoViewIfNeeded();

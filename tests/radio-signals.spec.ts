@@ -280,30 +280,31 @@ test("a sequence waits until seventy percent to call its next rhythm", async ({ 
 });
 
 test("an unmapped signal reveals the next name only during the call when names are hidden", async ({ page }, testInfo) => {
-  const audio = await openRadio(page, ["marcacao", "combo_entrada"]);
+  const audio = await openRadio(page, ["marcacao", "combo_three_crossed_break"]);
   if (await page.locator(".radio-now h2").innerText() !== "1 - Marcação") {
     await page.getByRole("button", { name: "Skip", exact: true }).click();
     await expect(page.locator(".radio-now h2")).toHaveText("1 - Marcação");
   }
-  const start = Math.floor(await audio.evaluate((element: HTMLAudioElement) => element.currentTime));
+  await page.getByRole("button", { name: "Jump to beat 1", exact: true }).click();
+  const start = await audio.evaluate((element: HTMLAudioElement) => element.currentTime);
   await page.getByRole("checkbox", { name: "Show rhythm names", exact: true }).uncheck();
   await page.getByRole("checkbox", { name: "Show notes", exact: true }).uncheck();
-  await expect(page.locator(".radio-cue")).not.toContainText("Entrada");
-  await seek(audio, start + 4);
+  await expect(page.locator(".radio-cue")).not.toContainText("Three Crossed Break");
+  await seek(audio, start + 4.01);
   await expect(page.locator(".radio-cue")).toHaveAttribute("data-phase", "call");
   await expect(page.locator(".radio-cue")).toContainText("Signal unavailable");
-  await expect(page.locator(".radio-next strong")).toHaveText("Entrada");
-  await expect(page.locator(".radio-cue [role=status]")).toHaveText("Next rhythm: Entrada");
+  await expect(page.locator(".radio-next strong")).toHaveText("Three Crossed Break");
+  await expect(page.locator(".radio-cue [role=status]")).toHaveText("Next rhythm: Three Crossed Break");
   await expect(page.locator(".radio-now h2")).toHaveText("Rhythm names hidden");
-  await expect(page.locator(".radio-selection")).not.toContainText("Entrada");
+  await expect(page.locator(".radio-selection")).not.toContainText("Three Crossed Break");
   await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.title)).toBe("Baque Radio");
   await page.locator(".radio-player").screenshot({ path: testInfo.outputPath("radio-signal-unavailable.png") });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await seek(audio, start + 3.999);
+  await seek(audio, start + 3.99);
   await expect(page.locator(".radio-cue")).toHaveAttribute("data-phase", "waiting");
-  await expect(page.locator(".radio-cue")).not.toContainText("Entrada");
-  await seek(audio, start + 4);
-  await expect(page.locator(".radio-next strong")).toHaveText("Entrada");
+  await expect(page.locator(".radio-cue")).not.toContainText("Three Crossed Break");
+  await seek(audio, start + 4.01);
+  await expect(page.locator(".radio-next strong")).toHaveText("Three Crossed Break");
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible();
 });

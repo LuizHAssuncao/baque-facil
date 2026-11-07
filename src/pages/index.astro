@@ -9,6 +9,7 @@ import LanguageChoices from "../components/LanguageChoices.astro";
 import Disclaimer from "../components/Disclaimer.astro";
 import PwaHead from "../components/PwaHead.astro";
 import OfflineRefresh from "../components/OfflineRefresh.astro";
+import { getRhythmCategory } from "../lib/rhythmCategory";
 import "../styles/global.css";
 
 const appCommit = import.meta.env.PUBLIC_APP_COMMIT;
@@ -22,10 +23,9 @@ const rhythms = (await getCollection("rhythms")).sort((a, b) =>
     (difficultyOrder.get(b.data.difficulty) ?? 3) ||
   a.data.title.localeCompare(b.data.title),
 );
-const isCombo = (rhythm: (typeof rhythms)[number]) =>
-  rhythm.slug.startsWith("combo") || rhythm.data.title.toLowerCase().startsWith("combo");
-const comboRhythms = rhythms.filter(isCombo);
-const practiceRhythms = rhythms.filter((rhythm) => !isCombo(rhythm));
+const sequenceRhythms = rhythms.filter((rhythm) => getRhythmCategory(rhythm) === "sequence");
+const practiceRhythms = rhythms.filter((rhythm) => getRhythmCategory(rhythm) === "rhythm");
+const callRhythms = rhythms.filter((rhythm) => getRhythmCategory(rhythm) === "call");
 const homeTools = [
   {
     id: "radio",
@@ -134,7 +134,22 @@ const homeTools = [
         <h2 id="combos-heading" tabindex="-1"><T message="Sequences" /></h2>
         <div class="rhythm-list">
           {
-            comboRhythms.map((rhythm) => (
+            sequenceRhythms.map((rhythm) => (
+              <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
+                <strong data-i18n-text={JSON.stringify(rhythm.data.title)}>{rhythm.data.title}</strong>
+                <span><T message={rhythm.data.difficulty as Message} /></span>
+                <ChevronRight size={16} aria-hidden="true" />
+              </a>
+            ))
+          }
+        </div>
+      </section>
+
+      <section class="home-section" aria-labelledby="calls-heading">
+        <h2 id="calls-heading" tabindex="-1"><T message="Calls" /></h2>
+        <div class="rhythm-list">
+          {
+            callRhythms.map((rhythm) => (
               <a class="rhythm-link" href={`/rhythms/${rhythm.slug}/`}>
                 <strong data-i18n-text={JSON.stringify(rhythm.data.title)}>{rhythm.data.title}</strong>
                 <span><T message={rhythm.data.difficulty as Message} /></span>
