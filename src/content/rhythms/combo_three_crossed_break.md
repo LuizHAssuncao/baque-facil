@@ -4,6 +4,11 @@ slug: "combo_three_crossed_break"
 tempo: 95
 subdivision: 16
 difficulty: "intermediate"
+gesture:
+  src: "/hand-signals/three-crossed-break.webp"
+  description:
+    en-CA: "Both hands move together, interlace their fingers, and move apart three times."
+    pt-BR: "As duas mãos se aproximam, entrelaçam os dedos e se afastam três vezes."
 instruments:
   - "Alfaia"
   - "Caixa"
