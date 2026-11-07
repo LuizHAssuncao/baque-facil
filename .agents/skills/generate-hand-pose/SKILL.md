@@ -88,4 +88,7 @@ Apply these visual requirements to the generated artwork:
    illustration.
 
 5. Export a single static PNG at 1024 × 1024 pixels with real alpha transparency.
-   Verify the exported dimensions and format before reporting completion.
+   Keep each file below 500,000 bytes. Optimize PNG compression and palette as
+   needed while preserving transparency, clear outlines and readable fingers.
+   Verify the exported dimensions, format, single frame and file size before
+   reporting completion.
