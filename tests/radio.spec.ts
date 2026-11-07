@@ -377,10 +377,24 @@ test("preferences, optional sequences, and keyboard controls work without autopl
     .check();
   await expect(page.getByRole("checkbox", { name: /Parada \+ Arrasto/ })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: /Entrada|Transition/ })).toHaveCount(0);
+  await expect(page.locator(".radio-rhythm-choice strong")).toHaveText([
+    "1 - Marcação",
+    "2 - Imalê",
+    "3 - Martelo",
+    "4 - Baque de Parada",
+    "5 - Trovão",
+    "7 - Arrasto",
+    "Flying four",
+    "Martelo break",
+    "Parada + Arrasto",
+    "Three Crossed Break",
+    "# - Afoxé",
+  ]);
   await page
     .getByRole("checkbox", { name: "Include sequences", exact: true })
     .uncheck();
   await expect(page.getByRole("checkbox", { name: /Entrada|Transition/ })).toHaveCount(0);
+  await expect(page.locator(".radio-rhythm-choice strong").last()).toHaveText("# - Afoxé");
   await page.getByRole("slider", { name: "Radio tempo" }).fill("100");
   await expect(
     page.getByRole("button", { name: "Play", exact: true }),

@@ -14,6 +14,7 @@ import { parseRhythm } from "../../lib/parseRhythm";
 import { sampleEntriesForRhythm } from "../../lib/sampleMap";
 import { validateRhythmIssues } from "../../lib/validateRhythm";
 import type { Rhythm } from "../../lib/rhythmTypes";
+import { compareRhythms } from "../../lib/rhythmOrder";
 import "../../styles/global.css";
 
 export async function getStaticPaths() {
@@ -27,9 +28,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content } = await entry.render();
-const allRhythms = (await getCollection("rhythms")).sort((a, b) =>
-  a.data.title.localeCompare(b.data.title),
-);
+const allRhythms = (await getCollection("rhythms")).sort(compareRhythms);
 const currentIndex = allRhythms.findIndex((rhythmEntry) => rhythmEntry.slug === entry.slug);
 const previousRhythm = currentIndex > 0 ? allRhythms[currentIndex - 1] : null;
 const nextRhythm =

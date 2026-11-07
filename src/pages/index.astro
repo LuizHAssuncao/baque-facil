@@ -10,19 +10,11 @@ import Disclaimer from "../components/Disclaimer.astro";
 import PwaHead from "../components/PwaHead.astro";
 import OfflineRefresh from "../components/OfflineRefresh.astro";
 import { getRhythmCategory } from "../lib/rhythmCategory";
+import { compareRhythms } from "../lib/rhythmOrder";
 import "../styles/global.css";
 
 const appCommit = import.meta.env.PUBLIC_APP_COMMIT;
-const difficultyOrder = new Map([
-  ["beginner", 0],
-  ["intermediate", 1],
-  ["advanced", 2],
-]);
-const rhythms = (await getCollection("rhythms")).sort((a, b) =>
-  (difficultyOrder.get(a.data.difficulty) ?? 3) -
-    (difficultyOrder.get(b.data.difficulty) ?? 3) ||
-  a.data.title.localeCompare(b.data.title),
-);
+const rhythms = (await getCollection("rhythms")).sort(compareRhythms);
 const sequenceRhythms = rhythms.filter((rhythm) => getRhythmCategory(rhythm) === "sequence");
 const practiceRhythms = rhythms.filter((rhythm) => getRhythmCategory(rhythm) === "rhythm");
 const callRhythms = rhythms.filter((rhythm) => getRhythmCategory(rhythm) === "call");

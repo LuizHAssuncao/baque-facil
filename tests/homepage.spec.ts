@@ -30,6 +30,15 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
         expect(box!.width).toBeGreaterThanOrEqual(44);
       }
       const rhythms = page.getByRole("region", { name: labels.rhythms, exact: true }).locator(".rhythm-link");
+      await expect(rhythms.locator("strong")).toHaveText([
+        "1 - Marcação",
+        "2 - Imalê",
+        "3 - Martelo",
+        "4 - Baque de Parada",
+        "5 - Trovão",
+        "7 - Arrasto",
+        "# - Afoxé",
+      ]);
       for (const rhythm of await rhythms.all()) await expect(rhythm).toBeVisible();
       for (let index = 0; index < 4; index += 1) {
         await expect(rhythms.nth(index)).toBeInViewport({ ratio: 1 });
@@ -38,9 +47,9 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
       expect(await sequences.count()).toBeGreaterThan(0);
       for (const sequence of await sequences.all()) await expect(sequence).toBeVisible();
       await expect(sequences.locator("strong")).toHaveText([
-        "Parada + Arrasto",
         "Flying four",
         "Martelo break",
+        "Parada + Arrasto",
         "Three Crossed Break",
       ]);
       await expect(page.locator(".home-page > .home-section h2")).toHaveText([
@@ -76,6 +85,15 @@ for (const locale of ["en-CA", "pt-BR"] as const) {
         await page.getByRole("link", { name: labels.return, exact: true }).click();
         await expect(rhythms.first()).toBeInViewport({ ratio: 1 });
       }
+
+      await rhythms.last().click();
+      await expect(page.getByRole("heading", { name: "# - Afoxé", level: 1 })).toBeVisible();
+      const rhythmNavigation = page.locator(".rhythm-nav a");
+      await expect(rhythmNavigation).toHaveCount(1);
+      await expect(rhythmNavigation).toHaveAttribute("href", "/rhythms/combo-transition/");
+      await rhythmNavigation.click();
+      await expect(rhythmNavigation.last()).toHaveAttribute("href", "/rhythms/afoxe/");
+      await expect(rhythmNavigation.last().locator("strong")).toHaveText("# - Afoxé");
     });
 
     test("keyboard shortcuts reach their sections without hiding focus behind navigation", async ({ page }) => {
