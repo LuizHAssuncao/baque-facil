@@ -45,6 +45,9 @@ Preserve existing files unless the request authorizes a revision.
    scale, movement, animation quality and compression. Check that each example
    is actually animated. If examples are absent, proceed using the approved
    concept and movement video. Preserve all reference assets.
+   The bundled [Martelo break example](assets/martelo-break.webp) is the original
+   user-supplied animation: 480 × 480 pixels, 54 frames, three seconds, 18 FPS,
+   infinite looping and 481,168 bytes.
 
 3. Study the movement video before creating the animation. Watch it in a viewer
    or inspect a timed sequence of extracted frames. Establish the finger

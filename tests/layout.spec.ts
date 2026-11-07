@@ -14,6 +14,7 @@ const routes = [
   { name: "ios-audio-help", path: "/help/ios-audio/", heading: "Can't hear sound?" },
   { name: "background-audio-test", path: "/diagnostics/background-audio/", heading: "Background audio test" },
   { name: "rhythm-marcacao", path: "/rhythms/marcacao/", heading: "1 - Marcação" },
+  { name: "rhythm-martelo-break", path: "/rhythms/combo_martelo_break/", heading: "Martelo break" },
   { name: "rhythm-combo-entrada", path: "/rhythms/combo_entrada/", heading: "Entrada" },
   { name: "rhythm-combo", path: "/rhythms/combo_parada_arrasto/", heading: "Parada + Arrasto" },
   { name: "customize-marcacao", path: "/compose/marcacao/", heading: "1 - Marcação" },

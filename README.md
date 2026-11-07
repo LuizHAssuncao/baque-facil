@@ -163,8 +163,8 @@ in the browser without conversion. Both the thumbnail and preview preserve the
 whole image with `object-fit: contain`. Referenced public assets are precached
 with the rest of the site.
 
-For Martelo break, once the original animation is available at
-`public/hand-signals/martelo-break.webp`, add this to
+Martelo break uses the original animation at
+`public/hand-signals/martelo-break.webp`, configured in
 `src/content/rhythms/martelo_break.md`:
 
 ```yaml
@@ -175,11 +175,12 @@ gesture:
     pt-BR: "Um punho fechado se move para cima e para baixo."
 ```
 
-Keep the asset's descriptive text in both supported languages. The production
-Martelo entry currently has no gesture configured because its original WebP
-attachment has not been made available in the repository. The offline browser
-tests use a synthetic moving-square fixture to verify image playback, previews,
-responsive layout and caching; it is not the Martelo artwork.
+Keep the asset's descriptive text in both supported languages. The original
+Martelo animation is 480 × 480 pixels, 54 frames over three seconds, 18 FPS,
+481,168 bytes and loops infinitely. A matching copy is bundled as a reference
+in the animation skill's `assets/` directory. The offline browser tests verify
+this actual animation's playback, previews, responsive layout and caching;
+a separate static fixture checks reuse with PNG files.
 
 The rhythm itself goes in a fenced `rhythm` block:
 

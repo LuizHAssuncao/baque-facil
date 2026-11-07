@@ -11,6 +11,7 @@ const project = resolve(".");
 const footer = "footer [data-offline-status]";
 const updatePrompt = "[data-offline-update-prompt]";
 const sample = "/samples/alfaia/right-accent.wav";
+const gesture = "/hand-signals/martelo-break.webp";
 let fixtures: string;
 let releaseB: string;
 let releaseC: string;
@@ -120,27 +121,9 @@ test.beforeAll(async () => {
   await writeFile(home, (await readFile(home, "utf8")).replace('class="home-hero-copy"', 'class="home-hero-copy" data-test-layout="updated"'));
   const styles = join(fixtures, "src/styles/global.css");
   await writeFile(styles, `${await readFile(styles, "utf8")}\n.home-hero-copy[data-test-layout="updated"] { border-top: 3px solid rgb(12, 34, 56); }\n`);
-  // Exercise the real production component with clearly labeled test art.
-  // Keep fixtures out of the shipped rhythm library and public assets.
-  await copyFile(join(project, "tests/fixtures/gesture-animation.webp"), join(fixtures, "public/gesture-animation.webp"));
+  // Keep the static example out of the shipped rhythm library and public assets.
+  // Animated gesture coverage uses the actual Martelo asset and content.
   await copyFile(join(project, "tests/fixtures/gesture-static.png"), join(fixtures, "public/gesture-static.png"));
-  const martelo = join(fixtures, "src/content/rhythms/martelo_break.md");
-  await writeFile(martelo, (await readFile(martelo, "utf8")).replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, [
-    "---",
-    'title: "Martelo break"',
-    'slug: "combo_martelo_break"',
-    "tempo: 100",
-    "subdivision: 16",
-    'difficulty: "intermediate"',
-    'instruments: ["Alfaia"]',
-    "gesture:",
-    '  src: "/gesture-animation.webp"',
-    "  description:",
-    '    en-CA: "Animated test square."',
-    '    pt-BR: "Quadrado animado de teste."',
-    "---",
-    "",
-  ].join("\n")));
   await writeFile(join(fixtures, "src/content/rhythms/gesture-fixture.md"), [
     "---",
     'title: "Static gesture fixture"',
@@ -196,13 +179,12 @@ async function expectAnimation(image: Locator) {
   }).toBe(false);
 }
 
-test("gesture headers and enlarged previews remain responsive and animated offline", async ({ page, context, request }, testInfo) => {
-  await server(request, { directory: releaseB });
-  await prepared(page, releaseB);
-  expect((await report(releaseB)).files.map((file) => file.url)).toContain("/gesture-animation.webp");
+test("Martelo gesture headers and enlarged previews remain responsive and animated offline", async ({ page, context }, testInfo) => {
+  await prepared(page);
+  expect((await report()).files.map((file) => file.url)).toContain(gesture);
   await context.setOffline(true);
   const lesson = await context.newPage();
-  const imageResponse = lesson.waitForResponse((response) => new URL(response.url()).pathname === "/gesture-animation.webp");
+  const imageResponse = lesson.waitForResponse((response) => new URL(response.url()).pathname === gesture);
   await lesson.goto("/rhythms/combo_martelo_break/");
   expect((await imageResponse).fromServiceWorker()).toBe(true);
   expect((await imageResponse).headers()["content-type"]).toContain("image/webp");
@@ -212,6 +194,7 @@ test("gesture headers and enlarged previews remain responsive and animated offli
   const header = lesson.locator(".editorial-header");
   const trigger = lesson.getByRole("button", { name: "Enlarge hand signal for Martelo break", exact: true });
   const image = trigger.locator("img");
+  await expect(image).toHaveAttribute("src", gesture);
   const dialog = lesson.getByRole("dialog", { name: "Hand signal for Martelo break", exact: true });
   const tempo = await lesson.getByRole("slider", { name: "Tempo", exact: true }).inputValue();
   for (const width of [1280, 500, 390, 320]) {
@@ -258,19 +241,18 @@ test("gesture headers and enlarged previews remain responsive and animated offli
   await expectAnimation(image);
 });
 
-test("gesture descriptions and preview controls update with the selected language", async ({ page, request }) => {
-  await server(request, { directory: releaseB });
+test("gesture descriptions and preview controls update with the selected language", async ({ page }) => {
   await page.goto("/rhythms/combo_martelo_break/");
   await page.getByRole("button", { name: "Português (Brasil)", exact: true }).click();
-  await expect(page.locator(".rhythm-gesture-trigger img")).toHaveAttribute("alt", "Quadrado animado de teste.");
+  await expect(page.locator(".rhythm-gesture-trigger img")).toHaveAttribute("alt", "Um punho fechado se move para cima e para baixo.");
   await page.getByRole("button", { name: "Ampliar sinal de Martelo break", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Sinal de Martelo break", exact: true });
   await expect(dialog.getByRole("heading", { name: "Sinal de Martelo break", exact: true })).toBeVisible();
-  await expect(dialog.locator("img")).toHaveAttribute("alt", "Quadrado animado de teste.");
+  await expect(dialog.locator("img")).toHaveAttribute("alt", "Um punho fechado se move para cima e para baixo.");
   await dialog.getByRole("button", { name: "Fechar prévia", exact: true }).click();
   await page.getByRole("button", { name: "English (Canada)", exact: true }).click();
   await expect(page.getByRole("button", { name: "Enlarge hand signal for Martelo break", exact: true })).toBeVisible();
-  await expect(page.locator(".rhythm-gesture-trigger img")).toHaveAttribute("alt", "Animated test square.");
+  await expect(page.locator(".rhythm-gesture-trigger img")).toHaveAttribute("alt", "A closed fist moves up and down.");
 });
 
 test("static gestures support touch previews offline and unconfigured pages retain the alfaia", async ({ browser, request }) => {
