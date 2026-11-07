@@ -1,0 +1,8 @@
+interface:
+  display_name: "Baque Fácil Animated Hand Signals"
+  short_description: "Create and verify animated WebP hand signals"
+  brand_color: "#0D5D59"
+  default_prompt: "Use $generate-hand-animation to create an animated WebP hand signal for Baque Fácil from my movement reference video, matching the approved visual concept and staying below 500 KB."
+
+policy:
+  allow_implicit_invocation: true

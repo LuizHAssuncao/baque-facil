@@ -1,0 +1,8 @@
+interface:
+  display_name: "Baque Fácil Hand Poses"
+  short_description: "Create static hand signal artwork for Baque Fácil"
+  brand_color: "#0D5D59"
+  default_prompt: "Use $generate-hand-pose to create a static hand signal illustration for Baque Fácil using the approved visual concept."
+
+policy:
+  allow_implicit_invocation: true

@@ -51,6 +51,17 @@ Core user flows:
 - `tests/offline/`: production-only browser tests, including persistent storage
   and updates between complete builds on one test origin.
 
+## Repository Skills
+
+For requests to create or revise static hand signal illustrations, use
+`generate-hand-pose` at `.agents/skills/generate-hand-pose/SKILL.md`. Its approved
+visual concept is bundled in the skill's `assets/` directory.
+
+For moving hand signals, use `generate-hand-animation` at
+`.agents/skills/generate-hand-animation/SKILL.md`. It bundles the approved visual
+concept and a verifier for animated WebP exports below 500 KB. Put animated WebP
+reference examples in that skill's `assets/` directory.
+
 ## Commands
 
 - `npm install`: install dependencies from `package-lock.json`.
