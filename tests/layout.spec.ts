@@ -17,6 +17,7 @@ const routes = [
   { name: "rhythm-martelo-break", path: "/rhythms/combo_martelo_break/", heading: "Martelo break" },
   { name: "rhythm-combo-entrada", path: "/rhythms/combo_entrada/", heading: "Entrada" },
   { name: "rhythm-combo", path: "/rhythms/combo_parada_arrasto/", heading: "Parada + Arrasto" },
+  { name: "rhythm-transition", path: "/rhythms/combo-transition/", heading: "Transition" },
   { name: "customize-marcacao", path: "/compose/marcacao/", heading: "1 - Marcação" },
   {
     name: "customize-multitrack",

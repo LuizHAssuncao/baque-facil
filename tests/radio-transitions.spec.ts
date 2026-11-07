@@ -19,7 +19,11 @@ function libraryRhythm(filename: string): Rhythm {
 
 const rhythms = ["marcacao", "imale"].map(libraryRhythm);
 const regularRhythms = ["marcacao", "imale", "martelo", "parada", "trovao", "arrasto", "afoxe"].map(libraryRhythm);
-const sequences = ["combo_entrada", "combo_parada_arrasto", "combo_three_crossed_break", "flying_four", "martelo_break"].map(libraryRhythm);
+const sequences = ["combo_entrada", "combo_parada_arrasto", "combo_three_crossed_break", "flying_four", "martelo_break", "combo-transition"].map(libraryRhythm);
+
+function whistleHitCount(rhythm: Rhythm): number {
+  return rhythm.tracks.find((track) => track.name === "Whistle")?.steps.filter((symbol) => symbol === "X").length ?? 0;
+}
 
 const alfaiaTransition = "R . . . . . . . L R . R L . R .".split(" ");
 const whistleTransition = "X . . . . . . . X X . X X . X .".split(" ");
@@ -88,12 +92,14 @@ test("only the final repetition changes across tempo bounds and repetition setti
   }
 });
 
-test("solo and held rhythms have no exit cues; other rhythms and sequences keep their notes", () => {
+test("solo and held rhythms have no added exit cues; other rhythms and sequences keep their notes", () => {
   for (const rhythm of [...regularRhythms, ...sequences]) {
     for (const repetitions of [1, 8]) {
       const timeline = buildRadioTimeline([rhythm], 90, repetitions, 24);
       expect(timeline.segments.every((segment) => !segment.transitionTracks)).toBe(true);
-      expect(buildRadioHits(timeline, [rhythm]).some((hit) => hit.sample === "Whistle.X")).toBe(false);
+      const cycles = timeline.segments.reduce((total, segment) => total + segment.repetitions, 0);
+      expect(buildRadioHits(timeline, [rhythm]).filter((hit) => hit.sample === "Whistle.X"))
+        .toHaveLength(whistleHitCount(rhythm) * cycles);
     }
   }
   const other: Rhythm = { ...rhythms[0], slug: "martelo" };
@@ -143,14 +149,15 @@ test("sequence exclusions depend on the outgoing item, including the file wrap",
         expect(Boolean(segment.transitionTracks)).toBe(isRegular);
         expect(segment.repetitions).toBe(isRegular ? 4 : 1);
         expect(hits.filter((hit) => hit.sample === "Whistle.X" && hit.frame >= segment.startFrame && hit.frame < segment.endFrame))
-          .toHaveLength(isRegular ? 6 : 0);
+          .toHaveLength(isRegular ? 6 : whistleHitCount(sequence));
       }
       expect(entries).toEqual(original);
     }
   }
   const sequenceTimeline = buildRadioTimeline(sequences, 90, 4, 1, () => 0.99);
   expect(sequenceTimeline.segments.every((segment) => !segment.transitionTracks)).toBe(true);
-  expect(buildRadioHits(sequenceTimeline, sequences).some((hit) => hit.sample === "Whistle.X")).toBe(false);
+  expect(buildRadioHits(sequenceTimeline, sequences).filter((hit) => hit.sample === "Whistle.X"))
+    .toHaveLength(sequences.reduce((total, sequence) => total + whistleHitCount(sequence), 0));
 });
 
 test("Parada's cue starts in the last bar, not at the start of its final two-bar repetition", () => {
