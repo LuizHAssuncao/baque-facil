@@ -516,7 +516,11 @@ test("player, composer, quiz, and fresh radio encoding work on first use offline
   const audio = page.locator("audio[data-radio-player]");
   await expect.poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeGreaterThan(0.1);
   await page.getByRole("button", { name: "Pause", exact: true }).click();
-  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 8; });
+  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 0; });
+  await expect(page.locator(".radio-cue")).toHaveAttribute("data-phase", "count-in");
+  await expect(page.locator(".radio-pattern .grid-row:not(.count-row) .track-name")).toHaveText(["Whistle"]);
+  await expect.poll(() => page.locator(".radio-cue img").evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 240 / 90 + 8; });
   await expect(page.locator(".radio-pattern").getByText("Transition", { exact: true })).toBeVisible();
   await expect(page.locator(".radio-pattern").getByText("Whistle", { exact: true })).toBeVisible();
   await expect(page.locator(".radio-cue")).toHaveAttribute("data-phase", "call");

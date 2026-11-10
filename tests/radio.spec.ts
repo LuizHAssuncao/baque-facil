@@ -30,6 +30,7 @@ async function prepare(page: Page) {
   await expect(
     page.getByRole("button", { name: "Pause", exact: true }),
   ).toBeVisible({ timeout: 25_000 });
+  await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0, { timeout: 10_000 });
 }
 
 test("radio separates sequences through skips, the file loop, and a fresh shuffle", async ({ page }) => {
@@ -63,6 +64,9 @@ test("radio separates sequences through skips, the file loop, and a fresh shuffl
   expect(wrapped).toBe(true);
   expect([...visited].sort()).toEqual(["1 - Marcação", "2 - Imalê", ...sequenceTitles].sort());
 
+  // Skipping the final group returns to the recorded count-in.
+  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 240 / 90; });
+  await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0);
   if (!sequenceTitles.has(await title.innerText())) {
     await page.getByRole("button", { name: "Skip", exact: true }).click();
     await expect(title).toHaveText(/Martelo break|Parada \+ Arrasto/);
@@ -81,9 +85,9 @@ test("radio header seeks within the current repetition while paused, playing, an
   await page.getByRole("button", { name: "Pause", exact: true }).click();
   // Start in the second repetition of a later group, rather than the first cycle.
   const cycle = 4 * 60 / preferences.tempo;
-  await audio.evaluate((element: HTMLAudioElement, time) => { element.currentTime = time; }, cycle * 5 + 0.2);
+  await audio.evaluate((element: HTMLAudioElement, time) => { element.currentTime = time; }, cycle * 6 + 0.2);
   await page.getByRole("button", { name: "Jump to beat 3, subdivision 2", exact: true }).click();
-  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(cycle * 5 + 1.5, 4);
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(cycle * 6 + 1.5, 4);
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
   await expect(page.locator(".count-cell").nth(9)).toHaveClass(/active/);
   await expect(page.locator(".radio-pattern-heading")).toContainText("Repetition 2 of 4");
@@ -94,8 +98,8 @@ test("radio header seeks within the current repetition while paused, playing, an
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.getByRole("button", { name: "Jump to beat 1", exact: true }).click();
   const playingTime = await audio.evaluate((element: HTMLAudioElement) => element.currentTime);
-  expect(playingTime).toBeGreaterThanOrEqual(cycle * 5);
-  expect(playingTime).toBeLessThan(cycle * 5 + 1);
+  expect(playingTime).toBeGreaterThanOrEqual(cycle * 6);
+  expect(playingTime).toBeLessThan(cycle * 6 + 1);
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(false);
 
   await page.getByRole("button", { name: "Stay on this rhythm", exact: true }).click();
@@ -188,6 +192,7 @@ test("radio plays, pauses, seeks, loops natively while hidden, and restores its 
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect(title).toHaveText(firstTitle!);
+  await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0);
   await expect(next).toHaveText(firstNextTitle!);
   await expect(page.locator(".radio-pattern .count-cell.active")).toHaveCount(
     1,

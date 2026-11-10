@@ -6,6 +6,7 @@ import { generateMix } from "./generateMix";
 import { mp3Filename, type Mp3Download } from "../audio/downloadMp3";
 import {
   buildRadioTimeline,
+  withRadioCountIn,
   radioPosition,
   RADIO_SAMPLE_RATE,
   type RadioEntry,
@@ -30,6 +31,7 @@ export type RadioSnapshot = {
   slug: string | null;
   nextSlug: string | null;
   signalDue: boolean;
+  countingIn: boolean;
   activeStep: number | null;
   transitionTracks: RhythmTrack[] | null;
   repetition: number;
@@ -52,6 +54,7 @@ export const INITIAL_RADIO: RadioSnapshot = {
   slug: null,
   nextSlug: null,
   signalDue: false,
+  countingIn: false,
   activeStep: null,
   transitionTracks: null,
   repetition: 1,
@@ -137,14 +140,14 @@ export class RadioPlayback {
         .map((entry) => entry.rhythm);
       const previous =
         this.snapshot.slug ?? this.mix?.timeline.segments[0].slug;
-      const timeline = buildRadioTimeline(
+      const timeline = withRadioCountIn(buildRadioTimeline(
         rhythms,
         settings.tempo,
         settings.repetitions,
         settings.minutes * 60,
         Math.random,
         previous,
-      );
+      ));
       const blob = await generateMix(
         timeline,
         rhythms,
@@ -203,7 +206,7 @@ export class RadioPlayback {
   };
 
   toggleHold = async () => {
-    if (!this.mix) return;
+    if (!this.mix || radioPosition(this.current!.timeline, this.pendingSeek || this.audio.currentTime).countingIn) return;
     if (this.hold) {
       const oldHold = this.hold;
       this.hold = null;
@@ -367,8 +370,8 @@ export class RadioPlayback {
 
   seekToStep = (step: number, slug: string) => {
     if (!this.current || this.disposed) return;
-    const { segment, repetition } = radioPosition(this.current.timeline, this.pendingSeek || this.audio.currentTime);
-    if (segment.slug !== slug || !Number.isInteger(step) || step < 0 || step >= segment.stepCount) return;
+    const { segment, repetition, countingIn } = radioPosition(this.current.timeline, this.pendingSeek || this.audio.currentTime);
+    if (countingIn || segment.slug !== slug || !Number.isInteger(step) || step < 0 || step >= segment.stepCount) return;
     const frame = segment.startFrame + (repetition - 1) * segment.cycleFrames
       + Math.ceil(step * segment.cycleFrames / segment.stepCount);
     const seconds = frame / RADIO_SAMPLE_RATE;
@@ -440,6 +443,7 @@ export class RadioPlayback {
           ? radioPosition(this.mix.timeline, this.returnTime).segment.slug
           : position.nextSegment.slug,
       signalDue: position.signalDue,
+      countingIn: position.countingIn,
       activeStep: position.activeStep,
       transitionTracks: position.transitionTracks,
       repetition: position.repetition,

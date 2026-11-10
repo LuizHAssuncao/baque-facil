@@ -203,7 +203,10 @@ async function openMix(page: Page, slugs = ["marcacao", "imale"]) {
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Pause", exact: true }).click();
-  return page.locator("audio[data-radio-player]");
+  const audio = page.locator("audio[data-radio-player]");
+  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 240 / 90; });
+  await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0);
+  return audio;
 }
 
 async function whistleLevels(page: Page, seconds: number[]) {
@@ -244,7 +247,7 @@ test("the grid follows exit cues through seeking, language changes, holds, skips
   const alfaia = grid.locator(".grid-row").filter({ has: page.locator(".track-name", { hasText: /^Alfaia$/ }) }).locator(".step-cell");
   const whistle = grid.locator(".grid-row").filter({ has: page.locator(".track-name", { hasText: /^(Whistle|Apito)$/ }) }).locator(".step-cell");
   const seek = async (seconds: number) => {
-    await audio.evaluate((element: HTMLAudioElement, value) => { element.currentTime = value; }, seconds);
+    await audio.evaluate((element: HTMLAudioElement, value) => { element.currentTime = value; }, seconds + 240 / 90);
   };
 
   await seek(7.9);
@@ -297,11 +300,11 @@ test("the grid follows exit cues through seeking, language changes, holds, skips
   expect(errors).toEqual([]);
 });
 
-test("the generated MP3 contains whistle bursts only in the final bar", async ({ page }) => {
+test("after the opening count-in the MP3 contains whistle bursts only in the final bar", async ({ page }) => {
   test.setTimeout(60_000);
   await openMix(page);
   // Probe beat three, after any decay from the preceding bar has finished.
-  const levels = await whistleLevels(page, Array.from({ length: 8 }, (_, bar) => (bar * 16 + 8) / 6 + 0.12));
+  const levels = await whistleLevels(page, Array.from({ length: 8 }, (_, bar) => 240 / 90 + (bar * 16 + 8) / 6 + 0.12));
   const normal = levels.filter((_, bar) => bar !== 3 && bar !== 7);
   for (const bar of [3, 7]) {
     expect(levels[bar]).toBeGreaterThan(0.01);
@@ -320,7 +323,7 @@ for (const slug of ["martelo", "parada"]) {
     if (await title.textContent() !== rhythm.title) {
       await page.getByRole("button", { name: "Skip", exact: true }).click();
     } else {
-      await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 0; });
+      await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 240 / 90; });
     }
     await expect(title).toHaveText(rhythm.title);
     const start = await audio.evaluate((element: HTMLAudioElement) => element.currentTime);
@@ -350,15 +353,15 @@ for (const slug of ["martelo", "parada"]) {
   });
 }
 
-test("a solo mix never loads or displays the whistle", async ({ page }) => {
+test("a solo mix loads the opening whistle but has no exit cues", async ({ page }) => {
   const whistleRequests: string[] = [];
   page.on("request", (request) => {
     if (request.url().includes("/samples/whistle/")) whistleRequests.push(request.url());
   });
   const audio = await openMix(page, ["imale"]);
-  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 8; });
+  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 240 / 90 + 8; });
   await expect(page.locator(".radio-pattern-heading")).toContainText("Repetition 4 of 4");
   await expect(page.getByText("Transition", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Whistle", { exact: true })).toHaveCount(0);
-  expect(whistleRequests).toEqual([]);
+  expect(whistleRequests).toHaveLength(1);
 });

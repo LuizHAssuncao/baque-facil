@@ -3,6 +3,7 @@ import { SampleCache } from "../audio/sampleCache";
 import type { Rhythm } from "../rhythmTypes";
 import type { SampleMap } from "../sampleMap";
 import type { PcmSample } from "./mixer";
+import { RADIO_COUNT_IN_TRACKS } from "./transitions";
 import type { RadioTimeline } from "./timeline";
 
 export async function generateMix(
@@ -14,6 +15,7 @@ export async function generateMix(
 ): Promise<Blob> {
   const cache = new SampleCache();
   const tracks = [
+    ...(timeline.countInFrames ? RADIO_COUNT_IN_TRACKS : []),
     ...rhythms.flatMap((rhythm) => rhythm.tracks),
     ...timeline.segments.flatMap((segment) => segment.transitionTracks ?? []),
   ];

@@ -10,6 +10,7 @@ export const RadioSignalCue = memo(function RadioSignalCue({
   ready,
   held,
   signalDue,
+  countingIn,
   showRhythmNames,
 }: {
   next: RadioEntry | undefined;
@@ -17,6 +18,7 @@ export const RadioSignalCue = memo(function RadioSignalCue({
   ready: boolean;
   held: boolean;
   signalDue: boolean;
+  countingIn: boolean;
   showRhythmNames: boolean;
 }) {
   const { t, locale } = useTranslation();
@@ -28,16 +30,16 @@ export const RadioSignalCue = memo(function RadioSignalCue({
     const image = new Image();
     image.src = nextImage;
   }, [ready, nextImage]);
-  const repeating = ready && (held || next?.rhythm.slug === currentSlug);
+  const repeating = ready && !countingIn && (held || next?.rhythm.slug === currentSlug);
   const active = ready && !repeating && signalDue && Boolean(next);
-  const phase = active ? "call" : repeating ? "repeating" : ready ? "waiting" : "idle";
+  const phase = countingIn ? "count-in" : active ? "call" : repeating ? "repeating" : ready ? "waiting" : "idle";
   const gesture = active ? next?.gesture : undefined;
   const imageAvailable = gesture && failedSource !== gesture.src;
   const showNextTitle = showRhythmNames || (active && !imageAvailable);
   const nextTitle = next ? t(next.rhythm.title as MessageKey) : "";
 
   return (
-    <section className="radio-cue" data-phase={phase} aria-label={t("Next rhythm signal")}>
+    <section className="radio-cue" data-phase={phase} aria-label={t(countingIn ? "First rhythm signal" : "Next rhythm signal")}>
       <div className="radio-cue-art">
         {imageAvailable ? (
           <img
@@ -59,19 +61,19 @@ export const RadioSignalCue = memo(function RadioSignalCue({
       <div className="radio-cue-copy">
         <p className="eyebrow">{t("Mestre's call")}</p>
         <p className="radio-cue-instruction">
-          {t(active ? "Get ready for the next rhythm" : repeating ? "Repeating this pattern" : "Listen for the next call")}
+          {t(countingIn ? "Start playing after the whistle call." : active ? "Get ready for the next rhythm" : repeating ? "Repeating this pattern" : "Listen for the next call")}
         </p>
         {ready && next && showNextTitle ? (
           <p className="radio-next">
-            {t(held ? "When you return to the mix" : "Next rhythm")}: <strong>{nextTitle}</strong>
+            {t(countingIn ? "First rhythm" : held ? "When you return to the mix" : "Next rhythm")}: <strong>{nextTitle}</strong>
           </p>
         ) : null}
       </div>
       <span className="radio-sr-only" role="status" aria-atomic="true">
         {active && next
           ? showNextTitle
-            ? t("Next rhythm: {title}", { title: nextTitle })
-            : t("Get ready for the next rhythm")
+            ? t(countingIn ? "First rhythm: {title}" : "Next rhythm: {title}", { title: nextTitle })
+            : t(countingIn ? "Start playing after the whistle call." : "Get ready for the next rhythm")
           : ""}
       </span>
     </section>

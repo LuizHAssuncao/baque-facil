@@ -313,13 +313,20 @@ inside the recording. Follow the media clock when returning from the background;
 continuous audio must not depend on JavaScript timers or media session callbacks.
 Navigation stops playback.
 
+Every full recording starts with one four-beat, whistle-only call at the chosen
+tempo, including solo rhythms and sequences. Show the first item's gesture and
+the whistle grid during this count-in; instruments enter on the following
+downbeat. Bake it into the MP3 so downloads and native file looping retain it.
+Do not wrap the final drum decay into the opening. Pause resumes the count-in;
+held recordings have no count-in. Disable holding and grid seeking during it.
+
 Exit cues live in `src/lib/radio/transitions.ts`. Before a regular rhythm changes
 to a different item, add `X . . . | . . . . | X X . X | X . X .` on Whistle in
 the final bar of the final repetition. Marcação and Imalê also replace that bar's
 Alfaia with `R . . . | . . . . | L R . R | L . R .` and
 `R . . . | L . R . | L R . R | L . R .` respectively. Other drum notes stay
 intact. Sequences play as written; solo and held playback receive no automatic
-cue. Keep the grid, MP3 and recording loop boundary consistent.
+exit cue. Keep the grid, MP3 and recording loop boundary consistent.
 
 Show the next gesture during the final two repetitions, or at 70% completion of
 a sequence played once. Use lesson metadata and original assets. Missing gestures

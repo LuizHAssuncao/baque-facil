@@ -18,6 +18,8 @@ export function encodeMix(
     hits: buildRadioHits(request.timeline, request.rhythms),
     totalFrames: request.timeline.totalFrames,
     samples: request.samples,
-    boundary: "wrapped",
+    // A full mix must start with only the whistle, without the last drum's decay.
+    // Held patterns still wrap their tails for continuous repetition.
+    boundary: request.timeline.countInFrames ? "finite" : "wrapped",
   }, onProgress, signal);
 }

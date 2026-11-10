@@ -20,14 +20,17 @@ async function openRadio(page: Page, slugs = settings.slugs) {
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible({ timeout: 25_000 });
   await page.getByRole("button", { name: "Pause", exact: true }).click();
-  return page.locator("audio[data-radio-player]");
+  const audio = page.locator("audio[data-radio-player]");
+  await seek(audio, 0);
+  await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0);
+  return audio;
 }
 
 async function seek(audio: Locator, seconds: number) {
   await audio.evaluate((element: HTMLAudioElement, seconds) => {
     element.currentTime = seconds;
     element.dispatchEvent(new Event("timeupdate"));
-  }, seconds);
+  }, seconds + 240 / settings.tempo);
 }
 
 test("the last two repetitions call the next gesture while the current notes follow the recording", async ({ page }, testInfo) => {
@@ -60,7 +63,7 @@ test("the last two repetitions call the next gesture while the current notes fol
   await expect(page.locator(".radio-pattern").getByText("Whistle", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Jump to beat 3, subdivision 2", exact: true }).click();
-  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(7.125, 4);
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(9.125, 4);
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
   await expect(page.locator(".count-cell").nth(9)).toHaveClass(/active/);
   await expect(cue).toHaveAttribute("data-phase", "call");
@@ -145,7 +148,7 @@ test("playback names and notes toggle independently while selection options stay
   await page.locator(".radio-player").screenshot({ path: testInfo.outputPath("radio-signals-only.png") });
 
   await expect(audio).toHaveAttribute("src", source!);
-  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(6, 4);
+  expect(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeCloseTo(8, 4);
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
   expect(await page.evaluate(() => localStorage.getItem("baque-facil-radio-v1"))).toBe(mixSettings);
   expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), displayKey)).toEqual({ showRhythmNames: false, showNotes: false });
@@ -154,7 +157,7 @@ test("playback names and notes toggle independently while selection options stay
   await notes.check();
   await names.check();
   await expect(audio).toHaveAttribute("src", source!);
-  await expect.poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeGreaterThan(6);
+  await expect.poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeGreaterThan(8);
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(false);
   await notes.uncheck();
   await names.uncheck();
@@ -203,7 +206,7 @@ test("unavailable signals retain translated cue titles when names are hidden els
     await expect(page.locator(".radio-now h2")).toHaveText("1 - Marcação");
   }
   await page.getByRole("button", { name: "Jump to beat 1", exact: true }).click();
-  const start = await audio.evaluate((element: HTMLAudioElement) => element.currentTime);
+  const start = await audio.evaluate((element: HTMLAudioElement) => element.currentTime) - 240 / settings.tempo;
   await seek(audio, start + 6);
   await page.locator(".language-bar").getByRole("button", { name: "Português (Brasil)", exact: true }).click();
   await expect(page.locator(".radio-next strong")).toHaveText("Flying four");
@@ -230,7 +233,7 @@ test("the next sequence can use its animated gesture and a held rhythm clears th
     await page.getByRole("button", { name: "Skip", exact: true }).click();
     await expect(page.locator(".radio-now h2")).toHaveText("1 - Marcação");
   }
-  const start = Math.floor(await audio.evaluate((element: HTMLAudioElement) => element.currentTime));
+  const start = Math.floor(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)) - 240 / settings.tempo;
   await seek(audio, start + 6);
   const image = page.locator(".radio-cue img");
   await expect(image).toHaveAttribute("src", "/hand-signals/martelo-break.webp");
@@ -249,7 +252,7 @@ test("a sequence waits until seventy percent to call its next rhythm", async ({ 
     await page.getByRole("button", { name: "Skip", exact: true }).click();
     await expect(page.locator(".radio-now h2")).toHaveText("Martelo break");
   }
-  const start = Math.floor(await audio.evaluate((element: HTMLAudioElement) => element.currentTime));
+  const start = Math.floor(await audio.evaluate((element: HTMLAudioElement) => element.currentTime)) - 240 / settings.tempo;
   const source = await audio.getAttribute("src");
   const cue = page.locator(".radio-cue");
   const image = cue.locator("img");
@@ -288,7 +291,7 @@ test("an unavailable signal reveals the next name only during the call when play
     await expect(page.locator(".radio-now h2")).toHaveText("1 - Marcação");
   }
   await page.getByRole("button", { name: "Jump to beat 1", exact: true }).click();
-  const start = await audio.evaluate((element: HTMLAudioElement) => element.currentTime);
+  const start = await audio.evaluate((element: HTMLAudioElement) => element.currentTime) - 240 / settings.tempo;
   await page.getByRole("checkbox", { name: "Show rhythm names", exact: true }).uncheck();
   await page.getByRole("checkbox", { name: "Show notes", exact: true }).uncheck();
   await expect(page.locator(".radio-cue")).not.toContainText("Flying four");

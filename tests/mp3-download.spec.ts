@@ -141,6 +141,8 @@ test("radio saves the exact full mix while held and with pending or cancelled se
   });
   const initial = await save(page, "Download mix MP3");
   expect(createHash("sha256").update(initial.bytes).digest("hex")).toBe(digest);
+  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 240 / 90; });
+  await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0);
   await page.getByRole("button", { name: "Stay on this rhythm", exact: true }).click();
   await expect(page.getByRole("button", { name: "Back to mix", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect(await audio.getAttribute("src")).not.toBe(original);

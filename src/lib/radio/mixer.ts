@@ -1,4 +1,5 @@
 import { TranslatableError } from "../i18n/messages";
+import { RADIO_COUNT_IN_TRACKS, RADIO_TRANSITION_STEPS } from "./transitions";
 import type { Rhythm } from "../rhythmTypes";
 import { transitionTracksForRepetition, type RadioTimeline } from "./timeline";
 
@@ -12,6 +13,17 @@ export function buildRadioHits(
 ): RadioHit[] {
   const bySlug = new Map(rhythms.map((rhythm) => [rhythm.slug, rhythm]));
   const hits: RadioHit[] = [];
+  const countInFrames = timeline.countInFrames;
+  if (countInFrames) {
+    for (const track of RADIO_COUNT_IN_TRACKS) {
+      track.steps.forEach((symbol, step) => {
+        if (symbol !== ".") hits.push({
+          frame: Math.round(step * countInFrames / RADIO_TRANSITION_STEPS),
+          sample: `${track.name}.${symbol}`,
+        });
+      });
+    }
+  }
   for (const segment of timeline.segments) {
     const rhythm = bySlug.get(segment.slug);
     if (!rhythm) throw new TranslatableError("A selected rhythm is no longer available.");

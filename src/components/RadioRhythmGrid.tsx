@@ -17,7 +17,7 @@ export const RadioRhythmGrid = memo(function RadioRhythmGrid({
 }: {
   rhythm: Rhythm;
   activeStep: number | null;
-  onSeek: (step: number, slug: string) => void;
+  onSeek?: (step: number, slug: string) => void;
 }) {
   const { t, locale } = useTranslation();
   const [reverse, setReverse] = useState(false);
@@ -67,7 +67,8 @@ export const RadioRhythmGrid = memo(function RadioRhythmGrid({
               className={`step-cell count-cell ${activeStep === index ? "active" : ""}`}
               aria-label={seekLabel}
               title={seekLabel}
-              onClick={() => onSeek(index, rhythm.slug)}
+              disabled={!onSeek}
+              onClick={() => onSeek?.(index, rhythm.slug)}
               ref={(cell) => {
                 cells.current[index] = cell;
               }}

@@ -10,6 +10,8 @@ R . . . | . . . . | L R . R | L . R .
 Whistle:
 X . . . | . . . . | X X . X | X . X .`);
 
+export const RADIO_COUNT_IN_TRACKS: RhythmTrack[] = [whistle];
+
 const [imaleAlfaia] = parseRhythm(`Alfaia:
 R . . . | L . R . | L R . R | L . R .`);
 

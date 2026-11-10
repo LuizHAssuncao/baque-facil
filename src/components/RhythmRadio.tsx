@@ -19,12 +19,14 @@ import { radioSettingsKey } from "../lib/radio/playback";
 import { useRadioPlayback } from "../lib/radio/useRadioPlayback";
 import {
   buildRadioTimeline,
+  withRadioCountIn,
   defaultRadioSettings,
   normalizeRadioSettings,
   RADIO_PREFERENCES_KEY,
   RADIO_SAMPLE_RATE,
   type RadioEntry,
 } from "../lib/radio/timeline";
+import { RADIO_COUNT_IN_TRACKS } from "../lib/radio/transitions";
 import { RadioRhythmGrid } from "./RadioRhythmGrid";
 import { RadioSignalCue } from "./RadioSignalCue";
 import {
@@ -63,10 +65,15 @@ export default function RhythmRadio({
   const current = entries.find((entry) => entry.rhythm.slug === snapshot.slug);
   const audibleRhythm = useMemo(() => {
     if (!current) return null;
+    if (snapshot.countingIn) return {
+      ...current.rhythm,
+      subdivision: 16 as const,
+      tracks: RADIO_COUNT_IN_TRACKS,
+    };
     return snapshot.transitionTracks
       ? { ...current.rhythm, tracks: snapshot.transitionTracks }
       : current.rhythm;
-  }, [current, snapshot.transitionTracks]);
+  }, [current, snapshot.transitionTracks, snapshot.countingIn]);
   const next = entries.find((entry) => entry.rhythm.slug === snapshot.nextSlug);
   const changed =
     snapshot.ready && snapshot.settingsKey !== radioSettingsKey(settings);
@@ -77,13 +84,13 @@ export default function RhythmRadio({
         .filter((entry) => settings.slugs.includes(entry.rhythm.slug))
         .map((entry) => entry.rhythm);
       return (
-        buildRadioTimeline(
+        withRadioCountIn(buildRadioTimeline(
           rhythms,
           settings.tempo,
           settings.repetitions,
           settings.minutes * 60,
           () => 0.5,
-        ).totalFrames / RADIO_SAMPLE_RATE
+        )).totalFrames / RADIO_SAMPLE_RATE
       );
     } catch {
       return null;
@@ -150,6 +157,7 @@ export default function RhythmRadio({
           ready={snapshot.ready}
           held={snapshot.held}
           signalDue={snapshot.signalDue}
+          countingIn={snapshot.countingIn}
           showRhythmNames={showRhythmNames}
         />
         <div className="radio-now" aria-live="polite" aria-atomic="true">
@@ -161,7 +169,9 @@ export default function RhythmRadio({
           </span>
           <div>
             <p className="eyebrow">
-              {t(snapshot.held
+              {t(snapshot.countingIn
+                ? "Whistle count-in"
+                : snapshot.held
                 ? "Staying on this rhythm"
                 : snapshot.playing
                   ? "Now playing"
@@ -175,7 +185,9 @@ export default function RhythmRadio({
           </div>
         </div>
         <p className="radio-caption">
-          {snapshot.ready
+          {snapshot.countingIn
+            ? t("Start playing after the whistle call.")
+            : snapshot.ready
             ? `${snapshot.tempo} BPM · ${snapshot.held ? t("Repeating this pattern") : current?.combo ? t("One pass through this sequence") : t("{count} repetitions per rhythm", { count: snapshot.repetitions })}`
             : t("A shuffled mix of familiar patterns. Listen closely, or pick up your alfaia and play along.")}
         </p>
@@ -212,7 +224,7 @@ export default function RhythmRadio({
             className="radio-button"
             type="button"
             aria-pressed={snapshot.held}
-            disabled={!snapshot.ready || Boolean(snapshot.preparing)}
+            disabled={!snapshot.ready || snapshot.countingIn || Boolean(snapshot.preparing)}
             onClick={() => void controller.current?.toggleHold()}
           >
             <Repeat size={18} aria-hidden="true" />{" "}
@@ -315,10 +327,12 @@ export default function RhythmRadio({
       </div>
 
       {showNotes && current && audibleRhythm ? (
-        <section className="radio-pattern" aria-label={t("Now playing pattern")}>
+        <section className="radio-pattern" aria-label={t(snapshot.countingIn ? "Whistle count-in" : "Now playing pattern")}>
           <div className="radio-pattern-heading">
             <p>
-              {snapshot.held
+              {snapshot.countingIn
+                ? t("Start playing after the whistle call.")
+                : snapshot.held
                 ? t("Take your time with this pattern")
                 : t("Repetition {current} of {total}", { current: snapshot.repetition, total: snapshot.repetitions })}
               {snapshot.transitionTracks ? <> · <span>{t("Transition")}</span></> : null}
@@ -328,7 +342,7 @@ export default function RhythmRadio({
           <RadioRhythmGrid
             rhythm={audibleRhythm}
             activeStep={snapshot.activeStep}
-            onSeek={(step, slug) => controller.current?.seekToStep(step, slug)}
+            onSeek={snapshot.countingIn ? undefined : (step, slug) => controller.current?.seekToStep(step, slug)}
           />
         </section>
       ) : null}

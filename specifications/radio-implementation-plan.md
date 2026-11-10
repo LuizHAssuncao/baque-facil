@@ -24,6 +24,14 @@ are pending.
 
 ## Behaviour
 
+- Begin every full mix with one four-beat whistle-only call at the selected
+  tempo. Show the first rhythm or sequence's gesture during the call, with a
+  whistle-only grid and a prompt to start after the call. Instruments enter on
+  the following downbeat. Include the call in downloads and each native file
+  loop, without wrapping the last drum's decay into it. Pause/resume preserves
+  position; held loops start directly with the rhythm. Disable hold and grid
+  seeking until the count-in finishes; Skip advances to the first rhythm.
+
 - Default to all regular rhythms; allow individual selection and optional sequences.
 - Default to 90 BPM, using existing bounds of 30–130 BPM.
 - Repeat each regular rhythm 8 times; offer 4, 8, and 16 repetitions. Sequences
@@ -113,3 +121,17 @@ is supplementary evidence and cannot verify an actual locked phone.
   No browser errors or horizontal page overflow were observed.
 - Physical iPhone and Android locking, audible loop quality, interruptions,
   Bluetooth, and phone memory/preparation measurements remain pending release checks.
+
+## Whistle opening verification — 2026-11-10
+
+- Type checking and the production build passed. New timeline, decoded MP3,
+  and browser checks confirm a whistle-only first bar, the first gesture,
+  instrument entry, pause/resume, skipping, translations and native file looping.
+- The regression run had 213 passing cases, two intentionally skipped duplicate
+  benchmarks, and the previously recorded sample-retry timeout. That case also
+  timed out twice during three isolated runs, then passed three consecutive runs
+  against a warmed development server without source changes. This intermittent
+  development-test issue remains; all 214 applicable cases passed across runs.
+- Production offline generation and playback passed, including the opening
+  whistle and gesture. Desktop, narrow and emulated mobile layouts were reviewed.
+  Physical phone background playback was not tested.

@@ -34,6 +34,7 @@ export type RadioTimeline = {
   segments: RadioSegment[];
   totalFrames: number;
   tempo: number;
+  countInFrames?: number;
 };
 
 export function defaultRadioSettings(entries: RadioEntry[]): RadioSettings {
@@ -227,6 +228,25 @@ export function buildRadioTimeline(
   return { segments, totalFrames, tempo: actualTempo };
 }
 
+/** Prepend one whistle-only bar to a full mix; held patterns keep their own loop. */
+export function withRadioCountIn(timeline: RadioTimeline): RadioTimeline {
+  if (timeline.countInFrames) return timeline;
+  const countInFrames = Math.round(4 * 60 / timeline.tempo * RADIO_SAMPLE_RATE);
+  return {
+    ...timeline,
+    countInFrames,
+    totalFrames: timeline.totalFrames + countInFrames,
+    segments: timeline.segments.map((segment) => ({
+      ...segment,
+      startFrame: segment.startFrame + countInFrames,
+      endFrame: segment.endFrame + countInFrames,
+      ...(segment.transitionStartFrame === undefined ? {} : {
+        transitionStartFrame: segment.transitionStartFrame + countInFrames,
+      }),
+    })),
+  };
+}
+
 /** Repetitions are one-based, matching the position shown by the player. */
 export function transitionTracksForRepetition(
   segment: RadioSegment,
@@ -240,6 +260,18 @@ export function radioPosition(timeline: RadioTimeline, seconds: number) {
   // sample so an exact group boundary cannot appear as the previous group.
   const frame =
     Math.round(Math.max(0, seconds) * RADIO_SAMPLE_RATE) % timeline.totalFrames;
+  if (timeline.countInFrames && frame < timeline.countInFrames) {
+    return {
+      index: -1,
+      segment: timeline.segments[0],
+      nextSegment: timeline.segments[0],
+      activeStep: Math.min(RADIO_TRANSITION_STEPS - 1, Math.floor(frame * RADIO_TRANSITION_STEPS / timeline.countInFrames)),
+      repetition: 0,
+      signalDue: true,
+      countingIn: true,
+      transitionTracks: null,
+    };
+  }
   // Find the last segment whose start is at or before the current media frame.
   let low = 0;
   let high = timeline.segments.length - 1;
@@ -263,6 +295,7 @@ export function radioPosition(timeline: RadioTimeline, seconds: number) {
       ),
     ),
     repetition,
+    countingIn: false,
     // Visual calls lead the existing audio transition. Sequences run once, so
     // use their elapsed frames instead of showing the call for the whole pass.
     signalDue: segment.repetitions === 1

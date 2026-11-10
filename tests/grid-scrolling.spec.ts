@@ -30,6 +30,8 @@ for (const surface of ["lesson", "composer", "radio"] as const) {
     if (surface === "radio") {
       await page.getByRole("button", { name: "Play", exact: true }).click();
       await page.getByRole("button", { name: "Pause", exact: true }).click({ timeout: 25_000 });
+      await page.locator("audio[data-radio-player]").evaluate((element: HTMLAudioElement) => { element.currentTime = 2; });
+      await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0);
     }
 
     const grid = page.locator(".grid-scroll");
@@ -63,10 +65,10 @@ for (const surface of ["lesson", "composer", "radio"] as const) {
       // Seeking both directions must bring the radio playhead back into view.
       await page.getByRole("button", { name: "Play", exact: true }).click();
       const audio = page.locator("audio[data-radio-player]");
-      await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 15; });
+      await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 17; });
       await expect.poll(() => grid.evaluate((container) => container.scrollLeft)).toBeGreaterThan(240);
       await expectCellInView(grid, ".count-cell.active");
-      await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 0; });
+      await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 2; });
       await expect.poll(() => grid.evaluate((container) => container.scrollLeft)).toBeLessThan(240);
       await expectCellInView(grid, ".count-cell.active");
       await page.getByRole("button", { name: "Pause", exact: true }).click();
