@@ -471,7 +471,7 @@ export default function RhythmRadio({
         ) : null}
         <p className="radio-footnote">
           {estimate
-            ? t("This mix will last {duration} (about {size} MB).", { duration: formatTime(estimate), size: sizeFormat.format((estimate * 16000) / 1_000_000) })
+            ? t("Estimated duration: {duration} (about {size} MB).", { duration: formatTime(estimate), size: sizeFormat.format((estimate * 16000) / 1_000_000) })
             : ""}{" "}
           {t("Mixes finish on a full round of your selection. Sequences play once per turn.")}
         </p>

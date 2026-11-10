@@ -93,22 +93,28 @@ export function shuffleBag(
   return bag;
 }
 
-/** Separate sequences using every available regular rhythm in the round. */
+/** Repeat selected regular rhythms as needed so sequences never touch. */
 function interleaveSequences(
   bag: string[],
   sequenceSlugs: ReadonlySet<string>,
   startsWithSequence: boolean,
   random: () => number,
 ): string[] {
-  const first = bag.filter((slug) => sequenceSlugs.has(slug) === startsWithSequence);
-  const last = bag.filter((slug) => sequenceSlugs.has(slug) !== startsWithSequence);
+  const sequences = bag.filter((slug) => sequenceSlugs.has(slug));
+  const regulars = bag.filter((slug) => !sequenceSlugs.has(slug));
+  const selectedRegulars = [...regulars];
+  while (regulars.length < sequences.length) {
+    regulars.push(...shuffleBag(selectedRegulars, undefined, random)
+      .slice(0, sequences.length - regulars.length));
+  }
+  const first = startsWithSequence ? sequences : regulars;
+  const last = startsWithSequence ? regulars : sequences;
   const groupCount = Math.min(first.length, last.length);
   const groups = Array.from({ length: groupCount }, (_, index) => ({
     first: [first[index]],
     last: [last[index]],
   }));
-  // Only the more numerous kind has extras. Distribute them among the gaps:
-  // sequences can touch only when there are too few regular rhythms to separate them.
+  // Any remaining regular rhythms share the gaps between sequences.
   for (const slug of first.slice(groupCount))
     groups[Math.floor(random() * groupCount)].first.push(slug);
   for (const slug of last.slice(groupCount))
@@ -147,29 +153,24 @@ export function buildRadioTimeline(
   const segments: RadioSegment[] = [];
   let totalFrames = 0;
   const targetFrames = Math.ceil(durationSeconds * RADIO_SAMPLE_RATE);
-  const framesPerRound = rhythms.reduce((sum, rhythm) => {
+  const groupFrames = new Map([...bySlug.values()].map((rhythm) => {
     const cycles = isRadioSequence(rhythm) ? 1 : repetitions;
-    return (
-      sum +
+    return [
+      rhythm.slug,
       Math.round(
         (60 / actualTempo) *
           (4 / rhythm.subdivision) *
           (rhythm.tracks[0]?.steps.length ?? 0) *
           RADIO_SAMPLE_RATE,
       ) *
-        cycles
-    );
-  }, 0);
-  if (framesPerRound <= 0 || framesPerRound > 1800 * RADIO_SAMPLE_RATE) {
-    throw new TranslatableError(
-      "Choose fewer rhythms or repetitions for a mix of up to 30 minutes per round.",
-    );
-  }
-  const rounds = Math.max(1, Math.round(targetFrames / framesPerRound));
-  // Finish the nearest whole round: every selected rhythm gets equal turns,
-  // including across the native file loop. Sequences already contain repetitions.
-  while (segments.length < rounds * slugs.length) {
+        cycles,
+    ] as const;
+  }));
+  // Finish the nearest complete round, including any repeated separator rhythms.
+  // Their lengths can differ, so use each shuffled round's actual duration.
+  while (true) {
     if (!bag.length) {
+      if (totalFrames >= targetFrames) break;
       bag = shuffleBag(slugs, segments.at(-1)?.slug ?? previousSlug, random);
       if (mixedSelection) {
         // Keep opposite kinds at the two ends of every round, in the same order.
@@ -181,6 +182,13 @@ export function buildRadioTimeline(
       } else if (bag.length > 2 && bag.at(-1) === segments[0]?.slug) {
         [bag[1], bag[bag.length - 1]] = [bag[bag.length - 1], bag[1]];
       }
+      const roundFrames = bag.reduce((sum, slug) => sum + groupFrames.get(slug)!, 0);
+      if (!Number.isFinite(roundFrames) || roundFrames <= 0 || roundFrames > 1800 * RADIO_SAMPLE_RATE) {
+        throw new TranslatableError(
+          "Choose fewer rhythms or repetitions for a mix of up to 30 minutes per round.",
+        );
+      }
+      if (segments.length && totalFrames + roundFrames - targetFrames > targetFrames - totalFrames) break;
     }
     const slug = bag.shift()!;
     const rhythm = bySlug.get(slug)!;

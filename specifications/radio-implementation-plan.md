@@ -37,13 +37,16 @@ are pending.
 - Repeat each regular rhythm 8 times; offer 4, 8, and 16 repetitions. Sequences
   already contain longer sequences and play once per turn.
 - Offer shorter recordings for quicker preparation as well as the 20-minute
-  default. Show the actual planned duration and approximate file size, then progress
-  during preparation, which can be cancelled.
-- Shuffle without replacement, preventing adjacent repeats across bags and at
-  the completed recording's loop boundary whenever multiple rhythms are chosen.
+  default. Show estimated duration and file size before preparation, progress
+  during preparation, and the actual duration once ready. Preparation can be cancelled.
+- Shuffle each selected item into every round, preventing adjacent repeats across
+  bags and at the recording's loop boundary whenever multiple items are chosen.
 - Separate sequences with regular rhythms, including across rounds and the
-  recording's loop boundary. If sequences outnumber regular rhythms, allow only
-  the unavoidable adjacent sequence pairs while preserving equal turns.
+  recording's loop boundary. If sequences outnumber regular rhythms, repeat
+  selected regular rhythms as needed, drawing from shuffled bags. For Marcação
+  plus all sequences, Marcação plays between every pair of sequences. Allow
+  adjacent sequences only when no regular rhythm is selected. Choose the nearest
+  complete round using its actual duration, including the repeated rhythms.
 - Start only following user interaction. If a browser requires a second Play tap
   after preparation, show that clearly.
 - Play/Pause preserves position. Skip seeks to the next recorded rhythm group.

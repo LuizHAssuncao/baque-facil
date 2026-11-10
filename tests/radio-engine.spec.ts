@@ -90,6 +90,9 @@ test("radio handles a single rhythm, two rhythms, sequences, and invalid setting
   expect(() =>
     buildRadioTimeline([makeRhythm("a")], 90, 8, Infinity),
   ).toThrow();
+  expect(() => buildRadioTimeline(
+    [{ ...makeRhythm("invalid"), subdivision: NaN as 16 }], 90, 8, 120,
+  )).toThrow();
   const entries = [
     { rhythm: makeRhythm("a"), combo: false, difficulty: "beginner" },
   ];
@@ -106,7 +109,7 @@ test("radio handles a single rhythm, two rhythms, sequences, and invalid setting
   ).toEqual({ slugs: ["a"], tempo: 130, repetitions: 8, minutes: 20 });
 });
 
-for (const [regularCount, sequenceCount] of [[1, 1], [2, 2], [4, 2], [1, 4], [2, 4], [0, 3], [0, 1]]) {
+for (const [regularCount, sequenceCount] of [[1, 1], [2, 2], [4, 2], [1, 4], [2, 4], [3, 4], [0, 3], [0, 1]]) {
   test(`radio separates ${sequenceCount} sequences with ${regularCount} regular rhythms whenever possible`, () => {
     const regulars = Array.from({ length: regularCount }, (_, index) => makeRhythm(`regular-${index}`));
     const sequences = Array.from({ length: sequenceCount }, (_, index) => makeRhythm(`combo-${index}`));
@@ -120,11 +123,21 @@ for (const [regularCount, sequenceCount] of [[1, 1], [2, 2], [4, 2], [1, 4], [2,
         for (let seed = 0; seed < 10; seed += 1) {
           const timeline = buildRadioTimeline(rhythms, 90, 4, duration, random(seed), previous);
           const slugs = timeline.segments.map((segment) => segment.slug);
-          const rounds = slugs.length / rhythms.length;
+          const groupsPerRound = regularCount ? Math.max(regularCount, sequenceCount) + sequenceCount : sequenceCount;
+          const rounds = slugs.length / groupsPerRound;
+          expect(Number.isInteger(rounds)).toBe(true);
           const bags = Array.from({ length: rounds }, (_, index) =>
-            slugs.slice(index * rhythms.length, (index + 1) * rhythms.length).sort(),
+            slugs.slice(index * groupsPerRound, (index + 1) * groupsPerRound),
           );
-          expect(bags).toEqual(Array.from({ length: rounds }, () => expectedSlugs));
+          for (const bag of bags) {
+            expect([...new Set(bag)].sort()).toEqual(expectedSlugs);
+            expect(bag.filter((slug) => sequenceSlugs.has(slug)).sort()).toEqual([...sequenceSlugs].sort());
+            if (regularCount) {
+              const counts = regulars.map(({ slug }) => bag.filter((item) => item === slug).length);
+              expect(Math.min(...counts)).toBeGreaterThanOrEqual(1);
+              expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
+            }
+          }
           if (rhythms.length > 1) {
             expect(slugs[0]).not.toBe(previous);
             expect(slugs.every((slug, index) => slug !== slugs[(index + 1) % slugs.length])).toBe(true);
@@ -135,8 +148,7 @@ for (const [regularCount, sequenceCount] of [[1, 1], [2, 2], [4, 2], [1, 4], [2,
           const adjacentSequences = slugs.filter((slug, index) =>
             sequenceSlugs.has(slug) && sequenceSlugs.has(slugs[(index + 1) % slugs.length]),
           ).length;
-          // In a circular mix each regular rhythm can separate one sequence pair.
-          expect(adjacentSequences).toBe(Math.max(0, sequenceCount - regularCount) * rounds);
+          expect(adjacentSequences).toBe(regularCount ? 0 : slugs.length);
           expect(timeline.segments.every((segment) =>
             segment.repetitions === (sequenceSlugs.has(segment.slug) ? 1 : 4),
           )).toBe(true);
@@ -145,6 +157,41 @@ for (const [regularCount, sequenceCount] of [[1, 1], [2, 2], [4, 2], [1, 4], [2,
     }
   });
 }
+
+test("extra separator rhythms are shuffled and their lengths count toward the recording duration", () => {
+  const regulars = [makeRhythm("short"), makeRhythm("medium", 32), makeRhythm("long", 64)];
+  const sequences = Array.from({ length: 4 }, (_, index) => makeRhythm(`combo-${index}`));
+  const repeated = new Set<string>();
+  const orders = new Set<string>();
+  for (let seed = 0; seed < 30; seed += 1) {
+    const timeline = buildRadioTimeline([...regulars, ...sequences], 120, 4, 120, random(seed));
+    const groupsPerRound = 8;
+    const roundFrames: number[] = [];
+    for (let start = 0; start < timeline.segments.length; start += groupsPerRound) {
+      const round = timeline.segments.slice(start, start + groupsPerRound);
+      expect(round).toHaveLength(groupsPerRound);
+      roundFrames.push(round.at(-1)!.endFrame - round[0].startFrame);
+      const separators = round.filter(({ slug }) => !slug.startsWith("combo"));
+      expect(separators).toHaveLength(4);
+      orders.add(separators.map(({ slug }) => slug).join(","));
+      for (const { slug } of regulars) {
+        if (separators.filter((segment) => segment.slug === slug).length === 2) repeated.add(slug);
+      }
+    }
+    const actualFrames = timeline.segments.reduce((sum, segment) => sum + segment.cycleFrames * segment.repetitions, 0);
+    expect(timeline.totalFrames).toBe(actualFrames);
+    expect(timeline.segments[0].startFrame).toBe(0);
+    for (let index = 1; index < timeline.segments.length; index += 1) {
+      expect(timeline.segments[index].startFrame).toBe(timeline.segments[index - 1].endFrame);
+    }
+    // A round contains all patterns plus one randomly chosen extra rhythm.
+    // At 120 BPM those complete rounds last between 72 and 96 seconds.
+    expect(roundFrames.every((frames) => frames >= 72 * RADIO_SAMPLE_RATE && frames <= 96 * RADIO_SAMPLE_RATE)).toBe(true);
+    expect(Math.abs(timeline.totalFrames / RADIO_SAMPLE_RATE - 120)).toBeLessThanOrEqual(48);
+  }
+  expect([...repeated].sort()).toEqual(["long", "medium", "short"]);
+  expect(orders.size).toBeGreaterThan(3);
+});
 
 test("radio positions use the media clock across different pattern lengths and repeats", () => {
   const timeline = buildRadioTimeline(

@@ -33,51 +33,67 @@ async function prepare(page: Page) {
   await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0, { timeout: 10_000 });
 }
 
-test("radio separates sequences through skips, the file loop, and a fresh shuffle", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  // The old unconstrained shuffle leaves the two sequences together in this order.
-  await page.addInitScript(() => { Math.random = () => 0.99; });
-  const audio = await openRadio(page, {
-    ...preferences,
-    slugs: ["marcacao", "imale", "combo_martelo_break", "combo_parada_arrasto"],
-  });
-  await prepare(page);
-  await page.getByRole("button", { name: "Pause", exact: true }).click();
-  const title = page.locator(".radio-now h2");
-  const next = page.locator(".radio-next strong");
-  const sequenceTitles = new Set(["Martelo break", "Parada + Arrasto"]);
-  const visited = new Set<string>();
-  let wrapped = false;
-  for (let index = 0; index < 40; index += 1) {
-    const currentTitle = await title.innerText();
-    const nextTitle = await next.innerText();
-    visited.add(currentTitle);
-    expect(sequenceTitles.has(currentTitle) && sequenceTitles.has(nextTitle)).toBe(false);
-    await page.getByRole("button", { name: "Skip", exact: true }).click();
-    await expect(title).toHaveText(nextTitle);
-    if (await audio.evaluate((element: HTMLAudioElement) => element.currentTime === 0)) {
-      wrapped = true;
-      break;
+for (const regularSlugs of [["marcacao"], ["marcacao", "imale"]]) {
+  test(`radio separates all sequences with ${regularSlugs.length} selected rhythms through skips, looping, and a fresh shuffle`, async ({ page }) => {
+    test.setTimeout(60_000);
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    // There are too few distinct rhythms to separate these sequences without reusing them.
+    await page.addInitScript(() => { Math.random = () => 0.99; });
+    const audio = await openRadio(page, {
+      ...preferences,
+      slugs: [...regularSlugs, "combo_flying_four", "combo_martelo_break", "combo_parada_arrasto", "combo_three_crossed_break"],
+    });
+    await prepare(page);
+    await page.getByRole("button", { name: "Pause", exact: true }).click();
+    const title = page.locator(".radio-now h2");
+    const next = page.locator(".radio-next strong");
+    const firstTitle = await title.innerText();
+    const sequenceTitles = new Set(["Flying four", "Martelo break", "Parada + Arrasto", "Three Crossed Break"]);
+    const regularTitles = regularSlugs.map((slug) => slug === "marcacao" ? "1 - Marcação" : "2 - Imalê");
+    const visited = new Set<string>();
+    let wrapped = false;
+    let lastTitle = "";
+    for (let index = 0; index < 40; index += 1) {
+      const currentTitle = await title.innerText();
+      const nextTitle = await next.innerText();
+      visited.add(currentTitle);
+      expect(sequenceTitles.has(currentTitle) && sequenceTitles.has(nextTitle)).toBe(false);
+      await page.getByRole("button", { name: "Skip", exact: true }).click();
+      await expect(title).toHaveText(nextTitle);
+      if (await audio.evaluate((element: HTMLAudioElement) => element.currentTime === 0)) {
+        wrapped = true;
+        lastTitle = currentTitle;
+        break;
+      }
     }
-  }
-  expect(wrapped).toBe(true);
-  expect([...visited].sort()).toEqual(["1 - Marcação", "2 - Imalê", ...sequenceTitles].sort());
+    expect(wrapped).toBe(true);
+    expect([...visited].sort()).toEqual([...regularTitles, ...sequenceTitles].sort());
 
-  // Skipping the final group returns to the recorded count-in.
-  await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 240 / 90; });
-  await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0);
-  if (!sequenceTitles.has(await title.innerText())) {
-    await page.getByRole("button", { name: "Skip", exact: true }).click();
-    await expect(title).toHaveText(/Martelo break|Parada \+ Arrasto/);
-  }
-  const source = await audio.getAttribute("src");
-  await page.getByRole("button", { name: "Shuffle again", exact: true }).click();
-  await expect.poll(() => audio.getAttribute("src"), { timeout: 25_000 }).not.toBe(source);
-  await expect(title).toHaveText(/1 - Marcação|2 - Imalê/);
-  expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
-  expect(errors).toEqual([]);
-});
+    // Native playback must retain the same separation across the end of the file.
+    await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = element.duration - 0.1; });
+    await expect(title).toHaveText(lastTitle);
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await expect.poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeLessThan(2);
+    await page.getByRole("button", { name: "Pause", exact: true }).click();
+    await expect(title).toHaveText(firstTitle);
+    expect(sequenceTitles.has(lastTitle) && sequenceTitles.has(await title.innerText())).toBe(false);
+
+    // Skipping the final group returns to the recorded count-in.
+    await audio.evaluate((element: HTMLAudioElement) => { element.currentTime = 240 / 90; });
+    await expect(page.locator('.radio-cue[data-phase="count-in"]')).toHaveCount(0);
+    if (!sequenceTitles.has(await title.innerText())) {
+      await page.getByRole("button", { name: "Skip", exact: true }).click();
+      await expect(title).toHaveText(/Flying four|Martelo break|Parada \+ Arrasto|Three Crossed Break/);
+    }
+    const source = await audio.getAttribute("src");
+    await page.getByRole("button", { name: "Shuffle again", exact: true }).click();
+    await expect.poll(() => audio.getAttribute("src"), { timeout: 25_000 }).not.toBe(source);
+    await expect(title).toHaveText(/1 - Marcação|2 - Imalê/);
+    expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+}
 
 test("radio header seeks within the current repetition while paused, playing, and held", async ({ page }) => {
   const audio = await openRadio(page, { ...preferences, slugs: ["marcacao"] });

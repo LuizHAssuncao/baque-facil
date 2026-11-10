@@ -28,11 +28,13 @@ test("radio translates preparation and active playback without replacing the rec
   await expect(page.getByRole("combobox", { name: "Duração da gravação" })).toHaveValue("2");
   await expect(page.getByRole("combobox", { name: "Repetições por ritmo" })).toHaveValue("4");
   await expect(page.locator(".radio-section-heading")).toContainText("2 ritmos selecionados");
+  await expect(page.locator(".radio-footnote").first()).toContainText("Duração estimada:");
   await expect(page.locator(".radio-footnote").first()).toContainText(/cerca de \d+,\d MB/);
   await page.getByRole("button", { name: "Reproduzir", exact: true }).click();
   await expect(page.getByRole("progressbar", { name: "Preparação da gravação" })).toBeVisible();
   await expect(page.locator(".radio-preparation").getByRole("status")).toContainText("Preparando sua sequência");
   await switchLanguage(page, "English (Canada)");
+  await expect(page.locator(".radio-footnote").first()).toContainText("Estimated duration:");
   await expect(page.getByRole("progressbar", { name: "Recording preparation" })).toBeVisible();
   await expect(page.locator(".radio-preparation").getByRole("status")).toContainText("Preparing your mix");
   release();

@@ -302,7 +302,12 @@ preview requires the page to remain visible.
 Defaults are all regular rhythms, 90 BPM, eight repetitions and about 20 minutes.
 Optional sequences play once per turn. New sessions and Shuffle again create
 complete shuffled rounds; avoid adjacent repeats when multiple rhythms are
-selected. Preparation is cancellable and may need another Play tap when ready.
+selected. Whenever at least one regular rhythm is selected, keep a regular rhythm
+between sequences, including across rounds and the native file loop. Repeat
+selected regular rhythms as needed, choosing them in shuffled bags. Allow adjacent
+sequences only when no regular rhythms are selected. Include these extra groups
+when choosing the nearest complete round to the requested duration.
+Preparation is cancellable and may need another Play tap when ready.
 Show estimated duration and size before preparation. Preferences persist locally;
 recordings disappear on reload and restored preferences never start playback.
 

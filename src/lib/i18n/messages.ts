@@ -311,7 +311,7 @@ export const portuguese = {
   "Rhythms in the recording": "Ritmos da gravação",
   "Sequence": "Sequência",
   "Select at least one rhythm to prepare a mix.": "Selecione pelo menos um ritmo para preparar uma sequência.",
-  "This mix will last {duration} (about {size} MB).": "Esta sequência terá duração de {duration} (cerca de {size} MB).",
+  "Estimated duration: {duration} (about {size} MB).": "Duração estimada: {duration} (cerca de {size} MB).",
   "Mixes finish on a full round of your selection. Sequences play once per turn.": "As gravações terminam após uma rodada completa dos ritmos selecionados. As sequências tocam uma vez por rodada.",
   "Each new mix has a fresh shuffle. The complete recording repeats until you shuffle again. Shorter recordings prepare faster.": "Cada nova sequência tem uma ordem aleatória. A gravação completa se repete até você embaralhar novamente. Gravações mais curtas ficam prontas mais rápido.",
   "Current rhythm grid": "Grade do ritmo atual",
