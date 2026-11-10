@@ -2892,9 +2892,9 @@ kbd {
   line-height: 1.5;
 }
 .radio-choice-gesture {
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
   border-radius: 0.3rem;
   background: white;
@@ -3172,13 +3172,11 @@ kbd {
   margin: 0;
   font-size: 1rem;
 }
-.radio-combo-toggle {
+.radio-selection-actions {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-  min-height: 2.5rem;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.35rem;
 }
 .radio-selection {
   display: grid;
@@ -3204,8 +3202,7 @@ kbd {
   border-color: rgb(13 93 89 / 0.4);
   background: rgb(220 239 235 / 0.45);
 }
-.radio-rhythm-choice input,
-.radio-combo-toggle input {
+.radio-rhythm-choice input {
   width: 1.1rem;
   height: 1.1rem;
   flex-shrink: 0;
@@ -3258,10 +3255,12 @@ kbd {
     flex: 1 1 auto;
   }
 }
-@media (max-width: 390px) {
+@media (max-width: 550px) {
   .radio-selection {
     grid-template-columns: 1fr;
   }
+}
+@media (max-width: 390px) {
   .radio-setting-fields {
     grid-template-columns: 1fr;
   }

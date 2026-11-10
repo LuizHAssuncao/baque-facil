@@ -70,10 +70,6 @@ export default function RhythmRadio({
   const next = entries.find((entry) => entry.rhythm.slug === snapshot.nextSlug);
   const changed =
     snapshot.ready && snapshot.settingsKey !== radioSettingsKey(settings);
-  const combos = entries.filter((entry) => entry.combo);
-  const includeCombos = combos.some((entry) =>
-    settings.slugs.includes(entry.rhythm.slug),
-  );
 
   const estimate = useMemo(() => {
     try {
@@ -252,7 +248,7 @@ export default function RhythmRadio({
             />
             {t("Show notes")}
           </label>
-          <p>{t("Hide names and notes to practise recognising the signals.")}</p>
+          <p>{t("Hide names and notes in the player to practise recognising the signals. Selection options always show names and gestures.")}</p>
         </fieldset>
         <div className="radio-download">
           {snapshot.download ? <>
@@ -393,62 +389,69 @@ export default function RhythmRadio({
             </select>
           </label>
         </div>
-        <div className="radio-selection-heading">
-          <h3>{t("Choose your rhythms")}</h3>
-          <label className="radio-combo-toggle">
-            <input
-              type="checkbox"
-              checked={includeCombos}
-              onChange={(event) =>
-                setSettings({
-                  ...settings,
-                  slugs: event.target.checked
-                    ? [
-                        ...new Set([
-                          ...settings.slugs,
-                          ...combos.map((entry) => entry.rhythm.slug),
-                        ]),
-                      ]
-                    : settings.slugs.filter(
-                        (slug) =>
-                          !combos.some((entry) => entry.rhythm.slug === slug),
-                      ),
-                })
-              }
-            />{" "}
-            {t("Include sequences")}
-          </label>
+        <div className="radio-selection-actions">
+          <button
+            type="button"
+            className="radio-button"
+            disabled={!preferencesLoaded || selected.length === entries.length}
+            onClick={() => setSettings({ ...settings, slugs: entries.map((entry) => entry.rhythm.slug) })}
+          >
+            {t("Select all")}
+          </button>
+          <button
+            type="button"
+            className="radio-button"
+            disabled={!preferencesLoaded || !selected.length}
+            onClick={() => setSettings({ ...settings, slugs: [] })}
+          >
+            {t("Clear selection")}
+          </button>
         </div>
-        <fieldset className="radio-selection" disabled={!preferencesLoaded}>
-          <legend className="radio-sr-only">{t("Rhythms in the recording")}</legend>
-          {entries
-            .filter((entry) => !entry.combo || includeCombos)
-            .map((entry) => (
-              <label key={entry.rhythm.slug} className="radio-rhythm-choice">
-                <input
-                  type="checkbox"
-                  checked={settings.slugs.includes(entry.rhythm.slug)}
-                  onChange={(event) =>
-                    setSettings({
-                      ...settings,
-                      slugs: event.target.checked
-                        ? [...settings.slugs, entry.rhythm.slug]
-                        : settings.slugs.filter(
-                            (slug) => slug !== entry.rhythm.slug,
-                          ),
-                    })
-                  }
-                />
-                {!showRhythmNames && entry.gesture ? (
-                  <img className="radio-choice-gesture" src={entry.gesture.src} alt={entry.gesture.description[locale]} width={44} height={44} loading="lazy" />
-                ) : null}
-                <span>
-                  <strong>{showRhythmNames ? t(entry.rhythm.title as MessageKey) : t("Rhythm {number}", { number: entries.indexOf(entry) + 1 })}</strong>
-                  <small>{t(entry.combo ? "Sequence" : entry.difficulty as MessageKey)}</small>
-                </span>
-              </label>
-            ))}
-        </fieldset>
+        {[false, true].map((combo) => (
+          <section key={String(combo)} aria-labelledby={combo ? "radio-sequences-heading" : "radio-rhythms-heading"}>
+            <div className="radio-selection-heading">
+              <h3 id={combo ? "radio-sequences-heading" : "radio-rhythms-heading"}>
+                {t(combo ? "Choose your sequences" : "Choose your rhythms")}
+              </h3>
+            </div>
+            <fieldset className="radio-selection" disabled={!preferencesLoaded}>
+              <legend className="radio-sr-only">{t(combo ? "Sequences in the recording" : "Rhythms in the recording")}</legend>
+              {entries.filter((entry) => entry.combo === combo).map((entry) => (
+                <label key={entry.rhythm.slug} className="radio-rhythm-choice">
+                  <input
+                    type="checkbox"
+                    aria-labelledby={`radio-choice-${entry.rhythm.slug}-title radio-choice-${entry.rhythm.slug}-kind`}
+                    checked={settings.slugs.includes(entry.rhythm.slug)}
+                    onChange={(event) =>
+                      setSettings({
+                        ...settings,
+                        slugs: event.target.checked
+                          ? [...settings.slugs, entry.rhythm.slug]
+                          : settings.slugs.filter(
+                              (slug) => slug !== entry.rhythm.slug,
+                            ),
+                      })
+                    }
+                  />
+                  {entry.gesture ? (
+                    <img
+                      className="radio-choice-gesture"
+                      src={entry.gesture.src}
+                      alt={entry.gesture.description[locale]}
+                      width={64}
+                      height={64}
+                      loading="lazy"
+                    />
+                  ) : null}
+                  <span>
+                    <strong id={`radio-choice-${entry.rhythm.slug}-title`}>{t(entry.rhythm.title as MessageKey)}</strong>
+                    <small id={`radio-choice-${entry.rhythm.slug}-kind`}>{t(entry.combo ? "Sequence" : entry.difficulty as MessageKey)}</small>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+          </section>
+        ))}
         {!selected.length ? (
           <p className="radio-error" role="status">{t("Select at least one rhythm to prepare a mix.")}</p>
         ) : null}

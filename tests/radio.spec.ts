@@ -372,29 +372,30 @@ test("preferences, optional sequences, and keyboard controls work without autopl
   page,
 }) => {
   const audio = await openRadio(page);
-  await page
-    .getByRole("checkbox", { name: "Include sequences", exact: true })
-    .check();
-  await expect(page.getByRole("checkbox", { name: /Parada \+ Arrasto/ })).toBeChecked();
+  const sequence = page.getByRole("checkbox", { name: "Parada + Arrasto Sequence", exact: true });
+  await expect(sequence).toBeVisible();
+  await expect(sequence).not.toBeChecked();
+  await sequence.check();
+  await expect(sequence).toBeChecked();
   await expect(page.getByRole("checkbox", { name: /Entrada|Transition/ })).toHaveCount(0);
-  await expect(page.locator(".radio-rhythm-choice strong")).toHaveText([
+  await expect(page.getByRole("group", { name: "Rhythms in the recording", exact: true }).locator("strong")).toHaveText([
     "1 - Marcação",
     "2 - Imalê",
     "3 - Martelo",
     "4 - Baque de Parada",
     "5 - Trovão",
     "7 - Arrasto",
+    "# - Afoxé",
+  ]);
+  await expect(page.getByRole("group", { name: "Sequences in the recording", exact: true }).locator("strong")).toHaveText([
     "Flying four",
     "Martelo break",
     "Parada + Arrasto",
     "Three Crossed Break",
-    "# - Afoxé",
   ]);
-  await page
-    .getByRole("checkbox", { name: "Include sequences", exact: true })
-    .uncheck();
-  await expect(page.getByRole("checkbox", { name: /Entrada|Transition/ })).toHaveCount(0);
-  await expect(page.locator(".radio-rhythm-choice strong").last()).toHaveText("# - Afoxé");
+  await sequence.uncheck();
+  await expect(sequence).toBeVisible();
+  await expect(sequence).not.toBeChecked();
   await page.getByRole("slider", { name: "Radio tempo" }).fill("100");
   await expect(
     page.getByRole("button", { name: "Play", exact: true }),
@@ -420,6 +421,73 @@ test("preferences, optional sequences, and keyboard controls work without autopl
     "100",
   );
   expect(await audio.getAttribute("src")).toBeNull();
+});
+
+test("all options keep their names and gestures while a single sequence is chosen, played, and restored", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const audio = await openRadio(page);
+  const choices = page.locator(".radio-rhythm-choice");
+  await expect(choices).toHaveCount(11);
+  const titles = await choices.locator("strong").allTextContents();
+  for (const choice of await choices.all()) {
+    await choice.scrollIntoViewIfNeeded();
+    await expect(choice.getByRole("checkbox")).toBeVisible();
+    await expect(choice.getByRole("img")).toHaveAttribute("alt", /.+/);
+    await expect.poll(() => choice.getByRole("img").evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  }
+  const sequence = page.getByRole("checkbox", { name: "Parada + Arrasto Sequence", exact: true });
+  const sequenceCard = choices.filter({ has: sequence });
+  await expect(sequenceCard.getByRole("img")).toHaveAttribute("src", "/hand-signals/combo_parada_arrasto.png");
+  await expect(choices.filter({ hasText: "Martelo break" }).getByRole("img")).toHaveAttribute("src", "/hand-signals/martelo-break.webp");
+
+  const names = page.getByRole("checkbox", { name: "Show rhythm names", exact: true });
+  const notes = page.getByRole("checkbox", { name: "Show notes", exact: true });
+  await names.uncheck();
+  await notes.uncheck();
+  await expect(choices.locator("strong")).toHaveText(titles);
+  await expect(choices.getByRole("img")).toHaveCount(11);
+  await page.getByRole("button", { name: "Clear selection", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeDisabled();
+  await expect(choices.locator("strong")).toHaveText(titles);
+  await sequence.check();
+  await expect(page.locator(".radio-selection input:checked")).toHaveCount(1);
+  await sequence.uncheck();
+  await expect(sequence).toBeVisible();
+  await sequence.focus();
+  await sequence.press("Space");
+  await expect(sequence).toBeChecked();
+  await page.locator(".radio-settings").screenshot({ path: testInfo.outputPath("radio-options-names-and-gestures.png") });
+
+  await prepare(page);
+  const source = await audio.getAttribute("src");
+  await expect(page.getByRole("button", { name: "Skip", exact: true })).toBeDisabled();
+  await expect(page.locator(".radio-now h2")).toHaveText("Rhythm names hidden");
+  await expect(page.locator(".radio-pattern")).toHaveCount(0);
+  await expect(sequenceCard.locator("strong")).toHaveText("Parada + Arrasto");
+  await expect(sequenceCard.getByRole("img")).toBeVisible();
+  await names.check();
+  await expect(page.locator(".radio-now h2")).toHaveText("Parada + Arrasto");
+  await expect(audio).toHaveAttribute("src", source!);
+  await names.uncheck();
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  await expect(choices.locator("strong")).toHaveText(titles);
+  expect(await page.evaluate(() => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) <= innerWidth + 1)).toBe(true);
+
+  await page.reload();
+  await expect(page.locator("astro-island[ssr]")).toHaveCount(0);
+  await expect(sequence).toBeChecked();
+  await expect(page.locator(".radio-selection input:checked")).toHaveCount(1);
+  await expect(names).not.toBeChecked();
+  await expect(notes).not.toBeChecked();
+  await expect(choices.locator("strong")).toHaveText(titles);
+  await expect(sequenceCard.getByRole("img")).toBeVisible();
+  expect(await audio.getAttribute("src")).toBeNull();
+  await page.getByRole("button", { name: "Select all", exact: true }).click();
+  await expect(page.locator(".radio-selection input:not(:checked)")).toHaveCount(0);
+  expect(errors).toEqual([]);
 });
 
 test("radio still loads when preference storage is unavailable", async ({

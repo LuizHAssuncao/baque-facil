@@ -526,7 +526,8 @@ test("player, composer, quiz, and fresh radio encoding work on first use offline
   await page.getByRole("checkbox", { name: "Show notes", exact: true }).uncheck();
   await expect(page.locator(".radio-pattern")).toHaveCount(0);
   await expect(page.locator(".radio-cue img")).toBeVisible();
-  await expect(page.locator(".radio-studio")).not.toContainText(/Marcação|Imalê/);
+  await expect(page.locator(".radio-player")).not.toContainText(/Marcação|Imalê/);
+  await expect(page.locator(".radio-settings")).toContainText("Marcação");
   await expect(audio).toHaveAttribute("src", radioSource!);
   await page.getByRole("checkbox", { name: "Show rhythm names", exact: true }).check();
   await page.getByRole("checkbox", { name: "Show notes", exact: true }).check();

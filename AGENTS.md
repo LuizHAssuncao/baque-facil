@@ -329,9 +329,11 @@ from the background while the notes and cursor follow the audible rhythm.
 
 Show rhythm names and Show notes apply immediately without regenerating audio.
 Both default on and persist separately in `baque-facil-radio-display-v1`.
-Hidden names also disappear from selectors, lesson shortcuts, announcements and
-media titles, except for an active call with an unavailable signal. Keep gesture
-descriptions bilingual. See `tests/radio*.spec.ts` and the
+Hidden names also disappear from lesson shortcuts, announcements and media titles,
+except for an active call with an unavailable signal. Rhythm and sequence selection
+options always show their names and authored gestures, independently of the practice
+view switches. Keep all options visible when deselected; sequences are individually
+selectable. Keep gesture descriptions bilingual. See `tests/radio*.spec.ts` and the
 [radio plan](specifications/radio-implementation-plan.md).
 
 ## MP3 encoding and downloads

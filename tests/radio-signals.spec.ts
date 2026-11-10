@@ -107,7 +107,7 @@ test("the last two repetitions call the next gesture while the current notes fol
   expect(errors).toEqual([]);
 });
 
-test("names and notes toggle independently without replacing audio and remain hidden after reload", async ({ page }, testInfo) => {
+test("playback names and notes toggle independently while selection options stay identifiable", async ({ page }, testInfo) => {
   const audio = await openRadio(page);
   await seek(audio, 6);
   const source = await audio.getAttribute("src");
@@ -127,8 +127,8 @@ test("names and notes toggle independently without replacing audio and remain hi
   await expect(page.getByRole("link", { name: "Open rhythm lesson →", exact: true })).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.title)).toBe("Baque Radio");
   for (const title of Object.keys(gestures)) {
-    await expect(page.locator(".radio-studio")).not.toContainText(title);
-    expect(await page.locator(".radio-studio").ariaSnapshot()).not.toContain(title);
+    await expect(page.locator(".radio-player")).not.toContainText(title);
+    expect(await page.locator(".radio-player").ariaSnapshot()).not.toContain(title);
   }
   await notes.uncheck();
   await expect(page.locator(".radio-pattern")).toHaveCount(0);
@@ -163,7 +163,7 @@ test("names and notes toggle independently without replacing audio and remain hi
     const state = window as unknown as { revealedRhythmName: boolean };
     state.revealedRhythmName = false;
     new MutationObserver(() => {
-      if (/Marcação|Imalê/.test(document.body?.innerText ?? "")) state.revealedRhythmName = true;
+      if (/Marcação|Imalê/.test(document.querySelector(".radio-player")?.textContent ?? "")) state.revealedRhythmName = true;
     }).observe(document, { childList: true, subtree: true, characterData: true });
   });
   await page.reload();
@@ -196,6 +196,7 @@ test("cue descriptions and visibility controls translate during practice", async
 });
 
 test("unavailable signals retain translated cue titles when names are hidden elsewhere", async ({ page }) => {
+  await page.route("**/hand-signals/flying-four.webp", (route) => route.abort());
   const audio = await openRadio(page, ["marcacao", "combo_flying_four"]);
   if (await page.locator(".radio-now h2").innerText() !== "1 - Marcação") {
     await page.getByRole("button", { name: "Skip", exact: true }).click();
@@ -212,9 +213,8 @@ test("unavailable signals retain translated cue titles when names are hidden els
   await expect(page.locator(".radio-cue")).toContainText("Sinal indisponível");
   await expect(page.locator(".radio-next strong")).toHaveText("Flying four");
   await expect(page.locator(".radio-cue [role=status]")).toHaveText("Próximo ritmo: Flying four");
-  for (const selector of [".radio-selection", ".radio-now"]) {
-    await expect(page.locator(selector)).not.toContainText("Flying four");
-  }
+  await expect(page.locator(".radio-now")).not.toContainText("Flying four");
+  await expect(page.locator(".radio-settings")).toContainText("Flying four");
   await names.check();
   await expect(page.locator(".radio-next strong")).toHaveText("Flying four");
   await page.getByRole("button", { name: "Pular", exact: true }).click();
@@ -237,7 +237,7 @@ test("the next sequence can use its animated gesture and a held rhythm clears th
   await expect(image).toHaveAttribute("alt", "A closed fist moves up and down.");
   await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
   await page.getByRole("checkbox", { name: "Show rhythm names", exact: true }).uncheck();
-  await expect(page.locator(".radio-studio")).not.toContainText("Martelo break");
+  await expect(page.locator(".radio-player")).not.toContainText("Martelo break");
   await page.getByRole("button", { name: "Stay on this rhythm", exact: true }).click();
   await expect(page.locator(".radio-cue")).toHaveAttribute("data-phase", "repeating");
   await expect(image).toHaveCount(0);
@@ -263,7 +263,7 @@ test("a sequence waits until seventy percent to call its next rhythm", async ({ 
   await expect(cue).toHaveAttribute("data-phase", "call");
   await expect(image).toHaveAttribute("src", "/hand-signals/marcacao.png");
   await expect(page.locator(".radio-pattern")).toContainText("Repetition 1 of 1");
-  await expect(page.locator(".radio-studio")).not.toContainText("Marcação");
+  await expect(page.locator(".radio-player")).not.toContainText("Marcação");
   await page.locator(".radio-player").screenshot({ path: testInfo.outputPath("radio-sequence-call.png") });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   // Seeking back clears the call even within the same note subdivision.
@@ -280,7 +280,8 @@ test("a sequence waits until seventy percent to call its next rhythm", async ({ 
   expect(await audio.evaluate((element: HTMLAudioElement) => element.paused)).toBe(true);
 });
 
-test("an unmapped signal reveals the next name only during the call when names are hidden", async ({ page }, testInfo) => {
+test("an unavailable signal reveals the next name only during the call when playback names are hidden", async ({ page }, testInfo) => {
+  await page.route("**/hand-signals/flying-four.webp", (route) => route.abort());
   const audio = await openRadio(page, ["marcacao", "combo_flying_four"]);
   if (await page.locator(".radio-now h2").innerText() !== "1 - Marcação") {
     await page.getByRole("button", { name: "Skip", exact: true }).click();
@@ -297,7 +298,7 @@ test("an unmapped signal reveals the next name only during the call when names a
   await expect(page.locator(".radio-next strong")).toHaveText("Flying four");
   await expect(page.locator(".radio-cue [role=status]")).toHaveText("Next rhythm: Flying four");
   await expect(page.locator(".radio-now h2")).toHaveText("Rhythm names hidden");
-  await expect(page.locator(".radio-selection")).not.toContainText("Flying four");
+  await expect(page.locator(".radio-settings")).toContainText("Flying four");
   await expect.poll(() => page.evaluate(() => navigator.mediaSession.metadata?.title)).toBe("Baque Radio");
   await page.locator(".radio-player").screenshot({ path: testInfo.outputPath("radio-signal-unavailable.png") });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -355,7 +356,7 @@ for (const unavailable of [false, true]) {
     await notes.uncheck();
     await expect(names).not.toBeChecked();
     await expect(notes).not.toBeChecked();
-    await expect(page.locator(".radio-selection")).not.toContainText("Marcação");
+    await expect(page.locator(".radio-settings")).toContainText("Marcação");
     await expect(page.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
   });
 }

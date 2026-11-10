@@ -16,7 +16,7 @@ Radio helps learners follow the mestre by showing the next rhythm's hand signal 
 
    Add “Show rhythm names” and “Show notes”, both enabled by default. Apply changes immediately without replacing the audio source, moving the playhead or preparing a new mix. Save validated preferences separately from mix settings in `baque-facil-radio-display-v1` and keep the controls usable when storage is unavailable.
 
-   Hide names from the current title, upcoming label, rhythm selection controls, lesson shortcuts, cue announcements and media session titles. During an active call, reveal and announce the next name if its gesture is unavailable, so the learner can still follow the mestre. Use neutral numbered selection labels with the available gesture descriptions. Load display preferences before revealing names to avoid an answer flash after a reload. Omit hidden notes from the rendered interface and accessibility tree. Transport controls remain available.
+   Hide names from the current title, upcoming label, lesson shortcuts, cue announcements and media session titles. During an active call, reveal and announce the next name if its gesture is unavailable, so the learner can still follow the mestre. Keep all rhythm and sequence options visible in separate groups, with independent checkboxes and Select all / Clear selection controls. Each option always shows its name and original hand gesture, including when playback names or notes are hidden. Use bilingual gesture descriptions and preserve animated assets. Load display preferences before revealing playback names to avoid an answer flash after a reload. Omit hidden notes from the rendered interface and accessibility tree. Transport controls remain available.
 
 4. **Reuse the existing gesture content.**
 
@@ -38,7 +38,7 @@ Radio helps learners follow the mestre by showing the next rhythm's hand signal 
 
 7. **Verify recognition practice.**
 
-   Browser coverage checks the final two repetitions and the 70% sequence boundary, upcoming gesture identity, current notes, recording wrap, background return, pending settings, skip, hold and return to mix. Exercise all four visibility combinations, keyboard operation, saved preferences, invalid or unavailable storage, hidden accessible names and media titles. Missing signals must reveal and announce the next name only while the call is active.
+   Browser coverage checks the final two repetitions and the 70% sequence boundary, upcoming gesture identity, current notes, recording wrap, background return, pending settings, skip, hold and return to mix. Exercise all four visibility combinations, keyboard operation, saved preferences, invalid or unavailable storage, hidden playback names and media titles, and always-visible names and gestures in the selection options. Missing signals must reveal and announce the next name only while the call is active.
 
    Verify translations during an active call, the animated gesture and missing image fallbacks. Test the production flow offline with cached gestures. Review desktop and narrow screen screenshots and check for body overflow.
 
